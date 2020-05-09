@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <AssemblyName>Aporta.Core</AssemblyName>
+        <RootNamespace>Aporta.Core</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Extensions\Extensions.csproj" />
+    </ItemGroup>
+
+</Project>

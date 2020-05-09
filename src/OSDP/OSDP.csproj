@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <OutDir>$(SolutionDir)AportaConsole\bin\$(Configuration)\$(TargetFramework)\Drivers\OSDP</OutDir>
+        <RootNamespace>Aporta.OSDP</RootNamespace>
+        <AssemblyName>Aporta.OSDP</AssemblyName>
+    </PropertyGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\Extensions\Extensions.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="3.1.3" />
+      <PackageReference Include="OSDP.Net" Version="1.0.0-beta4" />
+    </ItemGroup>
+</Project>
