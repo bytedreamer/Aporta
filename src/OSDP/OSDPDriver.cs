@@ -21,14 +21,17 @@ namespace Aporta.OSDP
 
         public string Name => "OSDP";
         
-        public IEnumerable<IBus> Buses { get; }
+        public IEnumerable<IDevice> Devices => new List<IDevice>();
         
-        public IEnumerable<IEndpoint> Endpoints { get; }
+        public IEnumerable<IEndpoint> Endpoints => new List<IEndpoint>();
 
         public void Load()
         {
             Guid connection =
                 _panel.StartConnection(new SerialPortOsdpConnection("/dev/tty.usbserial-AB0JI236", 9600));
+            
+            
+            
             _panel.AddDevice(connection, 1, true, false);
         }
 

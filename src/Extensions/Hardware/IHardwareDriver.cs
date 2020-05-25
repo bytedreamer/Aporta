@@ -5,7 +5,7 @@ namespace Aporta.Extensions.Hardware
 {
     public interface IHardwareDriver : IExtension
     {
-        public IEnumerable<IBus> Buses { get; }
+        public IEnumerable<IDevice> Devices { get; }
         
         public IEnumerable<IEndpoint> Endpoints { get; }
         
