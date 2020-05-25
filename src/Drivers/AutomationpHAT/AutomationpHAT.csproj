@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <OutDir>$(SolutionDir)AportaConsole\bin\$(Configuration)\$(TargetFramework)\Drivers\AutomationpHAT</OutDir>
+        <RootNamespace>Aporta.Drivers.AutomationpHAT</RootNamespace>
+        <AssemblyName>Aporta.Drivers.AutomationpHAT</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Extensions\Extensions.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.Device.Gpio" Version="1.0.0" />
+    </ItemGroup>
+
+</Project>

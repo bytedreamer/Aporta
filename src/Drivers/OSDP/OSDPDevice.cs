@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 
-namespace Aporta.OSDP
+namespace Aporta.Drivers.OSDP
 {
     public class OSDPDevice : IDevice
     {

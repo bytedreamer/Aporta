@@ -5,19 +5,14 @@ using Aporta.Extensions.Hardware;
 using OSDP.Net;
 using OSDP.Net.Connections;
 
-namespace Aporta.OSDP
+namespace Aporta.Drivers.OSDP
 {
     /// <summary>
     /// 
     /// </summary>
-    public class Driver : IHardwareDriver
+    public class OSDPDriver : IHardwareDriver
     {
-        private readonly ControlPanel _panel;
-
-        public Driver()
-        {
-            _panel = new ControlPanel();
-        }
+        private readonly ControlPanel _panel = new ControlPanel();
 
         public string Name => "OSDP";
         

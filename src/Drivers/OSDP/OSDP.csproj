@@ -6,12 +6,12 @@
 
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <OutDir>$(SolutionDir)AportaConsole\bin\$(Configuration)\$(TargetFramework)\Drivers\OSDP</OutDir>
-        <RootNamespace>Aporta.OSDP</RootNamespace>
-        <AssemblyName>Aporta.OSDP</AssemblyName>
+        <RootNamespace>Aporta.Drivers.OSDP</RootNamespace>
+        <AssemblyName>Aporta.Drivers.OSDP</AssemblyName>
     </PropertyGroup>
     
     <ItemGroup>
-      <ProjectReference Include="..\Extensions\Extensions.csproj" />
+      <ProjectReference Include="..\..\Extensions\Extensions.csproj" />
     </ItemGroup>
 
     <ItemGroup>
