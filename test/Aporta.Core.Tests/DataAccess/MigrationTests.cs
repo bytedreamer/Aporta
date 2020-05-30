@@ -20,18 +20,32 @@ namespace Aporta.Core.Tests.DataAccess
         [TearDown]
         public void TearDown()
         {
-            _persistConnection.Dispose();
+            _persistConnection?.Close();
+            _persistConnection?.Dispose();
         }
 
         [Test]
-        public async Task CreateFromMissingDatabase()
+        public async Task UpdateSchema_CreateFromMissingDatabase()
         {
             // Arrange
             // Act 
             await _dataAccess.UpdateSchema();
 
             // Assert
-            Assert.AreEqual(0, await _dataAccess.CurrentVersion());
+            Assert.AreEqual(1, await _dataAccess.CurrentVersion());
+        }
+        
+        [Test]
+        public async Task UpdateSchema_RunMultipleTimes()
+        {
+            // Arrange
+            await _dataAccess.UpdateSchema();
+            
+            // Act 
+            await _dataAccess.UpdateSchema();
+
+            // Assert
+            Assert.AreEqual(1, await _dataAccess.CurrentVersion());
         }
     }
 }

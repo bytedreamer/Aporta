@@ -4,11 +4,11 @@ using Dapper;
 
 namespace Aporta.Core.DataAccess.Migrations
 {
-    public class _0001_InitialCreate : IMigration
+    public class _0000_InitialCreate : IMigration
     {
         public int Version => 0;
         
-        public string Name => "Initial Create";
+        public string Name => "Initial create";
 
         public async Task PerformUpdate(IDataAccess dataAccess)
         {
@@ -23,7 +23,10 @@ namespace Aporta.Core.DataAccess.Migrations
                                     primary key,
                             name      text not null,
                             timestamp datetime
-                        );", 
+                        );
+
+                        create unique index schema_info_id_uindex
+                            on schema_info (id);", 
                 transaction: transaction);
 
             await connection.ExecuteAsync(

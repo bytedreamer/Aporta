@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 namespace Aporta.Core.DataAccess
 {
     /// <summary>
-    /// Routines to access data in persistent storage
+    /// Access data in persistent storage
     /// </summary>
     public interface IDataAccess
     {
         /// <summary>
-        /// Create a database connection for accessing persistent storage
+        /// Creates a database connection for accessing persistent storage
         /// </summary>
         /// <returns>The database connection</returns>
         IDbConnection CreateDbConnection();
@@ -17,7 +17,7 @@ namespace Aporta.Core.DataAccess
         /// <summary>
         /// Query for the current version of the schema
         /// </summary>
-        /// <returns>The current version of the schema</returns>
+        /// <returns>The current version of the schema. Returns -1 if no database is found or schema_info table is missing.</returns>
         Task<int> CurrentVersion();
         
         /// <summary>

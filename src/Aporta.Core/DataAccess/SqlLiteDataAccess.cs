@@ -14,10 +14,16 @@ namespace Aporta.Core.DataAccess
         private const string FileName = "Aporta.sqlite";
         private readonly bool _inMemory;
 
-       /// <summary>
-       /// 
-       /// </summary>
-       /// <param name="inMemory">Set to true if database is temporarily created in memory</param>
+        private readonly IMigration[] _migrations = new IMigration[]
+        {
+            new _0000_InitialCreate(),
+            new _0001_AddExtensionTable()
+        };
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="inMemory">Set to true if database is temporarily created in memory</param>
         public SqlLiteDataAccess(bool inMemory = false)
         {
             _inMemory = inMemory;
@@ -27,7 +33,7 @@ namespace Aporta.Core.DataAccess
         {
             return new SqliteConnection(BuildConnectionString());
         }
-        
+
         private string BuildConnectionString()
         {
             string connectionString = "Data Source=" + (_inMemory
@@ -43,26 +49,35 @@ namespace Aporta.Core.DataAccess
 
         public async Task<int> CurrentVersion()
         {
+            if (!_inMemory && !File.Exists(BuildFilePath()))
+            {
+                return -1;
+            }
+            
             using var connection = CreateDbConnection();
             connection.Open();
+
+            if (await connection.ExecuteScalarAsync<int>(
+            @"select count(*)
+                from sqlite_master
+                where tbl_name = 'schema_info'") == 0)
+            {
+                return -1;
+            }
+            
             return await connection.QueryFirstAsync<int>(
-                @"SELECT id
-                        FROM schema_info
-                        ORDER BY id DESC");
+                @"select id
+                        from schema_info
+                        order by id desc");
         }
 
         public async Task UpdateSchema()
         {
-            int version = -1;
-            if (!_inMemory && File.Exists(BuildFilePath()))
-            {
-                version = await CurrentVersion();
-            }
+            int currentVersion = await CurrentVersion();
 
-            if (version < 0)
+            for (int migrationIndex = currentVersion + 1; migrationIndex < _migrations.Length; migrationIndex++)
             {
-                var migration = new _0001_InitialCreate();
-                await migration.PerformUpdate(this);
+                await _migrations[migrationIndex].PerformUpdate(this);
             }
         }
     }
