@@ -3,32 +3,21 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Aporta.Core.DataAccess;
 using Aporta.Core.Extension;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
-using Microsoft.Extensions.Logging;
-using Serilog;
-using Serilog.Events;
 
 namespace AportaConsole
 {
     class Program
     {
-        private static ILoggerFactory _loggerFactory;
-        
         static async Task Main(string[] args)
         {
-            var serilogLogger = new LoggerConfiguration()
-                .MinimumLevel.Information()
-                .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-                .Enrich.FromLogContext()
-                .WriteTo.Console()
-                .CreateLogger(); 
-            
-            _loggerFactory = new LoggerFactory();
-            _loggerFactory.AddSerilog(serilogLogger);
-            
-            await TestOutput();
+             var dataAccess = new SqlLiteDataAccess();
+             await dataAccess.UpdateSchema();
+             
+             // await TestOutput();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
