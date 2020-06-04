@@ -5,16 +5,16 @@
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-        <OutDir>$(SolutionDir)AportaConsole\bin\$(Configuration)\$(TargetFramework)\Drivers\OSDP</OutDir>
+        <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\$(TargetFramework)\Drivers\OSDP</OutDir>
         <RootNamespace>Aporta.Drivers.OSDP</RootNamespace>
         <AssemblyName>Aporta.Drivers.OSDP</AssemblyName>
     </PropertyGroup>
-    
-    <ItemGroup>
-      <ProjectReference Include="..\..\Extensions\Extensions.csproj" />
-    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="OSDP.Net" Version="1.0.0-beta4" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Aporta.Extensions\Aporta.Extensions.csproj" />
     </ItemGroup>
 </Project>

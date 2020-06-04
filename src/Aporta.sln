@@ -2,9 +2,9 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Core", "Aporta.Core\Aporta.Core.csproj", "{181E9DB4-AE61-42CE-9C3A-CCBBDFAB1C34}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions", "Extensions\Extensions.csproj", "{844B3222-604E-4C7C-AC87-848FBDA032D4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Extensions", "Aporta.Extensions\Aporta.Extensions.csproj", "{844B3222-604E-4C7C-AC87-848FBDA032D4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AportaConsole", "AportaConsole\AportaConsole.csproj", "{1D04D0E4-2345-4DE3-ACA3-2D83AA0FFE5D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta", "Aporta\Aporta.csproj", "{1D04D0E4-2345-4DE3-ACA3-2D83AA0FFE5D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Drivers", "Drivers", "{035F16E0-E30C-43CB-8BB7-C8322283208D}"
 EndProject
@@ -15,6 +15,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{2DFBFA3A-B289-4723-A630-C5240C7ADE85}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Core.Tests", "..\test\Aporta.Core.Tests\Aporta.Core.Tests.csproj", "{EBD5E47F-3764-4129-BB98-25E33F73B224}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.WebClient", "Aporta.WebClient\Aporta.WebClient.csproj", "{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -46,6 +48,10 @@ Global
 		{EBD5E47F-3764-4129-BB98-25E33F73B224}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EBD5E47F-3764-4129-BB98-25E33F73B224}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EBD5E47F-3764-4129-BB98-25E33F73B224}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{9935D7A9-E4DC-48CE-9934-BF0E379892CA} = {035F16E0-E30C-43CB-8BB7-C8322283208D}

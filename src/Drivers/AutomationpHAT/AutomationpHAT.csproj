@@ -6,17 +6,17 @@
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-        <OutDir>$(SolutionDir)AportaConsole\bin\$(Configuration)\$(TargetFramework)\Drivers\AutomationpHAT</OutDir>
+        <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\$(TargetFramework)\Drivers\AutomationpHAT</OutDir>
         <RootNamespace>Aporta.Drivers.AutomationpHAT</RootNamespace>
         <AssemblyName>Aporta.Drivers.AutomationpHAT</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\Extensions\Extensions.csproj" />
+      <PackageReference Include="System.Device.Gpio" Version="1.0.0" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="System.Device.Gpio" Version="1.0.0" />
+      <ProjectReference Include="..\..\Aporta.Extensions\Aporta.Extensions.csproj" />
     </ItemGroup>
 
 </Project>

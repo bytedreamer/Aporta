@@ -3,23 +3,34 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+
 using Aporta.Core.DataAccess;
 using Aporta.Core.Extension;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 
-namespace AportaConsole
+namespace Aporta
 {
     class Program
     {
-        static async Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
-             var dataAccess = new SqlLiteDataAccess();
-             await dataAccess.UpdateSchema();
-             
-             // await TestOutput();
+            var dataAccess = new SqlLiteDataAccess();
+            await dataAccess.UpdateSchema();
+            // await TestOutput();
+            
+            await CreateHostBuilder(args).Build().RunAsync();
         }
 
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
+        
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static async Task TestOutput()
         {
