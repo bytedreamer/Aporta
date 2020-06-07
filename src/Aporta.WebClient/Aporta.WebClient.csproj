@@ -16,5 +16,13 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="3.2.0" PrivateAssets="all" />
         <PackageReference Include="System.Net.Http.Json" Version="3.2.0" />
     </ItemGroup>
+    <ItemGroup>
+      <Content Update="Pages\Extensions.razor">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </Content>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\Aporta.Shared\Aporta.Shared.csproj" />
+    </ItemGroup>
 
 </Project>

@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess.Migrations;
 using Dapper;
@@ -44,7 +45,8 @@ namespace Aporta.Core.DataAccess
 
         private static string BuildFilePath()
         {
-            return Path.Combine(Environment.CurrentDirectory, FileName);
+            return Path.Combine(
+                Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, FileName);
         }
 
         public async Task<int> CurrentVersion()

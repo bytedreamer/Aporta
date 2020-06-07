@@ -21,7 +21,8 @@ namespace Aporta.Core.DataAccess.Migrations
                             id text not null
                                 constraint extension_pk
                                     primary key,
-                            name text not null
+                            name text not null,
+                            enabled integer default 0 not null
                         );
 
                         create unique index extension_id_uindex

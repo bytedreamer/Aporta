@@ -14,6 +14,8 @@ namespace Aporta.Drivers.AutomationpHAT
         private GpioController _controller;
         private readonly List<IEndpoint> _endpoints = new List<IEndpoint>();
         
+        public Guid Id => Guid.Parse("3803BA97-C8E3-479D-993B-E76DAB9ABED6");
+        
         public string Name => "Automation pHAT";
         
         public IEnumerable<IDevice> Devices => new List<IDevice>();

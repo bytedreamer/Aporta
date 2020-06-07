@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Core.Tests", "..\tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.WebClient", "Aporta.WebClient\Aporta.WebClient.csproj", "{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Shared", "Aporta.Shared\Aporta.Shared.csproj", "{BC2ACA82-77C9-40E0-BE3F-91A09C075F97}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +54,10 @@ Global
 		{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7420476B-9DDE-42E0-B200-AE7E4AB1CBF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC2ACA82-77C9-40E0-BE3F-91A09C075F97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC2ACA82-77C9-40E0-BE3F-91A09C075F97}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC2ACA82-77C9-40E0-BE3F-91A09C075F97}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC2ACA82-77C9-40E0-BE3F-91A09C075F97}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{9935D7A9-E4DC-48CE-9934-BF0E379892CA} = {035F16E0-E30C-43CB-8BB7-C8322283208D}

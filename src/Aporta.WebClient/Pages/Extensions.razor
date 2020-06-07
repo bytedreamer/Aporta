@@ -1,0 +1,40 @@
+@page "/extensions"
+@using Aporta.Shared.Models
+@inject HttpClient Http
+
+<h1>Extensions</h1>
+
+<p></p>
+
+@if (_extensions == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Name</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var extension in _extensions)
+        {
+            <tr>
+                <td>@extension.Name</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Extension[] _extensions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _extensions = await Http.GetFromJsonAsync<Extension[]>("api/extensions");
+    }
+
+}

@@ -14,6 +14,8 @@ namespace Aporta.Drivers.OSDP
     {
         private readonly ControlPanel _panel = new ControlPanel();
 
+        public Guid Id => Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5");
+        
         public string Name => "OSDP";
         
         public IEnumerable<IDevice> Devices => new List<IDevice>();

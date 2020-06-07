@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
+using Aporta.Core.Models;
 using NUnit.Framework;
 
 namespace Aporta.Core.Tests.DataAccess.Repositories
@@ -36,9 +37,9 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Arrange
             var extensions = new[]
             {
-                new Model.Extension {Id = Guid.NewGuid(), Name = "Test1"},
-                new Model.Extension {Id = Guid.NewGuid(), Name = "Test2"},
-                new Model.Extension {Id = Guid.NewGuid(), Name = "Test3"}
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test1", Enabled = false},
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test2", Enabled = true},
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test3", Enabled = true}
             };
                 
             var extensionRepository = new ExtensionRepository(_dataAccess);
@@ -53,6 +54,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Assert
             Assert.AreEqual(extensions[1].Id, actualExtension.Id);
             Assert.AreEqual(extensions[1].Name, actualExtension.Name);
+            Assert.AreEqual(extensions[1].Enabled, actualExtension.Enabled);
         }
         
         [Test]
@@ -61,9 +63,9 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Arrange
             var extensions = new[]
             {
-                new Model.Extension {Id = Guid.NewGuid(), Name = "Test1"},
-                new Model.Extension {Id = Guid.NewGuid(), Name = "Test2"},
-                new Model.Extension {Id = Guid.NewGuid(), Name = "Test3"}
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test1", Enabled = false},
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test2", Enabled = true},
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test3", Enabled = true}
             };
                 
             var extensionRepository = new ExtensionRepository(_dataAccess);

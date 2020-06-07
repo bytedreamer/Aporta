@@ -2,8 +2,10 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
-        <AssemblyName>Aporta.Extensions</AssemblyName>
-        <RootNamespace>Aporta.Extensions</RootNamespace>
     </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
+    </ItemGroup>
 
 </Project>
