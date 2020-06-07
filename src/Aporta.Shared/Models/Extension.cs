@@ -1,5 +1,4 @@
 using System;
-using Newtonsoft.Json;
 
 namespace Aporta.Shared.Models
 {
@@ -15,8 +14,5 @@ namespace Aporta.Shared.Models
         /// Has the extension been loaded 
         /// </summary>
         public bool Loaded { get; set; }
-        
-        [JsonIgnore]
-        public string AssemblyPath { get; set; }
     }
 }
