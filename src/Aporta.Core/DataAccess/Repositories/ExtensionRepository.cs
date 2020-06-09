@@ -14,6 +14,10 @@ namespace Aporta.Core.DataAccess.Repositories
         private const string SqlInsert = @"insert into extension
                                             (id, name, enabled) values 
                                             (@id, @name, @enabled);";
+
+        private const string SqlUpdate = @"update extension
+                                            set enabled = @enabled
+                                            where id = @id;";
         
         private readonly IDataAccess _dataAccess;
 
@@ -47,6 +51,15 @@ namespace Aporta.Core.DataAccess.Repositories
             connection.Open();
 
             await connection.ExecuteAsync(SqlInsert,
+                new {id = extension.Id, name = extension.Name, enabled = extension.Enabled});
+        }
+
+        public async Task Update(ExtensionHost extension)
+        {
+            using var connection = _dataAccess.CreateDbConnection();
+            connection.Open();
+
+            await connection.ExecuteAsync(SqlUpdate,
                 new {id = extension.Id, name = extension.Name, enabled = extension.Enabled});
         }
     }

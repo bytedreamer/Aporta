@@ -20,6 +20,8 @@ namespace Aporta.Core.Services
         Task Startup();
 
         void Shutdown();
+        
+        Task SetExtensionEnable(Guid extensionId, bool enabled);
     }
     
     public class MainService : IMainService
@@ -45,6 +47,14 @@ namespace Aporta.Core.Services
         public void Shutdown()
         {
             UnloadExtensions();
+        }
+
+        public async Task SetExtensionEnable(Guid extensionId, bool enabled)
+        {
+            var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
+
+            matchingExtension.Enabled = enabled;
+            await _extensionRepository.Update(matchingExtension);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

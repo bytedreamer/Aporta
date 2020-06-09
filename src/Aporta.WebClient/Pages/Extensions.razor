@@ -16,6 +16,7 @@ else
         <thead>
         <tr>
             <th>Name</th>
+            <th>Enabled</th>
         </tr>
         </thead>
         <tbody>
@@ -23,6 +24,9 @@ else
         {
             <tr>
                 <td>@extension.Name</td>
+                <td>
+                    <input type="checkbox" checked="@extension.Enabled" @onchange="async eventArgs => await ExtensionEnabledChanged(extension.Id, eventArgs.Value)" /> 
+                </td>               
             </tr>
         }
         </tbody>
@@ -36,5 +40,15 @@ else
     {
         _extensions = await Http.GetFromJsonAsync<Extension[]>("api/extensions");
     }
-
+    
+    async Task ExtensionEnabledChanged(Guid extensionId, object checkedValue)
+    {
+        string url = $"api/extensions/{extensionId}";
+        url = QueryHelpers.AddQueryString(url, "enabled", checkedValue.ToString());
+        var response = await Http.PostAsync(url, new StringContent(string.Empty));
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception($"Unable to update extension. Response reason - {(int)response.StatusCode}:{response.ReasonPhrase}");
+        }
+    }
 }
