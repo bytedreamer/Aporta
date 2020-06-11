@@ -1,6 +1,11 @@
 @page "/extensions"
 @using Aporta.Shared.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@using Aporta.Shared.Messaging
+@using Aporta.Shared.Calls
 @inject HttpClient Http
+@inject NavigationManager NavigationManager
+@implements IDisposable
 
 <h1>Extensions</h1>
 
@@ -35,20 +40,38 @@ else
 
 @code {
     private Extension[] _extensions;
+    private HubConnection _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
-        _extensions = await Http.GetFromJsonAsync<Extension[]>("api/extensions");
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithAutomaticReconnect()
+            .Build();
+        _hubConnection.On(Methods.ExtensionDataChanged, async () =>
+        {
+            _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extension);
+            
+            StateHasChanged();
+        });
+        await _hubConnection.StartAsync();
+        
+        _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extension);
     }
     
     async Task ExtensionEnabledChanged(Guid extensionId, object checkedValue)
     {
-        string url = $"api/extensions/{extensionId}";
+        string url = $"{Paths.Extension}/{extensionId}";
         url = QueryHelpers.AddQueryString(url, "enabled", checkedValue.ToString());
         var response = await Http.PostAsync(url, new StringContent(string.Empty));
         if (!response.IsSuccessStatusCode)
         {
             throw new Exception($"Unable to update extension. Response reason - {(int)response.StatusCode}:{response.ReasonPhrase}");
         }
+    }
+        
+    public void Dispose()
+    {
+        _ = _hubConnection.DisposeAsync();
     }
 }

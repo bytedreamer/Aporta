@@ -1,7 +1,11 @@
+using System.Linq;
 using Aporta.Core.DataAccess;
+using Aporta.Core.Hubs;
 using Aporta.Core.Services;
+using Aporta.Shared.Messaging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -24,13 +28,21 @@ namespace Aporta
             services.AddSingleton<IDataAccess, SqlLiteDataAccess>();
             services.AddSingleton<IMainService, MainService>();
             
+            services.AddSignalR();
             services.AddControllersWithViews();
             services.AddRazorPages();
+            services.AddResponseCompression(opts =>
+            {
+                opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+                    new[] { "application/octet-stream" });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseResponseCompression();
+            
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -53,7 +65,10 @@ namespace Aporta
             {
                 endpoints.MapRazorPages();
                 endpoints.MapControllers();
+                
                 endpoints.MapFallbackToFile("index.html");
+                
+                endpoints.MapHub<DataChangeNotificationHub>(Locations.DataChangeNotification);
             });
         }
     }

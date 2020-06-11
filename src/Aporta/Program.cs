@@ -12,8 +12,6 @@ namespace Aporta
 {
     class Program
     {
-        private static MainService _mainService;
-        
         public static async Task Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
