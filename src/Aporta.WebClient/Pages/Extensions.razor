@@ -25,7 +25,7 @@ else
             <tr>
                 <td>@extension.Name</td>
                 <td>
-                    <input type="checkbox" checked="@extension.Enabled" @onchange="async eventArgs => await ExtensionEnabledChanged(extension.Id, eventArgs.Value)" /> 
+                    <input type="checkbox" checked="@extension.Enabled" @onchange="async eventArgs => await ExtensionEnabledChanged(extension.Id, eventArgs.Value)">   
                 </td>               
             </tr>
         }

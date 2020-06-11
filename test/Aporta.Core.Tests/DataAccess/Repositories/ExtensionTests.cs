@@ -80,5 +80,32 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Assert
             Assert.AreEqual(3, actualExtensions.Count());
         }
+        
+        [Test]
+        public async Task Update()
+        {
+            // Arrange
+            var extensions = new[]
+            {
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test1", Enabled = false},
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test2", Enabled = true},
+                new ExtensionHost {Id = Guid.NewGuid(), Name = "Test3", Enabled = true}
+            };
+                
+            var extensionRepository = new ExtensionRepository(_dataAccess);
+            foreach (var extension in extensions)
+            {
+                await extensionRepository.Insert(extension);   
+            }
+            var updatedExtension = extensions[0];
+            updatedExtension.Enabled = true;
+            
+            // Act 
+            await extensionRepository.Update(extensions[0]);
+            var actualExtension = await extensionRepository.Get(updatedExtension.Id);
+
+            // Assert
+            Assert.IsTrue(actualExtension.Enabled);
+        }
     }
 }
