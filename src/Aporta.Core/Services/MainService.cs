@@ -13,17 +13,9 @@ using Aporta.Extensions.Hardware;
 
 namespace Aporta.Core.Services
 {
-    public interface IMainService
-    {
-        IEnumerable<ExtensionHost> Extensions { get; }
-
-        Task Startup();
-
-        void Shutdown();
-        
-        Task EnableExtension(Guid extensionId, bool enabled);
-    }
-    
+    /// <summary>
+    /// 
+    /// </summary>
     public class MainService : IMainService
     {
         private readonly ExtensionRepository _extensionRepository;
@@ -83,15 +75,6 @@ namespace Aporta.Core.Services
 
                 foreach (var driver in host.GetExtensions())
                 {
-                    try
-                    {
-                        driver.Load();
-                    }
-                    catch (Exception exception)
-                    {
-                        continue;
-                    }
-
                     var extension = await _extensionRepository.Get(driver.Id);
                     if (extension == null)
                     {
@@ -103,11 +86,6 @@ namespace Aporta.Core.Services
                     extension.AssemblyPath = assemblyPath;
 
                     _extensions.Add(extension);
-                }
-
-                foreach (var operation in host.GetExtensions())
-                {
-                    operation.Unload();
                 }
 
                 host.Unload();
@@ -133,6 +111,9 @@ namespace Aporta.Core.Services
         {
             extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
             extension.Host.Load();
+            extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
+            extension.Driver.Load();
+            
             extension.Loaded = true;
         }
         
@@ -155,6 +136,8 @@ namespace Aporta.Core.Services
 
         private static void UnloadExtension(ExtensionHost extension)
         {
+            extension.Driver.Unload();
+            
             extension.Host.Unload();
             extension.Loaded = false;
         }

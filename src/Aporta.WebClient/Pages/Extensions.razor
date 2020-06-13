@@ -9,8 +9,6 @@
 
 <h1>Extensions</h1>
 
-<p></p>
-
 @if (_extensions == null)
 {
     <p><em>Loading...</em></p>
@@ -36,11 +34,11 @@ else
                 <td>
                     @if (extension.Loaded)
                     {
-                        <span class="oi oi-circle-check" aria-hidden="true"></span>  
+                        <span class="oi oi-circle-check" style="color: green" aria-hidden="true"></span>  
                     }
                     else
                     {
-                        <span class="oi oi-circle-x" aria-hidden="true"></span>
+                        <span class="oi oi-circle-x" style="color: red" aria-hidden="true"></span>
                     }
                 </td>
             </tr>

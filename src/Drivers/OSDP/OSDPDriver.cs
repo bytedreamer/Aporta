@@ -26,9 +26,7 @@ namespace Aporta.Drivers.OSDP
         {
             Guid connection =
                 _panel.StartConnection(new SerialPortOsdpConnection("/dev/tty.usbserial-AB0JI236", 9600));
-            
-            
-            
+
             _panel.AddDevice(connection, 1, true, false);
         }
 

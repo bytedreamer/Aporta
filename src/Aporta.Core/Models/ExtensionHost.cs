@@ -11,5 +11,8 @@ namespace Aporta.Core.Models
         
         [JsonIgnore]
         public Host<IHardwareDriver> Host { get; set; }
+        
+        [JsonIgnore]
+        public IHardwareDriver Driver { get; set; }
     }
 }

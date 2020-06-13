@@ -22,6 +22,9 @@
       <Content Update="Pages\Extensions.razor">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </Content>
+      <Content Update="Pages\Control.razor">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </Content>
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Aporta.Shared\Aporta.Shared.csproj" />
