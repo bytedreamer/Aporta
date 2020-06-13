@@ -9,6 +9,7 @@ using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Extension;
 using Aporta.Core.Models;
+using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 
 namespace Aporta.Core.Services
@@ -56,6 +57,14 @@ namespace Aporta.Core.Services
             {
                 UnloadExtension(matchingExtension);
             }
+        }
+
+        public async Task SetOutput(bool state)
+        {
+            var matchingExtension = _extensions.First(extension =>
+                extension.Id == Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"));
+
+            await matchingExtension.Driver.Endpoints.Cast<IControlPoint>().First().Set(state);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

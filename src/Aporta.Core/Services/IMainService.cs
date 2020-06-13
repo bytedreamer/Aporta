@@ -14,5 +14,7 @@ namespace Aporta.Core.Services
         void Shutdown();
         
         Task EnableExtension(Guid extensionId, bool enabled);
+        
+        Task SetOutput(bool state);
     }
 }

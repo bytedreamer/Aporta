@@ -32,7 +32,14 @@ namespace Aporta.Controllers
         [HttpPost("{extensionId}")]
         public async Task<ActionResult> SetEnabled(Guid extensionId, [FromQuery] bool enabled)
         {
-            await _mainService.EnableExtension(extensionId, enabled);
+            try
+            {
+                await _mainService.EnableExtension(extensionId, enabled);
+            }
+            catch
+            {
+                // ignored
+            }
 
             await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged);
 
