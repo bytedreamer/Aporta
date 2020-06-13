@@ -21,7 +21,7 @@ namespace Aporta.Core.Services
 
         void Shutdown();
         
-        Task SetExtensionEnable(Guid extensionId, bool enabled);
+        Task EnableExtension(Guid extensionId, bool enabled);
     }
     
     public class MainService : IMainService
@@ -49,12 +49,21 @@ namespace Aporta.Core.Services
             UnloadExtensions();
         }
 
-        public async Task SetExtensionEnable(Guid extensionId, bool enabled)
+        public async Task EnableExtension(Guid extensionId, bool enabled)
         {
             var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
 
             matchingExtension.Enabled = enabled;
             await _extensionRepository.Update(matchingExtension);
+
+            if (enabled)
+            {
+                LoadExtension(matchingExtension);
+            }
+            else
+            {
+                UnloadExtension(matchingExtension);
+            }
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -104,26 +113,50 @@ namespace Aporta.Core.Services
                 host.Unload();
             }
         }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
+        
         private void LoadExtensions()
         {
             foreach (var extension in _extensions.Where(extension => extension.Enabled))
             {
-                extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
-                extension.Host.Load();
+                try
+                {
+                    LoadExtension(extension);
+                }
+                catch
+                {
+                    // ignored
+                }
             }
         }
+ 
+        private static void LoadExtension(ExtensionHost extension)
+        {
+            extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
+            extension.Host.Load();
+            extension.Loaded = true;
+        }
         
-        [MethodImpl(MethodImplOptions.NoInlining)]
         private void UnloadExtensions()
         {
             foreach (var extension in _extensions)
             {
-                extension.Host.Unload();
+                try
+                {
+                    UnloadExtension(extension);
+                }
+                catch
+                {
+                    // ignored
+                }
             }
 
             _extensions.Clear();
+        }
+
+        private static void UnloadExtension(ExtensionHost extension)
+        {
+            extension.Host.Unload();
+            extension.Loaded = false;
         }
     }
 }

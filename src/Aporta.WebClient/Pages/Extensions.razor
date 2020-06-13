@@ -22,6 +22,7 @@ else
         <tr>
             <th>Name</th>
             <th>Enabled</th>
+            <th>Loaded</th>
         </tr>
         </thead>
         <tbody>
@@ -31,7 +32,17 @@ else
                 <td>@extension.Name</td>
                 <td>
                     <input type="checkbox" checked="@extension.Enabled" @onchange="async eventArgs => await ExtensionEnabledChanged(extension.Id, eventArgs.Value)">   
-                </td>               
+                </td>  
+                <td>
+                    @if (extension.Loaded)
+                    {
+                        <span class="oi oi-circle-check" aria-hidden="true"></span>  
+                    }
+                    else
+                    {
+                        <span class="oi oi-circle-x" aria-hidden="true"></span>
+                    }
+                </td>
             </tr>
         }
         </tbody>
