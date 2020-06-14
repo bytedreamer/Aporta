@@ -5,7 +5,7 @@
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-        <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\$(TargetFramework)\Drivers\OSDP</OutDir>
+        <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\Drivers\OSDP</OutDir>
         <RootNamespace>Aporta.Drivers.OSDP</RootNamespace>
         <AssemblyName>Aporta.Drivers.OSDP</AssemblyName>
     </PropertyGroup>

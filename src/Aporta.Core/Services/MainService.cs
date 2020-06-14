@@ -109,7 +109,7 @@ namespace Aporta.Core.Services
                 {
                     LoadExtension(extension);
                 }
-                catch
+                catch (Exception exception)
                 {
                     // ignored
                 }

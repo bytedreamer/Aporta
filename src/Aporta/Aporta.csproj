@@ -42,4 +42,18 @@
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </Content>
     </ItemGroup>
+
+    <ItemGroup>
+        <DriverFiles Include="bin\$(Configuration)\Drivers\**"/>
+    </ItemGroup>
+
+    <Target Name="CopyDrivers" AfterTargets="AfterBuild">
+        <Copy SourceFiles="@(DriverFiles)"
+              DestinationFiles="@(DriverFiles->'$(OutDir)\Drivers\%(RecursiveDir)%(Filename)%(Extension)')"/>
+    </Target>
+
+    <Target Name="PublishDrivers" AfterTargets="AfterBuild">
+        <Copy SourceFiles="@(DriverFiles)"
+              DestinationFiles="@(DriverFiles->'$(PublishDir)\Drivers\%(RecursiveDir)%(Filename)%(Extension)')"/>
+    </Target>
 </Project>

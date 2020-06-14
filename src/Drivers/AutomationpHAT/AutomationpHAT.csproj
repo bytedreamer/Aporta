@@ -6,7 +6,7 @@
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-        <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\$(TargetFramework)\Drivers\AutomationpHAT</OutDir>
+        <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\Drivers\AutomationpHAT</OutDir>
         <RootNamespace>Aporta.Drivers.AutomationpHAT</RootNamespace>
         <AssemblyName>Aporta.Drivers.AutomationpHAT</AssemblyName>
     </PropertyGroup>
