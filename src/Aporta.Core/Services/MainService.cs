@@ -11,6 +11,7 @@ using Aporta.Core.Extension;
 using Aporta.Core.Models;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
+using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services
 {
@@ -19,12 +20,14 @@ namespace Aporta.Core.Services
     /// </summary>
     public class MainService : IMainService
     {
+        private readonly ILogger<MainService> _logger;
         private readonly ExtensionRepository _extensionRepository;
 
         private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
 
-        public MainService(IDataAccess dataAccess)
+        public MainService(IDataAccess dataAccess, ILogger<MainService> logger)
         {
+            _logger = logger;
             _extensionRepository = new ExtensionRepository(dataAccess);
         }
 
@@ -32,6 +35,8 @@ namespace Aporta.Core.Services
 
         public async Task Startup()
         {
+            _logger.LogInformation("Starting main service");
+            
             await DiscoverExtensions();
 
             LoadExtensions();
@@ -39,12 +44,16 @@ namespace Aporta.Core.Services
 
         public void Shutdown()
         {
+            _logger.LogInformation("Shutting down main service");
+            
             UnloadExtensions();
         }
 
         public async Task EnableExtension(Guid extensionId, bool enabled)
         {
             var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
+            
+            _logger.LogInformation($"{(enabled ? "Enabling" : "Disabling")} extension {matchingExtension.Name}");
 
             matchingExtension.Enabled = enabled;
             await _extensionRepository.Update(matchingExtension);
@@ -109,9 +118,9 @@ namespace Aporta.Core.Services
                 {
                     LoadExtension(extension);
                 }
-                catch (Exception exception)
+                catch(Exception exception)
                 {
-                    // ignored
+                    _logger.LogError($"Unable to load extension {extension.Name}", exception);
                 }
             }
         }
@@ -134,9 +143,9 @@ namespace Aporta.Core.Services
                 {
                     UnloadExtension(extension);
                 }
-                catch
+                catch (Exception exception)
                 {
-                    // ignored
+                    _logger.LogError($"Unable to unload extension {extension.Name}", exception);
                 }
             }
 

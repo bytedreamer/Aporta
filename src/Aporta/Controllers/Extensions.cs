@@ -7,6 +7,7 @@ using Aporta.Core.Services;
 using Aporta.Shared.Messaging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace Aporta.Controllers
 {
@@ -14,11 +15,14 @@ namespace Aporta.Controllers
     [Route("api/[controller]")]
     public class ExtensionsController : Controller
     {
+        private readonly ILogger<ExtensionsController> _logger;
         private readonly IMainService _mainService;
         private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
-        public ExtensionsController(IMainService mainService, IHubContext<DataChangeNotificationHub> hubContext)
+        public ExtensionsController(IMainService mainService, IHubContext<DataChangeNotificationHub> hubContext,
+            ILogger<ExtensionsController> logger)
         {
+            _logger = logger;
             if (mainService != null) _mainService = mainService;
             if (hubContext != null) _hubContext = hubContext;
         }
@@ -36,9 +40,10 @@ namespace Aporta.Controllers
             {
                 await _mainService.EnableExtension(extensionId, enabled);
             }
-            catch
+            catch (Exception exception)
             {
-                // ignored
+                _logger.LogError($"Unable to update extension {extensionId}", exception);
+                return Problem();
             }
 
             await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged);
