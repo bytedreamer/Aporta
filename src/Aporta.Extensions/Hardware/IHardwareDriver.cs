@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Aporta.Extensions.Endpoint;
+using Microsoft.Extensions.Logging;
 
 namespace Aporta.Extensions.Hardware
 {
@@ -12,7 +13,7 @@ namespace Aporta.Extensions.Hardware
         
         public IEnumerable<IEndpoint> Endpoints { get; }
         
-        void Load();
+        void Load(ILoggerFactory loggerFactory);
         
         void Unload();
     }

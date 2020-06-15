@@ -17,6 +17,19 @@ namespace Aporta.Core.Extension
         
         protected override Assembly Load(AssemblyName name)
         {
+            // Keep host version of shared assemblies
+            if (!name.Name?.StartsWith("Aporta") ?? false)
+            {
+                try
+                {
+                    return Default.LoadFromAssemblyName(name);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            
             if (name.Name == ExtensionsName)
             {
                 return null;

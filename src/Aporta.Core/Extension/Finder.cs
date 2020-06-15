@@ -29,15 +29,22 @@ namespace Aporta.Core.Extension
 
             foreach (var assemblyPath in assemblyPaths)
             {
-                var assemblyContext = new AportaAssemblyLoadContext(assemblyPath);
-                
-                var assembly = assemblyContext.LoadFromAssemblyPath(assemblyPath);
-                if (GetExtensionTypes(assembly).Any())
+                try
                 {
-                    extensionAssemblyLocations.Add(assembly.Location);
+                    var assemblyContext = new AportaAssemblyLoadContext(assemblyPath);
+
+                    var assembly = assemblyContext.LoadFromAssemblyPath(assemblyPath);
+                    if (GetExtensionTypes(assembly).Any())
+                    {
+                        extensionAssemblyLocations.Add(assembly.Location);
+                    }
+
+                    assemblyContext.Unload();
                 }
-                
-                assemblyContext.Unload();
+                catch (Exception exception)
+                {
+                    
+                }
             }
 
             return extensionAssemblyLocations;

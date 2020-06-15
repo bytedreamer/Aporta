@@ -14,7 +14,6 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="3.2.0" />
-      <PackageReference Include="Serilog.Extensions.Logging" Version="3.0.1" />
     </ItemGroup>
 
     <ItemGroup>
@@ -42,10 +41,23 @@
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </Content>
+      <Content Remove="bin\**" />
     </ItemGroup>
 
     <ItemGroup>
         <DriverFiles Include="bin\$(Configuration)\Drivers\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="bin\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="bin\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="bin\**" />
     </ItemGroup>
 
     <Target Name="CopyDrivers" AfterTargets="AfterBuild">

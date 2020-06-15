@@ -20,14 +20,16 @@ namespace Aporta.Core.Services
     /// </summary>
     public class MainService : IMainService
     {
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<MainService> _logger;
         private readonly ExtensionRepository _extensionRepository;
 
         private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
 
-        public MainService(IDataAccess dataAccess, ILogger<MainService> logger)
+        public MainService(IDataAccess dataAccess, ILogger<MainService> logger, ILoggerFactory loggerFactory)
         {
             _logger = logger;
+            _loggerFactory = loggerFactory;
             _extensionRepository = new ExtensionRepository(dataAccess);
         }
 
@@ -88,28 +90,40 @@ namespace Aporta.Core.Services
 
             foreach (string assemblyPath in assemblyPaths)
             {
-                var host = new Host<IHardwareDriver>(assemblyPath);
-                host.Load();
-
-                foreach (var driver in host.GetExtensions())
+                try
                 {
-                    var extension = await _extensionRepository.Get(driver.Id);
-                    if (extension == null)
-                    {
-                        extension = new ExtensionHost
-                            {Enabled = false, Id = driver.Id, Name = driver.Name};
-                        await _extensionRepository.Insert(extension);
-                    }
-
-                    extension.AssemblyPath = assemblyPath;
-
-                    _extensions.Add(extension);
+                    await GetExtensionsFromAssembly(assemblyPath);
                 }
-
-                host.Unload();
+                catch (Exception exception)
+                {
+                    _logger.LogError($"Unable to load assembly {assemblyPath}.", exception);
+                }
             }
         }
-        
+
+        private async Task GetExtensionsFromAssembly(string assemblyPath)
+        {
+            var host = new Host<IHardwareDriver>(assemblyPath);
+            host.Load();
+
+            foreach (var driver in host.GetExtensions())
+            {
+                var extension = await _extensionRepository.Get(driver.Id);
+                if (extension == null)
+                {
+                    extension = new ExtensionHost
+                        {Enabled = false, Id = driver.Id, Name = driver.Name};
+                    await _extensionRepository.Insert(extension);
+                }
+
+                extension.AssemblyPath = assemblyPath;
+
+                _extensions.Add(extension);
+            }
+
+            host.Unload();
+        }
+
         private void LoadExtensions()
         {
             foreach (var extension in _extensions.Where(extension => extension.Enabled))
@@ -125,12 +139,12 @@ namespace Aporta.Core.Services
             }
         }
  
-        private static void LoadExtension(ExtensionHost extension)
+        private void LoadExtension(ExtensionHost extension)
         {
             extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
             extension.Host.Load();
             extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
-            extension.Driver.Load();
+            extension.Driver.Load(_loggerFactory);
             
             extension.Loaded = true;
         }

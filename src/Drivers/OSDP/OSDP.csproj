@@ -16,5 +16,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\Aporta.Extensions\Aporta.Extensions.csproj" />
+      <ProjectReference Include="..\..\Aporta.Shared\Aporta.Shared.csproj" />
     </ItemGroup>
 </Project>
