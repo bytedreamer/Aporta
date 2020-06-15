@@ -26,7 +26,7 @@ namespace Aporta.Core.Extension
                 }
                 catch
                 {
-                    return null;
+                    // Ignore - probably a plugin dependency
                 }
             }
             
