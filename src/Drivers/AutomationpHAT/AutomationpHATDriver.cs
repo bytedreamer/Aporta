@@ -23,7 +23,7 @@ namespace Aporta.Drivers.AutomationpHAT
         
         public IEnumerable<IEndpoint> Endpoints => _endpoints;
         
-        public void Load(ILoggerFactory loggerFactory)
+        public void Load(string settings, ILoggerFactory loggerFactory)
         {
             _controller = new GpioController();
 

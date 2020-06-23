@@ -1,5 +1,8 @@
+using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.Services;
+using Aporta.Extensions.Endpoint;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Aporta.Controllers
@@ -18,7 +21,9 @@ namespace Aporta.Controllers
         [HttpPost]
         public async Task<IActionResult> Set(bool state)
         {
-            await _mainService.SetOutput(state);
+            var driver = _mainService.Driver(Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"));
+            
+            await driver.Endpoints.Cast<IControlPoint>().First().Set(state);
             
             return NoContent();
         }

@@ -8,15 +8,16 @@ namespace Aporta.Core.DataAccess.Repositories
 {
     public class ExtensionRepository
     {
-        private const string SqlSelect = @"select id, name, enabled
+        private const string SqlSelect = @"select id, name, enabled, configuration
                                             from extension";
 
         private const string SqlInsert = @"insert into extension
-                                            (id, name, enabled) values 
-                                            (@id, @name, @enabled);";
+                                            (id, name, enabled, configuration) values 
+                                            (@id, @name, @enabled, @configuration);";
 
         private const string SqlUpdate = @"update extension
-                                            set enabled = @enabled
+                                            set enabled = @enabled,
+                                                configuration = @configuration
                                             where id = @id;";
         
         private readonly IDataAccess _dataAccess;
@@ -51,7 +52,11 @@ namespace Aporta.Core.DataAccess.Repositories
             connection.Open();
 
             await connection.ExecuteAsync(SqlInsert,
-                new {id = extension.Id, name = extension.Name, enabled = extension.Enabled});
+                new
+                {
+                    id = extension.Id, name = extension.Name, enabled = extension.Enabled,
+                    configuration = extension.Configuration
+                });
         }
 
         public async Task Update(ExtensionHost extension)
@@ -60,7 +65,13 @@ namespace Aporta.Core.DataAccess.Repositories
             connection.Open();
 
             await connection.ExecuteAsync(SqlUpdate,
-                new {id = extension.Id, name = extension.Name, enabled = extension.Enabled});
+                new
+                {
+                    id = extension.Id, 
+                    name = extension.Name, 
+                    enabled = extension.Enabled,
+                    configuration = extension.Configuration
+                });
         }
     }
 }

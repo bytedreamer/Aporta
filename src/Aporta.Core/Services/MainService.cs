@@ -9,7 +9,6 @@ using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Extension;
 using Aporta.Core.Models;
-using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
 
@@ -70,12 +69,9 @@ namespace Aporta.Core.Services
             }
         }
 
-        public async Task SetOutput(bool state)
+        public IHardwareDriver Driver(Guid extensionId)
         {
-            var matchingExtension = _extensions.First(extension =>
-                extension.Id == Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"));
-
-            await matchingExtension.Driver.Endpoints.Cast<IControlPoint>().First().Set(state);
+            return _extensions.First(extension => extension.Id == extensionId).Driver;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -96,7 +92,7 @@ namespace Aporta.Core.Services
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogError($"Unable to load assembly {assemblyPath}.", exception);
+                    _logger.LogError(exception, $"Unable to discover assembly {assemblyPath}.");
                 }
             }
         }
@@ -134,7 +130,7 @@ namespace Aporta.Core.Services
                 }
                 catch(Exception exception)
                 {
-                    _logger.LogError($"Unable to load extension {extension.Name}", exception);
+                    _logger.LogError(exception, $"Unable to load extension {extension.Name}");
                 }
             }
         }
@@ -144,7 +140,7 @@ namespace Aporta.Core.Services
             extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
             extension.Host.Load();
             extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
-            extension.Driver.Load(_loggerFactory);
+            extension.Driver.Load(string.Empty, _loggerFactory);
             
             extension.Loaded = true;
         }
@@ -159,7 +155,7 @@ namespace Aporta.Core.Services
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogError($"Unable to unload extension {extension.Name}", exception);
+                    _logger.LogError(exception, $"Unable to unload extension {extension.Name}");
                 }
             }
 

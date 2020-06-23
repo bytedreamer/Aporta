@@ -99,6 +99,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             }
             var updatedExtension = extensions[0];
             updatedExtension.Enabled = true;
+            updatedExtension.Configuration = "TestConfigure";
             
             // Act 
             await extensionRepository.Update(extensions[0]);
@@ -106,6 +107,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
 
             // Assert
             Assert.IsTrue(actualExtension.Enabled);
+            Assert.AreEqual(updatedExtension.Configuration, actualExtension.Configuration);
         }
     }
 }

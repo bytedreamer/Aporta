@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.Hubs;
 using Aporta.Core.Models;
@@ -32,6 +33,12 @@ namespace Aporta.Controllers
         {
             return _mainService.Extensions;
         }
+        
+        [HttpGet("{extensionId}")]
+        public ExtensionHost Get(Guid extensionId)
+        {
+            return _mainService.Extensions.First(extension => extension.Id == extensionId);
+        }
 
         [HttpPost("{extensionId}")]
         public async Task<ActionResult> SetEnabled(Guid extensionId, [FromQuery] bool enabled)
@@ -42,7 +49,7 @@ namespace Aporta.Controllers
             }
             catch (Exception exception)
             {
-                _logger.LogError($"Unable to update extension {extensionId}", exception);
+                _logger.LogError(exception, $"Unable to update extension {extensionId}");
                 return Problem();
             }
 

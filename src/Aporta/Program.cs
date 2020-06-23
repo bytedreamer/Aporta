@@ -28,10 +28,10 @@ namespace Aporta
                     var mainService = services.GetRequiredService<IMainService>();
                     await mainService.Startup();
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
                     var logger = services.GetRequiredService<ILogger<Program>>();
-                    logger.LogError(ex, "An error occurred.");
+                    logger.LogError(exception, "An error occurred.");
                 }
             }
 

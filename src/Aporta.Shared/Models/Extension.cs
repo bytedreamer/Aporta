@@ -9,6 +9,8 @@ namespace Aporta.Shared.Models
         public string Name { get; set; }
         
         public bool Enabled { get; set; }
+
+        public string Configuration { get; set; } = "";
         
         /// <summary>
         /// Has the extension been loaded 

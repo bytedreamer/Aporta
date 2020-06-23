@@ -1,0 +1,29 @@
+@page "/driverconfiguration/{ExtensionId:guid}"
+
+@using Aporta.Shared.Models
+@using Aporta.Shared.Calls
+
+@inject HttpClient Http
+
+@if (_extension == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h1>@_extension.Name Driver Configuration</h1>
+}
+
+@code {
+
+    private Extension _extension;
+    
+    [Parameter]
+    public Guid ExtensionId { get; set; }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        string url = $"{Paths.Extension}/{ExtensionId}";
+        _extension = await Http.GetFromJsonAsync<Extension>(url);
+    }
+}

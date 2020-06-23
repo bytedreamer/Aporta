@@ -30,14 +30,18 @@ else
         @foreach (var extension in _extensions)
         {
             <tr>
-                <td>@extension.Name</td>
                 <td>
-                    <input type="checkbox" checked="@extension.Enabled" @onchange="async eventArgs => await ExtensionEnabledChanged(extension.Id, eventArgs.Value)">   
-                </td>  
+                    <a href="driverconfiguration/@extension.Id">
+                        @extension.Name
+                    </a>
+                </td>
+                <td>
+                    <input type="checkbox" checked="@extension.Enabled" @onchange="async eventArgs => await ExtensionEnabledChanged(extension.Id, eventArgs.Value)">
+                </td>
                 <td>
                     @if (extension.Loaded)
                     {
-                        <span class="oi oi-circle-check" style="color: green" aria-hidden="true"></span>  
+                        <span class="oi oi-circle-check" style="color: green" aria-hidden="true"></span>
                     }
                     else
                     {

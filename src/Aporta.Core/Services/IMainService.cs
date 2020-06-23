@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aporta.Core.Models;
+using Aporta.Extensions.Hardware;
 
 namespace Aporta.Core.Services
 {
@@ -15,6 +16,6 @@ namespace Aporta.Core.Services
         
         Task EnableExtension(Guid extensionId, bool enabled);
         
-        Task SetOutput(bool state);
+        IHardwareDriver Driver(Guid extensionId);
     }
 }

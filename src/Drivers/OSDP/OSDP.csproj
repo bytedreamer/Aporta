@@ -12,10 +12,12 @@
 
     <ItemGroup>
       <PackageReference Include="OSDP.Net" Version="1.0.0-beta4" />
+      <PackageReference Include="System.IO.Ports" Version="4.7.0" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\..\Aporta.Extensions\Aporta.Extensions.csproj" />
       <ProjectReference Include="..\..\Aporta.Shared\Aporta.Shared.csproj" />
+      <ProjectReference Include="..\OSDP.Drivers.Shared\OSDP.Drivers.Shared.csproj" />
     </ItemGroup>
 </Project>

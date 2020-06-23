@@ -13,7 +13,7 @@ namespace Aporta.Extensions.Hardware
         
         public IEnumerable<IEndpoint> Endpoints { get; }
         
-        void Load(ILoggerFactory loggerFactory);
+        void Load(string settings, ILoggerFactory loggerFactory);
         
         void Unload();
     }
