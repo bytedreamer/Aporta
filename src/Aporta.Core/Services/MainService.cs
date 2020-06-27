@@ -140,7 +140,8 @@ namespace Aporta.Core.Services
             extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
             extension.Host.Load();
             extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
-            extension.Driver.Load(string.Empty, _loggerFactory);
+            extension.Driver.Load(extension.Configuration, _loggerFactory);
+            extension.Configuration = extension.Driver.InitialSettings();
             
             extension.Loaded = true;
         }

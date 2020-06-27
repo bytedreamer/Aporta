@@ -6,9 +6,9 @@ using System.Text.Json;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
+using OSDP.Drivers.Shared;
 using OSDP.Net;
 using OSDP.Net.Connections;
-using OSDP.Shared;
 
 namespace Aporta.Drivers.OSDP
 {
@@ -22,7 +22,7 @@ namespace Aporta.Drivers.OSDP
         
         private  ControlPanel _panel;
         private ILogger<OSDPDriver> _logger;
-        private Settings _settings = new Settings{Buses = new Bus[]{}};
+        private Settings _settings = new Settings{Buses = new List<Bus>()};
 
         public Guid Id => Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5");
 
@@ -80,7 +80,7 @@ namespace Aporta.Drivers.OSDP
                 catch (Exception exception)
                 {
                     _logger?.LogWarning(exception, $"Unable to deserialize {settings}");
-                    _settings = new Settings{Buses = new Bus[]{}};
+                    _settings = new Settings{Buses = new List<Bus>()};
                 }
             }
 

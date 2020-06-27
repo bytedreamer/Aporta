@@ -1,9 +1,11 @@
-namespace OSDP.Shared
+namespace OSDP.Drivers.Shared
 {
     public class Bus
     {
         public string PortName { get; set; }
+        
         public int BaudRate { get; set; }
+        
         public Device[] devices { get; set; }
     }
 

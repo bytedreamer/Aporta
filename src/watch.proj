@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+  	<WebProjects Include="Drivers\OSDP.Drivers.WebClient\OSDP.Drivers.WebClient.csproj;Aporta.WebClient\Aporta.WebClient.csproj" />
+  	<Watch Include="**\*.razor" />
+  </ItemGroup>
+
+  <Target Name="Web">
+    <MSBuild Projects="@(WebProjects)" />
+    <Exec Command="dotnet run" WorkingDirectory="Aporta/" />
+  </Target>
+  
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft.Common.targets" />
+  
+</Project>

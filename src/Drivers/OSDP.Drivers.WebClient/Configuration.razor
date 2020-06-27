@@ -1,3 +1,106 @@
-﻿<div>
-    <h2>Add Bus</h2>
+﻿@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using OSDP.Drivers.Shared
+<div>
+    @if (_settings == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        if (_addBus != null)
+        {
+            <EditForm OnValidSubmit="AddBus" Model="@_addBus">
+                <div class="form-group">
+                    <label for="port">Port</label>
+                    <InputSelect class="form-control-sm" id="port" @bind-Value="@_addBus.PortName">
+                        @foreach (var portName in _unusedPorts)
+                        {
+                            <option value=@portName>@portName</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div>
+                    <label for="baudRate">Baud Rate</label>
+                    <OSDP.Drivers.WebClient.Components.IntegerInputSelect class="form-control-sm" id="baudRate" @bind-Value="@_addBus.BaudRate">
+                        @foreach (var baudRate in _baudRates)
+                        {
+                            <option value=@baudRate>@baudRate</option>
+                        }
+                    </OSDP.Drivers.WebClient.Components.IntegerInputSelect>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Add RS485 Bus</button>
+                </div>
+            </EditForm>
+        }
+
+        if (_settings.Buses.Any())
+        {
+            foreach (var bus in _settings.Buses)
+            {
+                <div>
+                    <span>@bus.PortName</span>
+                </div>
+            }
+        }
+    }
 </div>
+
+@code {
+
+    [Parameter]
+    public string RawConfiguration { get; set; }
+    
+    [Parameter]
+    public EventCallback<string> RawConfigurationChanged { get; set; }
+
+    private Bus _addBus;
+    private IEnumerable<string> _unusedPorts;
+    private readonly IEnumerable<int> _baudRates = new []
+    {
+        9600,
+        19200, 
+        38400,
+        115200
+    };
+    private Settings _settings;
+
+    protected override void OnInitialized()
+    {
+        _settings = JsonSerializer.Deserialize<Settings>(RawConfiguration);
+       
+        InitializeNewBus();
+    }
+    
+    private void InitializeNewBus()
+    {
+        _unusedPorts = _settings.AvailablePorts.Except(_settings.Buses.Select(bus => bus.PortName));
+        
+        var unusedPorts = _unusedPorts as string[] ?? _unusedPorts.ToArray();
+        if (unusedPorts.Any())
+        {
+            _addBus = new Bus
+            {
+                devices = new Device[] {},
+                PortName = unusedPorts.First(),
+                BaudRate = 9600
+            };
+        }
+        else
+        {
+            _addBus = null;
+        }
+    }
+    
+    private void AddBus(EditContext context)
+    {
+        var bus = context.Model as Bus;
+        _settings.Buses.Add(bus);
+
+        InitializeNewBus();
+  
+        Console.WriteLine(bus?.PortName);
+        Console.WriteLine(bus?.BaudRate);
+    }
+}

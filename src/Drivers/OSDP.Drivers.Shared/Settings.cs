@@ -1,10 +1,11 @@
-﻿using System;
+﻿using System.Collections.Generic;
 
-namespace OSDP.Shared
+namespace OSDP.Drivers.Shared
 {
     public class Settings
     {
         public string[] AvailablePorts { get; set; }
-        public Bus[] Buses { get; set; }
+        
+        public List<Bus> Buses { get; set; }
     }
 }

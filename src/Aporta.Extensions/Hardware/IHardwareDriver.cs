@@ -16,5 +16,7 @@ namespace Aporta.Extensions.Hardware
         void Load(string settings, ILoggerFactory loggerFactory);
         
         void Unload();
+
+        string InitialSettings();
     }
 }

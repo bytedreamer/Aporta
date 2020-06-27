@@ -59,7 +59,7 @@
     <ItemGroup>
       <None Remove="bin\**" />
     </ItemGroup>
-
+    
     <Target Name="CopyDrivers" AfterTargets="AfterBuild">
         <Copy SourceFiles="@(DriverFiles)" DestinationFiles="@(DriverFiles->'$(OutDir)\Drivers\%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>

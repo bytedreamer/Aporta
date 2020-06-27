@@ -14,6 +14,7 @@ namespace Aporta.Core.Services
         public void UpdateSettings(Guid extensionId, string settings)
         {
             var driver = _mainService.Driver(extensionId);
+            
         }
     }
 

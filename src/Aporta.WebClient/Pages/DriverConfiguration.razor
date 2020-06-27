@@ -12,10 +12,18 @@
 else
 {
     <h1>@_extension.Name Driver Configuration</h1>
+                                
+    @if (_extension.Id == Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"))
+    {
+        <OSDP.Drivers.WebClient.Configuration @bind-RawConfiguration="_extension.Configuration"/>
+    }
+    else
+    {
+        <h3>No configuration page for this driver</h3>
+    }
 }
 
 @code {
-
     private Extension _extension;
     
     [Parameter]
