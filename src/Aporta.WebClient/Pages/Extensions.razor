@@ -10,48 +10,48 @@
 
 @implements IDisposable
 
-<h1>Extensions</h1>
+<Heading Size="HeadingSize.Is1">Extensions</Heading>
 
 @if (_extensions == null)
 {
-    <p><em>Loading...</em></p>
+    <div class="spinner"></div>
 }
 else
 {
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Name</th>
-            <th>Enabled</th>
-            <th>Loaded</th>
-        </tr>
-        </thead>
-        <tbody>
+    <Table>
+        <TableHeader>
+            <TableRow>
+                <TableHeaderCell>Name</TableHeaderCell>
+                <TableHeaderCell>Enabled</TableHeaderCell>
+                <TableHeaderCell>Loaded</TableHeaderCell>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
         @foreach (var extension in _extensions)
         {
-            <tr>
-                <td>
+            <TableRow>
+                <TableRowHeader>
                     <a href="driverconfiguration/@extension.Id">
                         @extension.Name
                     </a>
-                </td>
-                <td>
-                    <input type="checkbox" checked="@extension.Enabled" @onchange="async eventArgs => await ExtensionEnabledChanged(extension.Id, eventArgs.Value)">
-                </td>
-                <td>
+                </TableRowHeader>
+                <TableRowCell>
+                    <Switch TValue="bool" Checked="@extension.Enabled" CheckedChanged="async (bool checkedValue) => { await ExtensionEnabledChanged(extension.Id, checkedValue); }"/>
+                </TableRowCell>
+                <TableRowCell>
                     @if (extension.Loaded)
                     {
-                        <span class="oi oi-circle-check" style="color: green" aria-hidden="true"></span>
+                        <Icon Name="IconName.ThumbsUp" Style="color: green"/>
                     }
                     else
                     {
-                        <span class="oi oi-circle-x" style="color: red" aria-hidden="true"></span>
+                        <Icon Name="IconName.ThumbsDown" Style="color: red"/>
                     }
-                </td>
-            </tr>
+                </TableRowCell>
+            </TableRow>
         }
-        </tbody>
-    </table>
+        </TableBody>
+    </Table>
 }
 
 @code {
@@ -75,7 +75,7 @@ else
         _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extension);
     }
     
-    async Task ExtensionEnabledChanged(Guid extensionId, object checkedValue)
+    async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)
     {
         string url = $"{Paths.Extension}/{extensionId}";
         url = QueryHelpers.AddQueryString(url, "enabled", checkedValue.ToString());

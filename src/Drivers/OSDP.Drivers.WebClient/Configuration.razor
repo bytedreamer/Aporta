@@ -1,38 +1,36 @@
 ﻿@using System.Text.Json
-@using Microsoft.AspNetCore.Components.Forms
+
 @using OSDP.Drivers.Shared
 <div>
     @if (_settings == null)
     {
-        <p><em>Loading...</em></p>
+        <div class="spinner"></div>
     }
     else
     {
         if (_addBus != null)
         {
-            <EditForm OnValidSubmit="AddBus" Model="@_addBus">
-                <div class="form-group">
-                    <label for="port">Port</label>
-                    <InputSelect class="form-control-sm" id="port" @bind-Value="@_addBus.PortName">
+            <Form>
+                <Field  ColumnSize="ColumnSize.Is6.OnDesktop">
+                    <FieldLabel>Port</FieldLabel>
+                    <Select TValue="string" @bind-SelectedValue="_addBus.PortName">
                         @foreach (var portName in _unusedPorts)
                         {
-                            <option value=@portName>@portName</option>
+                            <SelectItem Value=@portName>@portName</SelectItem>
                         }
-                    </InputSelect>
-                </div>
-                <div>
-                    <label for="baudRate">Baud Rate</label>
-                    <OSDP.Drivers.WebClient.Components.IntegerInputSelect class="form-control-sm" id="baudRate" @bind-Value="@_addBus.BaudRate">
+                    </Select>
+                </Field>
+                <Field ColumnSize="ColumnSize.Is6.OnDesktop">
+                    <FieldLabel>Baud Rate</FieldLabel>
+                    <Select TValue="int" @bind-SelectedValue="_addBus.BaudRate">
                         @foreach (var baudRate in _baudRates)
                         {
-                            <option value=@baudRate>@baudRate</option>
+                            <SelectItem Value=@baudRate>@baudRate</SelectItem>
                         }
-                    </OSDP.Drivers.WebClient.Components.IntegerInputSelect>
-                </div>
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Add RS485 Bus</button>
-                </div>
-            </EditForm>
+                    </Select>
+                </Field>
+                <Button Type="ButtonType.Submit" PreventDefaultOnSubmit="true" Clicked="@AddBus">Add RS485 Bus</Button>
+            </Form>
         }
 
         if (_settings.Buses.Any())
@@ -93,14 +91,10 @@
         }
     }
     
-    private void AddBus(EditContext context)
+    private void AddBus()
     {
-        var bus = context.Model as Bus;
-        _settings.Buses.Add(bus);
+        _settings.Buses.Add(_addBus);
 
         InitializeNewBus();
-  
-        Console.WriteLine(bus?.PortName);
-        Console.WriteLine(bus?.BaudRate);
     }
 }

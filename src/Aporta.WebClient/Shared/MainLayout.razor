@@ -1,15 +1,66 @@
-﻿@inherits LayoutComponentBase
+﻿@layout RootLayout
+@inherits LayoutComponentBase
 
-<div class="sidebar">
-    <NavMenu/>
-</div>
-
-<div class="main">
-    <div class="top-row px-4">
-        @*<a href="http://blazor.net" target="_blank" class="ml-md-auto">About</a>*@
-    </div>
-
-    <div class="content px-4">
+<Layout  Sider="true">
+    <LayoutSider>
+        <LayoutSiderContent>
+            <Bar Breakpoint="Breakpoint.Desktop" 
+                 NavigationBreakpoint="Breakpoint.Tablet"
+                 Mode="BarMode.VerticalInline" 
+                 CollapseMode="BarCollapseMode.Small">
+                <BarBrand>
+                    <BarItem>
+                        <BarLink To="">
+                            <Heading Size="HeadingSize.Is3">Aporta</Heading>
+                        </BarLink>
+                    </BarItem>
+                </BarBrand>
+                <BarMenu>
+                    <BarStart>
+                        <BarItem>
+                            <BarLink To="">
+                                <BarIcon IconName="IconName.Home"/>
+                                Home
+                            </BarLink>
+                        </BarItem>
+                        <BarItem>
+                            <BarDropdown>
+                                <BarDropdownToggle>
+                                    <BarIcon IconName="IconName.Wrench"/>
+                                    Configuration
+                                </BarDropdownToggle>
+                                <BarDropdownMenu>
+                                        <BarDropdownItem To="extensions">Extensions</BarDropdownItem>
+                                </BarDropdownMenu>
+                            </BarDropdown>
+                        </BarItem>
+                        <BarItem>
+                            <BarDropdown>
+                                <BarDropdownToggle>
+                                    <BarIcon IconName="IconName.Lock"/>
+                                    Access Control
+                                </BarDropdownToggle>
+                                <BarDropdownMenu>
+                                    <BarDropdownItem To="control">Control</BarDropdownItem>
+                                </BarDropdownMenu>
+                            </BarDropdown>
+                        </BarItem>
+                    </BarStart>
+                </BarMenu>
+            </Bar>
+        </LayoutSiderContent>
+    </LayoutSider>
+    <LayoutContent Padding="Padding.Is4.OnX">
         @Body
-    </div>
-</div>
+    </LayoutContent>
+</Layout>
+
+@code{
+    private bool _siderVisible = true;
+    
+    void ToggleSidebar()
+    {
+        _siderVisible = !_siderVisible;
+        StateHasChanged();
+    }
+}

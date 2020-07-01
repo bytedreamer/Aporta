@@ -7,11 +7,11 @@
 
 @if (_extension == null)
 {
-    <p><em>Loading...</em></p>
+    <div class="spinner"></div>
 }
 else
 {
-    <h1>@_extension.Name Driver Configuration</h1>
+    <Heading Size="HeadingSize.Is1">@_extension.Name Driver Configuration</Heading>
                                 
     @if (_extension.Id == Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"))
     {
@@ -19,7 +19,7 @@ else
     }
     else
     {
-        <h3>No configuration page for this driver</h3>
+        <Heading Size="HeadingSize.Is3">No configuration page for this driver</Heading>
     }
 }
 
