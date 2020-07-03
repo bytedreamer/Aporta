@@ -1,55 +1,53 @@
 ﻿@layout RootLayout
 @inherits LayoutComponentBase
 
-<Layout  Sider="true">
-    <LayoutSider>
-        <LayoutSiderContent>
-            <Bar Breakpoint="Breakpoint.Desktop" 
-                 NavigationBreakpoint="Breakpoint.Tablet"
-                 Mode="BarMode.VerticalInline" 
-                 CollapseMode="BarCollapseMode.Small">
-                <BarBrand>
+<Layout>
+    <LayoutHeader>
+        <Bar Breakpoint="Breakpoint.Desktop" 
+             NavigationBreakpoint="Breakpoint.Tablet"
+             Mode="BarMode.Horizontal" 
+             CollapseMode="BarCollapseMode.Small">
+            <BarBrand>
+                <BarItem>
+                    <BarLink To="">
+                        <Heading Size="HeadingSize.Is3">Aporta</Heading>
+                    </BarLink>
+                </BarItem>
+            </BarBrand>
+            <BarMenu>
+                <BarStart>
                     <BarItem>
                         <BarLink To="">
-                            <Heading Size="HeadingSize.Is3">Aporta</Heading>
+                            <BarIcon IconName="IconName.Home"/>
+                            Home
                         </BarLink>
                     </BarItem>
-                </BarBrand>
-                <BarMenu>
-                    <BarStart>
-                        <BarItem>
-                            <BarLink To="">
-                                <BarIcon IconName="IconName.Home"/>
-                                Home
-                            </BarLink>
-                        </BarItem>
-                        <BarItem>
-                            <BarDropdown>
-                                <BarDropdownToggle>
-                                    <BarIcon IconName="IconName.Wrench"/>
-                                    Configuration
-                                </BarDropdownToggle>
-                                <BarDropdownMenu>
-                                        <BarDropdownItem To="extensions">Extensions</BarDropdownItem>
-                                </BarDropdownMenu>
-                            </BarDropdown>
-                        </BarItem>
-                        <BarItem>
-                            <BarDropdown>
-                                <BarDropdownToggle>
-                                    <BarIcon IconName="IconName.Lock"/>
-                                    Access Control
-                                </BarDropdownToggle>
-                                <BarDropdownMenu>
-                                    <BarDropdownItem To="control">Control</BarDropdownItem>
-                                </BarDropdownMenu>
-                            </BarDropdown>
-                        </BarItem>
-                    </BarStart>
-                </BarMenu>
-            </Bar>
-        </LayoutSiderContent>
-    </LayoutSider>
+                    <BarItem>
+                        <BarDropdown>
+                            <BarDropdownToggle>
+                                <BarIcon IconName="IconName.Wrench"/>
+                                Configuration
+                            </BarDropdownToggle>
+                            <BarDropdownMenu>
+                                <BarDropdownItem To="extensions">Extensions</BarDropdownItem>
+                            </BarDropdownMenu>
+                        </BarDropdown>
+                    </BarItem>
+                    <BarItem>
+                        <BarDropdown>
+                            <BarDropdownToggle>
+                                <BarIcon IconName="IconName.Lock"/>
+                                Access Control
+                            </BarDropdownToggle>
+                            <BarDropdownMenu>
+                                <BarDropdownItem To="control">Control</BarDropdownItem>
+                            </BarDropdownMenu>
+                        </BarDropdown>
+                    </BarItem>
+                </BarStart>
+            </BarMenu>
+        </Bar>
+    </LayoutHeader>
     <LayoutContent Padding="Padding.Is4.OnX">
         @Body
     </LayoutContent>

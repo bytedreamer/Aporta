@@ -5,8 +5,8 @@
     height: 80px;
     width: 80px;
     animation: spin 700ms linear infinite;
-    top: 40%;
-    left: 55%;
+    top: 30%;
+    left: 50%;
     position: absolute;
 }
 
