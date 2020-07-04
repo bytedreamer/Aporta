@@ -74,6 +74,19 @@ namespace Aporta.Core.Services
             return _extensions.First(extension => extension.Id == extensionId).Driver;
         }
 
+        public async Task UpdateConfiguration(Guid extensionId, string configuration)
+        {
+            var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
+            
+            _logger.LogInformation($"Updating configuration for extension {matchingExtension.Name}");
+
+            matchingExtension.Configuration = configuration;
+            await _extensionRepository.Update(matchingExtension);
+            
+            UnloadExtension(matchingExtension);
+            LoadExtension(matchingExtension);
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task DiscoverExtensions()
         {

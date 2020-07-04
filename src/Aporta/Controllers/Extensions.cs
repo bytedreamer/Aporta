@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.Hubs;
 using Aporta.Core.Models;
@@ -51,6 +52,25 @@ namespace Aporta.Controllers
             catch (Exception exception)
             {
                 _logger.LogError(exception, $"Unable to update extension {extensionId}");
+                success = false;
+            }
+            
+            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged);
+
+            return success ? (ActionResult) NoContent() : Problem();
+        }
+        
+        [HttpPost("{extensionId}/configuration")]
+        public async Task<ActionResult> UpdateConfiguration(Guid extensionId, [FromBody] dynamic configuration)
+        {
+            bool success = true;
+            try
+            {
+                await _mainService.UpdateConfiguration(extensionId, JsonSerializer.Serialize(configuration));
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, $"Unable to update configuration for extension {extensionId}");
                 success = false;
             }
             

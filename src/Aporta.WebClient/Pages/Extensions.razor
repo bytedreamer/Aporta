@@ -1,8 +1,9 @@
 @page "/extensions"
 
-@using Aporta.Shared.Models
 @using Microsoft.AspNetCore.SignalR.Client
+
 @using Aporta.Shared.Messaging
+@using Aporta.Shared.Models
 @using Aporta.Shared.Calls
 
 @inject HttpClient Http
@@ -36,7 +37,7 @@ else
                     </a>
                 </TableRowHeader>
                 <TableRowCell>
-                    <Switch TValue="bool" Checked="@extension.Enabled" CheckedChanged="async (bool checkedValue) => { await ExtensionEnabledChanged(extension.Id, checkedValue); }"/>
+                    <Check TValue="bool" Checked="@extension.Enabled" CheckedChanged="async (bool checkedValue) => { await ExtensionEnabledChanged(extension.Id, checkedValue); }"/>
                 </TableRowCell>
                 <TableRowCell>
                     @if (extension.Loaded)

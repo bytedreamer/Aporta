@@ -1,6 +1,11 @@
 ﻿@using System.Text.Json
+@using Aporta.Shared.Calls
 
 @using OSDP.Drivers.Shared
+@using System.Text
+
+@inject HttpClient Http
+
 <div>
     @if (_settings == null)
     {
@@ -29,23 +34,28 @@
                         }
                     </Select>
                 </Field>
-                <Button Type="ButtonType.Submit" PreventDefaultOnSubmit="true" Clicked="@AddBus">Add RS485 Bus</Button>
+                <Button Type="ButtonType.Submit" PreventDefaultOnSubmit="true" Clicked="@(async () => await AddBus())">
+                    Add RS485 Bus
+                </Button>
             </Form>
         }
 
-        if (_settings.Buses.Any())
+        foreach (var bus in _settings.Buses)
         {
-            foreach (var bus in _settings.Buses)
-            {
-                <div>
-                    <span>@bus.PortName</span>
-                </div>
-            }
+            <div>
+                <span>@bus.PortName</span>
+            </div>
         }
+        
     }
 </div>
 
 @code {
+    [Parameter]
+    public Guid ExtensionId { get; set; }
+    
+    [Parameter]
+    public EventCallback<Guid> ExtensionIdChanged { get; set; }
 
     [Parameter]
     public string RawConfiguration { get; set; }
@@ -91,9 +101,18 @@
         }
     }
     
-    private void AddBus()
+    private async Task AddBus()
     {
         _settings.Buses.Add(_addBus);
+        
+        string url = string.Format(Paths.ExtensionConfiguration, ExtensionId);
+        var response = await Http.PostAsync(url, new StringContent(JsonSerializer.Serialize(_settings), Encoding.UTF8, "application/json"));
+        if (!response.IsSuccessStatusCode)
+        {
+            _settings.Buses.Remove(_addBus);
+            StateHasChanged();
+            throw new Exception($"Unable to update extension configuration. Response reason - {(int)response.StatusCode}:{response.ReasonPhrase}");
+        }
 
         InitializeNewBus();
     }
