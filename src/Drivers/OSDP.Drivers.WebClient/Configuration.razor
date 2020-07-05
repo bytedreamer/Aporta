@@ -1,96 +1,168 @@
 ﻿@using System.Text.Json
+@using System.Text
+
 @using Aporta.Shared.Calls
 
-@using OSDP.Drivers.Shared
-@using System.Text
+@using OSDP.Drivers.Shared.Actions
 
 @inject HttpClient Http
 
-<div>
-    @if (_settings == null)
+@if (_configuration == null)
     {
         <div class="spinner"></div>
     }
     else
     {
-        if (_addBus != null)
-        {
-            <Form>
-                <Field  ColumnSize="ColumnSize.Is6.OnDesktop">
-                    <FieldLabel>Port</FieldLabel>
-                    <Select TValue="string" @bind-SelectedValue="_addBus.PortName">
-                        @foreach (var portName in _unusedPorts)
-                        {
-                            <SelectItem Value=@portName>@portName</SelectItem>
-                        }
-                    </Select>
-                </Field>
-                <Field ColumnSize="ColumnSize.Is6.OnDesktop">
-                    <FieldLabel>Baud Rate</FieldLabel>
-                    <Select TValue="int" @bind-SelectedValue="_addBus.BaudRate">
-                        @foreach (var baudRate in _baudRates)
-                        {
-                            <SelectItem Value=@baudRate>@baudRate</SelectItem>
-                        }
-                    </Select>
-                </Field>
-                <Button Type="ButtonType.Submit" PreventDefaultOnSubmit="true" Clicked="@(async () => await AddBus())">
-                    Add RS485 Bus
-                </Button>
-            </Form>
-        }
 
-        foreach (var bus in _settings.Buses)
-        {
-            <div>
-                <span>@bus.PortName</span>
-            </div>
-        }
-        
+        <Row>
+            <Column ColumnSize="ColumnSize.Is6.OnDesktop">
+                @if (_addBus != null)
+                {
+                    <Button Clicked="_addPortModal.Show">Add RS-485 Port</Button>
+                }
+                else
+                {
+                    <Heading Size="HeadingSize.Is3">
+                        No additional available ports
+                    </Heading>
+                }
+            </Column>
+        </Row>
+        <Row>
+            <Column>
+                <Card Margin="Margin.Is4.OnY">
+                    <CardTitle>
+
+                    </CardTitle>
+                    <CardBody>
+                        <Accordion>
+                            @foreach (var bus in _configuration.Buses)
+                            {
+                                <Collapse Visible="true">
+                                    <CollapseHeader>
+                                        <Heading Size="HeadingSize.Is5">
+                                            Port @bus.PortName Devices
+                                        </Heading>
+                                        <Button Clicked="@(async () => await RemoveBus(bus.PortName))">
+                                            Remove
+                                        </Button>
+                                        
+                                        <Button Clicked="@(async () => await AddDevice(bus.PortName, "OCM-1000", 1))">
+                                            Add Device
+                                        </Button>
+                                    </CollapseHeader>
+                                    <CollapseBody>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHeaderCell>Name</TableHeaderCell>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                @foreach (var device in bus.Devices)
+                                                {
+                                                    <TableRow>
+                                                        <TableRowHeader>
+                                                            @device.Name
+                                                            <Button Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
+                                                                Remove
+                                                            </Button>
+                                                        </TableRowHeader>
+                                                    </TableRow>
+                                                }
+                                            </TableBody>
+                                        </Table>
+                                    </CollapseBody>
+                                </Collapse>
+                            }
+                        </Accordion>
+                    </CardBody>
+                </Card>
+            </Column>
+        </Row>
+
+        <Modal @ref="_addPortModal">
+            <ModalBackdrop/>
+            <ModalContent Size="ModalSize.Default" Centered="true">
+                <ModalHeader>
+                    <ModalTitle>
+                        Add RS-485 Port
+                    </ModalTitle>
+                    <CloseButton Clicked="@_addPortModal.Hide"/>
+                </ModalHeader>
+                <ModalBody>
+                    <Field>
+                        <FieldLabel>Port</FieldLabel>
+                        <Select TValue="string" @bind-SelectedValue="_addBus.PortName">
+                            @foreach (var portName in _unusedPorts)
+                            {
+                                <SelectItem Value=@portName>@portName</SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                    <Field>
+                        <FieldLabel>Baud Rate</FieldLabel>
+                        <Select TValue="int" @bind-SelectedValue="_addBus.BaudRate">
+                            @foreach (var baudRate in _baudRates)
+                            {
+                                <SelectItem Value=@baudRate>@baudRate</SelectItem>
+                            }
+                        </Select>
+                    </Field>
+                </ModalBody>
+                <ModalFooter>
+                    <Button Color="Color.Secondary" Clicked="@_addPortModal.Hide">Close</Button>
+                    <Button Color="Color.Primary" Clicked="@(async () => await AddBus())">Add</Button>
+                </ModalFooter>
+            </ModalContent>
+        </Modal>
     }
-</div>
 
 @code {
+    private Bus _addBus;
+    private IEnumerable<string> _unusedPorts;
+
+    private Modal _addPortModal;
+
+    private readonly IEnumerable<int> _baudRates = new[]
+    {
+        9600,
+        19200,
+        38400,
+        115200
+    };
+
+    private Shared.Actions.Configuration _configuration;
+    
     [Parameter]
     public Guid ExtensionId { get; set; }
-    
+
     [Parameter]
     public EventCallback<Guid> ExtensionIdChanged { get; set; }
 
     [Parameter]
     public string RawConfiguration { get; set; }
-    
+
     [Parameter]
     public EventCallback<string> RawConfigurationChanged { get; set; }
 
-    private Bus _addBus;
-    private IEnumerable<string> _unusedPorts;
-    private readonly IEnumerable<int> _baudRates = new []
+    protected override void OnParametersSet()
     {
-        9600,
-        19200, 
-        38400,
-        115200
-    };
-    private Settings _settings;
+        _configuration = JsonSerializer.Deserialize<Shared.Actions.Configuration>(RawConfiguration);
 
-    protected override void OnInitialized()
-    {
-        _settings = JsonSerializer.Deserialize<Settings>(RawConfiguration);
-       
         InitializeNewBus();
-    }
-    
+    }  
+
     private void InitializeNewBus()
     {
-        _unusedPorts = _settings.AvailablePorts.Except(_settings.Buses.Select(bus => bus.PortName));
-        
+        _unusedPorts = _configuration.AvailablePorts.Except(_configuration.Buses.Select(bus => bus.PortName));
+
         var unusedPorts = _unusedPorts as string[] ?? _unusedPorts.ToArray();
         if (unusedPorts.Any())
         {
             _addBus = new Bus
             {
-                devices = new Device[] {},
+                Devices = new List<Device>(),
                 PortName = unusedPorts.First(),
                 BaudRate = 9600
             };
@@ -100,20 +172,84 @@
             _addBus = null;
         }
     }
-    
+
     private async Task AddBus()
     {
-        _settings.Buses.Add(_addBus);
+        _addPortModal.Hide();
+
+        _configuration.Buses.Add(_addBus);
+
+        await SendUpdatedConfiguration();
+    }
+
+    private async Task RemoveBus(string busPortName)
+    {
+        var matchingBus = _configuration.Buses.First(bus => bus.PortName == busPortName);
         
-        string url = string.Format(Paths.ExtensionConfiguration, ExtensionId);
-        var response = await Http.PostAsync(url, new StringContent(JsonSerializer.Serialize(_settings), Encoding.UTF8, "application/json"));
-        if (!response.IsSuccessStatusCode)
+        _configuration.Buses.Remove(matchingBus);
+
+        await SendUpdatedConfiguration();
+    }
+
+    private async Task AddDevice(string portName, string deviceName, byte address)
+    {
+        var matchingBus = _configuration.Buses.First(bus => bus.PortName == portName);
+        if (matchingBus.Devices.Any(device => device.Address == address))
         {
-            _settings.Buses.Remove(_addBus);
-            StateHasChanged();
-            throw new Exception($"Unable to update extension configuration. Response reason - {(int)response.StatusCode}:{response.ReasonPhrase}");
+            throw new Exception($"Device already exists at address {address}");
         }
 
-        InitializeNewBus();
+        var addedDevice = new Device {Name = deviceName, Address = address};
+
+        matchingBus.Devices.Add(addedDevice);
+
+        await SendUpdatedConfiguration();
+
+        await PerformAction(ActionType.AddUpdateDevice.ToString(),
+            JsonSerializer.Serialize(new DeviceAction
+            {
+                PortName = matchingBus.PortName,
+                Device = addedDevice
+            }));
+    }
+
+    private async Task RemoveDevice(string portName, byte address)
+    {
+        var matchingBus = _configuration.Buses.First(bus => bus.PortName == portName);
+
+        var removingDevice = matchingBus.Devices.First(device => device.Address == address);
+
+        matchingBus.Devices.Remove(removingDevice);
+
+        await SendUpdatedConfiguration();
+
+        await PerformAction(ActionType.RemoveDevice.ToString(),
+            JsonSerializer.Serialize(new DeviceAction
+            {
+                PortName = matchingBus.PortName,
+                Device = removingDevice
+            }));
+    }
+
+    private async Task SendUpdatedConfiguration()
+    {
+        string url = string.Format(Paths.ExtensionConfiguration, ExtensionId);
+        var response = await Http.PostAsync(url,
+            new StringContent(JsonSerializer.Serialize(_configuration), Encoding.UTF8, "application/json"));
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception($"Unable to update extension configuration. Response reason - {(int) response.StatusCode}:{response.ReasonPhrase}");
+        }
+    }
+    
+    private async Task PerformAction(string actionType, string parameters)
+    {
+        string url = string.Format(Paths.ExtensionPerformAction, ExtensionId, actionType);
+        var response = await Http.PostAsync(url,
+            new StringContent(parameters, Encoding.UTF8, "application/json"));
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception($"Unable to perform action. Response reason - {(int) response.StatusCode}:{response.ReasonPhrase}");
+        }
     }
 }

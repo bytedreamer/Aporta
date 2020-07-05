@@ -1,4 +1,6 @@
-namespace OSDP.Drivers.Shared
+using System.Collections.Generic;
+
+namespace OSDP.Drivers.Shared.Actions
 {
     public class Bus
     {
@@ -6,10 +8,6 @@ namespace OSDP.Drivers.Shared
         
         public int BaudRate { get; set; }
         
-        public Device[] devices { get; set; }
-    }
-
-    public class Device
-    {
+        public List<Device> Devices { get; set; } = new List<Device>();
     }
 }

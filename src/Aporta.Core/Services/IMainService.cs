@@ -19,5 +19,7 @@ namespace Aporta.Core.Services
         IHardwareDriver Driver(Guid extensionId);
         
         Task UpdateConfiguration(Guid extensionId, string configuration);
+        
+        Task<string> PerformAction(Guid extensionId, string action, string parameters);
     }
 }

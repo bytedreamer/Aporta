@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Device.Gpio;
+using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
@@ -19,11 +20,9 @@ namespace Aporta.Drivers.AutomationpHAT
         
         public string Name => "Automation pHAT";
         
-        public IEnumerable<IDevice> Devices => new List<IDevice>();
-        
         public IEnumerable<IEndpoint> Endpoints => _endpoints;
         
-        public void Load(string settings, ILoggerFactory loggerFactory)
+        public void Load(string configuration, ILoggerFactory loggerFactory)
         {
             _controller = new GpioController();
 
@@ -37,9 +36,14 @@ namespace Aporta.Drivers.AutomationpHAT
             _controller?.Dispose();
         }
 
-        public string InitialSettings()
+        public string InitialConfiguration()
         {
             return string.Empty;
+        }
+
+        public async Task<string> PerformAction(string action, string parameters)
+        {
+            return await Task.FromResult(string.Empty);
         }
     }
 }

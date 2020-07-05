@@ -87,6 +87,15 @@ namespace Aporta.Core.Services
             LoadExtension(matchingExtension);
         }
 
+        public async Task<string> PerformAction(Guid extensionId, string action, string parameters)
+        {
+            var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
+            
+            _logger.LogInformation($"Performing  for extension {matchingExtension.Name}");
+
+            return await matchingExtension.Driver.PerformAction(action, parameters);
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task DiscoverExtensions()
         {
@@ -95,7 +104,7 @@ namespace Aporta.Core.Services
                 extensionFinder.FindAssembliesWithPlugins(
                     Path.Combine(
                         Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory,
-                        "Drivers"));
+                        "Drivers"), _loggerFactory.CreateLogger<Finder<IHardwareDriver>>());
 
             foreach (string assemblyPath in assemblyPaths)
             {
@@ -154,7 +163,7 @@ namespace Aporta.Core.Services
             extension.Host.Load();
             extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
             extension.Driver.Load(extension.Configuration, _loggerFactory);
-            extension.Configuration = extension.Driver.InitialSettings();
+            extension.Configuration = extension.Driver.InitialConfiguration();
             
             extension.Loaded = true;
         }

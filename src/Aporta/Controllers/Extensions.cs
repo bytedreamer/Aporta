@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.Hubs;
@@ -35,13 +36,13 @@ namespace Aporta.Controllers
             return _mainService.Extensions;
         }
         
-        [HttpGet("{extensionId}")]
+        [HttpGet("{extensionId:Guid}")]
         public ExtensionHost Get(Guid extensionId)
         {
             return _mainService.Extensions.First(extension => extension.Id == extensionId);
         }
 
-        [HttpPost("{extensionId}")]
+        [HttpPost("{extensionId:Guid}")]
         public async Task<ActionResult> SetEnabled(Guid extensionId, [FromQuery] bool enabled)
         {
             bool success = true;
@@ -55,12 +56,12 @@ namespace Aporta.Controllers
                 success = false;
             }
             
-            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged);
+            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
 
             return success ? (ActionResult) NoContent() : Problem();
         }
         
-        [HttpPost("{extensionId}/configuration")]
+        [HttpPost("{extensionId:Guid}/configuration")]
         public async Task<ActionResult> UpdateConfiguration(Guid extensionId, [FromBody] dynamic configuration)
         {
             bool success = true;
@@ -73,10 +74,28 @@ namespace Aporta.Controllers
                 _logger.LogError(exception, $"Unable to update configuration for extension {extensionId}");
                 success = false;
             }
-            
-            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged);
 
+            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
+            
             return success ? (ActionResult) NoContent() : Problem();
+        }
+        
+        [HttpPost("{extensionId:Guid}/action/{actionType}")]
+        public async Task<ActionResult> PerformAction(Guid extensionId, string actionType, [FromBody] dynamic parameter)
+        {
+            bool success = true;
+            string result = string.Empty;
+            try
+            {
+                result = await _mainService.PerformAction(extensionId, actionType, JsonSerializer.Serialize(parameter));
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, $"Unable to update configuration for extension {extensionId}");
+                success = false;
+            }
+
+            return success ? (ActionResult) Content(result) : Problem();
         }
     }
 }

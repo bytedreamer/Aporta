@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO.Ports;
-using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
-using OSDP.Drivers.Shared;
+using OSDP.Drivers.Shared.Actions;
 using OSDP.Net;
 using OSDP.Net.Connections;
 
@@ -19,25 +19,23 @@ namespace Aporta.Drivers.OSDP
     {
         private readonly List<IEndpoint> _endpoints = new List<IEndpoint>();
         private readonly Dictionary<string, Guid> _portMapping = new Dictionary<string, Guid>();
-        
-        private  ControlPanel _panel;
+
+        private ControlPanel _panel;
         private ILogger<OSDPDriver> _logger;
-        private Settings _settings = new Settings{Buses = new List<Bus>()};
+        private Configuration _configuration = new Configuration {Buses = new List<Bus>()};
 
         public Guid Id => Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5");
 
         public string Name => "OSDP";
 
-        public IEnumerable<IDevice> Devices => new List<IDevice>();
-
         public IEnumerable<IEndpoint> Endpoints => _endpoints;
 
-        public void Load(string settings, ILoggerFactory loggerFactory)
+        public void Load(string configuration, ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.CreateLogger<OSDPDriver>();
             _panel = new ControlPanel(loggerFactory.CreateLogger<ControlPanel>());
-            
-            ExtractSettings(settings);
+
+            ExtractConfiguration(configuration);
 
             StartConnections();
 
@@ -46,45 +44,43 @@ namespace Aporta.Drivers.OSDP
 
         private void AddDevices()
         {
-            foreach (var bus in _settings.Buses)
+            foreach (var bus in _configuration.Buses)
             {
+                var connection = _portMapping[bus.PortName];
+                foreach (var device in bus.Devices)
+                {
+                    _panel.AddDevice(connection, device.Address, true, false);
+                }
 
-            }
-
-            if (_portMapping.Any())
-            {
-                var connection = _portMapping.First().Value;
-                _panel.AddDevice(connection, 1, true, false);
-
-                _endpoints.Add(new OSDPControlPoint(_panel, connection, 1, 0));
+                //_endpoints.Add(new OSDPControlPoint(_panel, connection, 1, 0));
             }
         }
 
         private void StartConnections()
         {
-            foreach (var bus in _settings.Buses)
+            foreach (var bus in _configuration.Buses)
             {
                 _portMapping.Add(bus.PortName,
                     _panel.StartConnection(new SerialPortOsdpConnection(bus.PortName, bus.BaudRate)));
             }
         }
 
-        private void ExtractSettings(string settings)
+        private void ExtractConfiguration(string configuration)
         {
-            if (!string.IsNullOrWhiteSpace(settings))
+            if (!string.IsNullOrWhiteSpace(configuration))
             {
                 try
                 {
-                    _settings = JsonSerializer.Deserialize<Settings>(settings);
+                    _configuration = JsonSerializer.Deserialize<Configuration>(configuration);
                 }
                 catch (Exception exception)
                 {
-                    _logger?.LogWarning(exception, $"Unable to deserialize {settings}");
-                    _settings = new Settings{Buses = new List<Bus>()};
+                    _logger?.LogWarning(exception, $"Unable to deserialize {configuration}");
+                    _configuration = new Configuration {Buses = new List<Bus>()};
                 }
             }
 
-            _settings.AvailablePorts = SerialPort.GetPortNames();
+            _configuration.AvailablePorts = SerialPort.GetPortNames();
         }
 
         public void Unload()
@@ -92,9 +88,38 @@ namespace Aporta.Drivers.OSDP
             _panel.Shutdown();
         }
 
-        public string InitialSettings()
+        public string InitialConfiguration()
         {
-            return JsonSerializer.Serialize(_settings);
+            return JsonSerializer.Serialize(_configuration);
+        }
+
+        public async Task<string> PerformAction(string action, string parameters)
+        {
+            Enum.TryParse(action, out ActionType actionEnum);
+            return actionEnum switch
+            {
+                ActionType.AddUpdateDevice => AddUpdateDevice(parameters),
+                ActionType.RemoveDevice => RemoveDevice(parameters),
+                _ => await Task.FromResult(string.Empty)
+            };
+        }
+
+        private string AddUpdateDevice(string parameters)
+        {
+            var deviceAction = JsonSerializer.Deserialize<DeviceAction>(parameters);
+            
+            _panel.AddDevice(_portMapping[deviceAction.PortName], deviceAction.Device.Address, true, false);
+
+            return string.Empty;
+        }
+        
+        private string RemoveDevice(string parameters)
+        {
+            var deviceAction = JsonSerializer.Deserialize<DeviceAction>(parameters);
+            
+            _panel.RemoveDevice(_portMapping[deviceAction.PortName], deviceAction.Device.Address);
+
+            return string.Empty;
         }
     }
 }

@@ -65,7 +65,7 @@ else
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
-        _hubConnection.On(Methods.ExtensionDataChanged, async () =>
+        _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async extensionId =>
         {
             _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extension);
             

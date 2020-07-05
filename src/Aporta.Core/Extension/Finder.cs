@@ -4,17 +4,18 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Aporta.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Extension
 {
     public class Finder<TExtension> where TExtension : IExtension
     {
         private const string AssemblySearchPattern = "Aporta.*.dll";
-
-        public IEnumerable<string> FindAssembliesWithPlugins(string path)
+        
+        public IEnumerable<string> FindAssembliesWithPlugins(string path, ILogger<Finder<TExtension>> logger)
         {
             return FindExtensionsInAssemblies(AssemblyPaths(path).Where(assemblyPath =>
-                !assemblyPath.EndsWith($"{AportaAssemblyLoadContext.ExtensionsName}.dll")));
+                !assemblyPath.EndsWith($"{AportaAssemblyLoadContext.ExtensionsName}.dll")), logger);
         }
 
         private static IEnumerable<string> AssemblyPaths(string path)
@@ -23,7 +24,7 @@ namespace Aporta.Core.Extension
                 new EnumerationOptions {RecurseSubdirectories = true});
         }
 
-        private static IEnumerable<string> FindExtensionsInAssemblies(IEnumerable<string> assemblyPaths)
+        private static IEnumerable<string> FindExtensionsInAssemblies(IEnumerable<string> assemblyPaths, ILogger<Finder<TExtension>> logger)
         {
             var extensionAssemblyLocations = new List<string>();
 
@@ -43,7 +44,7 @@ namespace Aporta.Core.Extension
                 }
                 catch (Exception exception)
                 {
-                    
+                    logger.LogError(exception, $"Unable to load assembly {assemblyPath}");
                 }
             }
 
