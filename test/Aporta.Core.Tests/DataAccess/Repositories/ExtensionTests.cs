@@ -16,12 +16,12 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
         private IDbConnection _persistConnection;
         
         [SetUp]
-        public void Setup()
+        public async Task Setup()
         {
             _persistConnection = _dataAccess.CreateDbConnection();
             _persistConnection.Open();
 
-            _dataAccess.UpdateSchema();
+            await _dataAccess.UpdateSchema();
         }
 
         [TearDown]
@@ -53,8 +53,8 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
 
             // Assert
             Assert.AreEqual(extensions[1].Id, actualExtension.Id);
-            Assert.AreEqual(extensions[1].Name, actualExtension.Name);
-            Assert.AreEqual(extensions[1].Enabled, actualExtension.Enabled);
+            Assert.AreEqual("Test2", actualExtension.Name);
+            Assert.AreEqual(true, actualExtension.Enabled);
         }
         
         [Test]
@@ -107,7 +107,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
 
             // Assert
             Assert.IsTrue(actualExtension.Enabled);
-            Assert.AreEqual(updatedExtension.Configuration, actualExtension.Configuration);
+            Assert.AreEqual("TestConfigure", actualExtension.Configuration);
         }
     }
 }

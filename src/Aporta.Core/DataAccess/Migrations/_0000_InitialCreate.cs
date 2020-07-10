@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.Threading.Tasks;
 using Dapper;
 
@@ -10,30 +11,21 @@ namespace Aporta.Core.DataAccess.Migrations
         
         public string Name => "Initial create";
 
-        public async Task PerformUpdate(IDataAccess dataAccess)
+        public async Task PerformUpdate(IDbConnection connection, IDbTransaction transaction)
         {
-            using var connection = dataAccess.CreateDbConnection();
-            connection.Open();
-            var transaction = connection.BeginTransaction();
             await connection.ExecuteAsync(
                 @"create table schema_info
                         (
-                            id        integer
+                            id        integer not null
                                 constraint schema_info_pk
                                     primary key,
                             name      text not null,
-                            timestamp datetime
+                            timestamp datetime not null
                         );
 
                         create unique index schema_info_id_uindex
                             on schema_info (id);", 
                 transaction: transaction);
-
-            await connection.ExecuteAsync(
-                @"insert into schema_info (id, name, timestamp)
-                        values (@id, @name, @timestamp)", 
-                new {id = Version, name = Name, timestamp = DateTime.UtcNow}, transaction);
-            transaction.Commit();
         }
     }
 }

@@ -7,6 +7,7 @@ namespace Aporta.Core.Tests.DataAccess
 {
     public class MigrationTests
     {
+        private const int CurrentVersion = 2;
         private readonly IDataAccess _dataAccess = new SqlLiteDataAccess(true);
         private IDbConnection _persistConnection;
         
@@ -32,7 +33,7 @@ namespace Aporta.Core.Tests.DataAccess
             await _dataAccess.UpdateSchema();
 
             // Assert
-            Assert.AreEqual(1, await _dataAccess.CurrentVersion());
+            Assert.AreEqual(CurrentVersion, await _dataAccess.CurrentVersion());
         }
         
         [Test]
@@ -45,7 +46,7 @@ namespace Aporta.Core.Tests.DataAccess
             await _dataAccess.UpdateSchema();
 
             // Assert
-            Assert.AreEqual(1, await _dataAccess.CurrentVersion());
+            Assert.AreEqual(CurrentVersion, await _dataAccess.CurrentVersion());
         }
     }
 }

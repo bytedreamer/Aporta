@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.IO.Ports;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
+using OSDP.Drivers.Shared;
 using OSDP.Drivers.Shared.Actions;
 using OSDP.Net;
 using OSDP.Net.Connections;
+using OSDP.Net.Model.ReplyData;
 
 namespace Aporta.Drivers.OSDP
 {
@@ -34,12 +37,37 @@ namespace Aporta.Drivers.OSDP
         {
             _logger = loggerFactory.CreateLogger<OSDPDriver>();
             _panel = new ControlPanel(loggerFactory.CreateLogger<ControlPanel>());
+            
+            _panel.ConnectionStatusChanged += PanelOnConnectionStatusChanged;
 
             ExtractConfiguration(configuration);
 
             StartConnections();
 
             AddDevices();
+        }
+
+        private async void PanelOnConnectionStatusChanged(object sender, ControlPanel.ConnectionStatusEventArgs eventArgs)
+        {
+            var matchingBus = _configuration.Buses.Single(bus =>
+                bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
+            var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
+            
+            if (!matchingDevice.CheckedCapabilities && sender is ControlPanel panel && eventArgs.IsConnected)
+            {
+                var capabilities = await panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address);
+                foreach (var outputControl in capabilities.Capabilities.Where(capability =>
+                    capability.Function == CapabilityFunction.OutputControl))
+                {
+                    for (byte outputNumber = 0; outputNumber < outputControl.NumberOf; outputNumber++)
+                    {
+                        //_endpoints.Add(new OSDPControlPoint());
+                        //matchingDevice.Outputs.Add(new Output{Name = $"Output Number {outputNumber}", Number = outputNumber, EndPointId = });
+                    }
+                }
+
+                matchingDevice.CheckedCapabilities = true;
+            }
         }
 
         private void AddDevices()
@@ -86,6 +114,8 @@ namespace Aporta.Drivers.OSDP
         public void Unload()
         {
             _panel.Shutdown();
+            
+            _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
         }
 
         public string InitialConfiguration()
@@ -109,7 +139,7 @@ namespace Aporta.Drivers.OSDP
             var deviceAction = JsonSerializer.Deserialize<DeviceAction>(parameters);
             
             _panel.AddDevice(_portMapping[deviceAction.PortName], deviceAction.Device.Address, true, false);
-
+            
             return string.Empty;
         }
         

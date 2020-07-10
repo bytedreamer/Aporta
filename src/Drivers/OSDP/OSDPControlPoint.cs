@@ -22,8 +22,9 @@ namespace Aporta.Drivers.OSDP
         }
 
         public string Name => "Test";
-        public Guid Id => new Guid();
-
+        
+        public int Id { get; set; }
+    
         public async Task Set(bool state)
         {
             await _controlPanel.OutputControl(_connectionId, _address,

@@ -14,6 +14,7 @@ namespace Aporta.Drivers.AutomationpHAT
     public class AutomationpHATDriver : IHardwareDriver
     {
         private GpioController _controller;
+        
         private readonly List<IEndpoint> _endpoints = new List<IEndpoint>();
 
         public Guid Id => Guid.Parse("3803BA97-C8E3-479D-993B-E76DAB9ABED6");
@@ -26,7 +27,7 @@ namespace Aporta.Drivers.AutomationpHAT
         {
             _controller = new GpioController();
 
-            _endpoints.Add(new Relay(Guid.NewGuid(), "Relay1", _controller, 16));
+            _endpoints.Add(new Relay(1, "Relay1", _controller, 16));
         }
 
         public void Unload()

@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.Threading.Tasks;
 using Dapper;
 
@@ -10,11 +11,8 @@ namespace Aporta.Core.DataAccess.Migrations
         
         public string Name => "Add extension table";
 
-        public async Task PerformUpdate(IDataAccess dataAccess)
+        public async Task PerformUpdate(IDbConnection connection, IDbTransaction transaction)
         {
-            using var connection = dataAccess.CreateDbConnection();
-            connection.Open();
-            var transaction = connection.BeginTransaction();
             await connection.ExecuteAsync(
                 @"create table extension
                         (
@@ -29,12 +27,6 @@ namespace Aporta.Core.DataAccess.Migrations
                         create unique index extension_id_uindex
                             on extension (id);",
                 transaction: transaction);
-
-            await connection.ExecuteAsync(
-                @"insert into schema_info (id, name, timestamp)
-                        values (@id, @name, @timestamp)",
-                new {id = Version, name = Name, timestamp = DateTime.UtcNow}, transaction);
-            transaction.Commit();
         }
     }
 }

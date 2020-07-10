@@ -31,7 +31,7 @@ namespace Aporta.Extensions.Hardware
         void Unload();
 
         /// <summary>
-        /// Create an initial configuration for the driver
+        /// The initial configuration after loading the driver
         /// </summary>
         /// <returns>A configuration with initial values</returns>
         string InitialConfiguration();

@@ -18,7 +18,8 @@ namespace Aporta.Core.DataAccess
         private readonly IMigration[] _migrations = new IMigration[]
         {
             new _0000_InitialCreate(),
-            new _0001_AddExtensionTable()
+            new _0001_AddExtensionTable(),
+            new _0002_AddEndpointTable()
         };
 
         /// <summary>
@@ -76,11 +77,26 @@ namespace Aporta.Core.DataAccess
         public async Task UpdateSchema()
         {
             int currentVersion = await CurrentVersion();
-
+            
+            using var connection = CreateDbConnection();
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+            
             for (int migrationIndex = currentVersion + 1; migrationIndex < _migrations.Length; migrationIndex++)
             {
-                await _migrations[migrationIndex].PerformUpdate(this);
+                await _migrations[migrationIndex].PerformUpdate(connection, transaction);
+
+                await connection.ExecuteAsync(
+                    @"insert into schema_info (id, name, timestamp)
+                        values (@id, @name, @timestamp)",
+                    new
+                    {
+                        id = _migrations[migrationIndex].Version, name = _migrations[migrationIndex].Name,
+                        timestamp = DateTime.UtcNow
+                    }, transaction);
             }
+            
+            transaction.Commit();
         }
     }
 }

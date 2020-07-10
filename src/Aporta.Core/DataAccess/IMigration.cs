@@ -1,3 +1,4 @@
+using System.Data;
 using System.Threading.Tasks;
 
 namespace Aporta.Core.DataAccess
@@ -13,11 +14,12 @@ namespace Aporta.Core.DataAccess
         /// Name of the migration
         /// </summary>
         string Name { get; }
-        
+
         /// <summary>
         /// Perform an updated to the schema to match the version
         /// </summary>
-        /// <param name="dataAccess"></param>
-        Task PerformUpdate(IDataAccess dataAccess);
+        /// <param name="connection"></param>
+        /// <param name="transaction"></param>
+        Task PerformUpdate(IDbConnection connection, IDbTransaction transaction);
     }
 }
