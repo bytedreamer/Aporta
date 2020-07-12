@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 
 namespace Aporta.Extensions.Endpoint
 {
     public interface IEndpoint : IExtension
     {
-        int Id { get; }
+        Guid ExtensionId { get; }
+        
+        string Id { get; } 
     }
 }

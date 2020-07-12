@@ -21,5 +21,7 @@ namespace Aporta.Core.Services
         Task UpdateConfiguration(Guid extensionId, string configuration);
         
         Task<string> PerformAction(Guid extensionId, string action, string parameters);
+
+        Task SetOutput(Guid extensionId, string driverId, bool state);
     }
 }

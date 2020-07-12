@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
+using OSDP.Drivers.Shared;
 using OSDP.Net;
 using OSDP.Net.Model.CommandData;
 
@@ -10,27 +11,30 @@ namespace Aporta.Drivers.OSDP
     {
         private readonly ControlPanel _controlPanel;
         private readonly Guid _connectionId;
-        private readonly byte _address;
-        private readonly byte _outputNumber;
+        private readonly Device _device;
+        private readonly Output _output;
 
-        public OSDPControlPoint( ControlPanel controlPanel, Guid connectionId, byte address, byte outputNumber)
+        public OSDPControlPoint(Guid extensionId, ControlPanel controlPanel, Guid connectionId, Device device, Output output)
         {
             _controlPanel = controlPanel;
             _connectionId = connectionId;
-            _address = address;
-            _outputNumber = outputNumber;
+            _device = device;
+            _output = output;
+            ExtensionId = extensionId;
         }
 
-        public string Name => "Test";
+        public string Name => _output.Name;
+
+        public Guid ExtensionId { get; }
         
-        public int Id { get; set; }
-    
+        public string Id => $"{_device.Address}:{_output.Number}";
+        
         public async Task Set(bool state)
         {
-            await _controlPanel.OutputControl(_connectionId, _address,
+            await _controlPanel.OutputControl(_connectionId, _device.Address,
                 new OutputControls(new[]
                 {
-                    new OutputControl(_outputNumber,
+                    new OutputControl(_output.Number,
                         state
                             ? OutputControlCode.PermanentStateOnAbortTimedOperation
                             : OutputControlCode.PermanentStateOffAbortTimedOperation, 0)

@@ -9,7 +9,9 @@ using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Extension;
 using Aporta.Core.Models;
+using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
+using Aporta.Shared.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services
@@ -22,13 +24,17 @@ namespace Aporta.Core.Services
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<MainService> _logger;
         private readonly ExtensionRepository _extensionRepository;
+        private readonly EndpointRepository _endpointRepository;
 
         private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
+        
+        private readonly List<IControlPoint> _configuredEndpoints = new List<IControlPoint>();
 
         public MainService(IDataAccess dataAccess, ILogger<MainService> logger, ILoggerFactory loggerFactory)
         {
             _logger = logger;
             _loggerFactory = loggerFactory;
+            _endpointRepository = new EndpointRepository(dataAccess);
             _extensionRepository = new ExtensionRepository(dataAccess);
         }
 
@@ -96,6 +102,14 @@ namespace Aporta.Core.Services
             return await matchingExtension.Driver.PerformAction(action, parameters);
         }
 
+        public async Task SetOutput(Guid extensionId, string driverId, bool state)
+        {
+            var matchingEndpoint = _configuredEndpoints.First(endpoint =>
+                endpoint.ExtensionId == extensionId && endpoint.Id == driverId);
+
+            await matchingEndpoint.Set(state);
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task DiscoverExtensions()
         {
@@ -156,18 +170,42 @@ namespace Aporta.Core.Services
                 }
             }
         }
- 
+
         private void LoadExtension(ExtensionHost extension)
         {
             extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
             extension.Host.Load();
             extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
+            extension.Driver.AddEndpoints += DriverOnAddEndpoints;
+            
             extension.Driver.Load(extension.Configuration, _loggerFactory);
             extension.Configuration = extension.Driver.InitialConfiguration();
-            
+
             extension.Loaded = true;
         }
-        
+
+        private async void DriverOnAddEndpoints(object sender, AddEndpointsEventArgs eventArgs)
+        {
+            if (!(sender is IHardwareDriver driver)) return;
+
+            var existingEndpoints = (await _endpointRepository.GetForExtension(driver.Id)).ToArray();
+            foreach (var endpoint in eventArgs.Endpoints.Cast<IControlPoint>())
+            {
+                if (!existingEndpoints.Any(configuredEndpoint =>
+                    configuredEndpoint.ExtensionId == driver.Id && configuredEndpoint.DriverId != endpoint.Id))
+                {
+                    var configuredEndpoint = new Endpoint
+                    {
+                        DriverId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
+                        Type = EndpointType.Output
+                    };
+
+                    await _endpointRepository.Insert(configuredEndpoint);
+                }
+                _configuredEndpoints.Add(endpoint);
+            }
+        }
+
         private void UnloadExtensions()
         {
             foreach (var extension in _extensions)
@@ -185,9 +223,10 @@ namespace Aporta.Core.Services
             _extensions.Clear();
         }
 
-        private static void UnloadExtension(ExtensionHost extension)
+        private void UnloadExtension(ExtensionHost extension)
         {
             extension.Driver.Unload();
+            extension.Driver.AddEndpoints -= DriverOnAddEndpoints;
             
             extension.Host.Unload();
             extension.Loaded = false;

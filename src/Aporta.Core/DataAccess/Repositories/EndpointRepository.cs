@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
@@ -7,12 +8,15 @@ namespace Aporta.Core.DataAccess.Repositories
 {
     public class EndpointRepository
     {
-        private const string SqlSelect = @"select id, name, endpoint_type as type, configuration, extension_id as extensionId
+        private const string SqlSelect = @"select id, name, endpoint_type as type, driver_id, extension_id as extensionId
                                             from endpoint";
 
         private const string SqlInsert = @"insert into endpoint
-                                            (name, endpoint_type, configuration, extension_id) values 
+                                            (name, endpoint_type, driver_id, extension_id) values 
                                             (@name, @endpointType, @configuration, @extensionId); select last_insert_rowid()";
+
+        private const string SqlDelete = @"delete from endpoint
+                                            where id = @id";
 
         private readonly IDataAccess _dataAccess;
 
@@ -40,17 +44,35 @@ namespace Aporta.Core.DataAccess.Repositories
             return await connection.QueryAsync<Endpoint>(SqlSelect);
         }
 
-        public async Task<int> Insert(Endpoint endpoint)
+        public async Task<IEnumerable<Endpoint>> GetForExtension(Guid extensionId)
         {
             using var connection = _dataAccess.CreateDbConnection();
             connection.Open();
 
-            return await connection.QueryFirstAsync<int>(SqlInsert,
+            return await connection.QueryAsync<Endpoint>(SqlSelect + @" where extension_id = @extensionId",
+                new {extensionId});
+        }
+
+        public async Task Insert(Endpoint endpoint)
+        {
+            using var connection = _dataAccess.CreateDbConnection();
+            connection.Open();
+
+            endpoint.Id = await connection.QueryFirstAsync<int>(SqlInsert,
                 new
                 {
                     name = endpoint.Name, endpointType = endpoint.Type,
-                    configuration = endpoint.Configuration, extensionId = endpoint.ExtensionId
+                    configuration = endpoint.DriverId, extensionId = endpoint.ExtensionId
                 });
+        }
+
+        public async Task Delete(int id)
+        {
+            using var connection = _dataAccess.CreateDbConnection();
+            connection.Open();
+
+            await connection.ExecuteAsync(SqlDelete,
+                new {id = id});
         }
     }
 }

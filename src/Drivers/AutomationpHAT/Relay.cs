@@ -1,3 +1,4 @@
+using System;
 using System.Device.Gpio;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
@@ -9,19 +10,20 @@ namespace Aporta.Drivers.AutomationpHAT
         private readonly GpioController _controller;
         private readonly int _pin;
 
-        public Relay(int id, string name, GpioController controller, int pin)
+        public Relay(Guid extensionId, string name, GpioController controller, int pin)
         {
             _controller = controller;
             _pin = pin;
-            Id = id;
             Name = name;
+            ExtensionId = extensionId;
             
             _controller.OpenPin(pin, PinMode.Output);
         }
 
         public string Name { get; }
-        
-        public int Id { get; }
+
+        public Guid ExtensionId { get; }
+        public string Id => _pin.ToString();
         
         public async Task Set(bool state)
         {

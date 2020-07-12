@@ -1,4 +1,3 @@
-using System;
 using System.Data;
 using System.Threading.Tasks;
 using Dapper;
@@ -20,7 +19,7 @@ namespace Aporta.Core.DataAccess.Migrations
                             constraint endpoint_pk
                                 primary key autoincrement,
                         name          text    not null,
-                        configuration text    not null,
+                        driver_id     text    not null,
                         endpoint_type integer not null,
                         extension_id  text    not null
                             references extension

@@ -14,11 +14,6 @@ namespace Aporta.Extensions.Hardware
         public Guid Id { get; }
         
         /// <summary>
-        /// List of endpoints that are configured on the driver
-        /// </summary>
-        public IEnumerable<IEndpoint> Endpoints { get; }
-        
-        /// <summary>
         /// Load the driver
         /// </summary>
         /// <param name="configuration">Configuration settings for the driver</param>
@@ -43,5 +38,12 @@ namespace Aporta.Extensions.Hardware
         /// <param name="parameters">Parameters needed to perform the action</param>
         /// <returns>Result of the action</returns>
         Task<string> PerformAction(string action, string parameters);
+        
+        event EventHandler<AddEndpointsEventArgs> AddEndpoints;
+    }
+    
+    public class AddEndpointsEventArgs : EventArgs
+    {
+        public IEnumerable<IEndpoint> Endpoints { get; set; }
     }
 }

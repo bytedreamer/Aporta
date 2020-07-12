@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace OSDP.Drivers.Shared
@@ -11,8 +10,7 @@ namespace OSDP.Drivers.Shared
 
         public bool CheckedCapabilities { get; set; }
 
-
-        public List<Output> Outputs { get; set; } = new List<Output>();
+        public List<Output> Outputs { get; } = new List<Output>();
     }
 
     public class Output
@@ -20,7 +18,5 @@ namespace OSDP.Drivers.Shared
         public string Name { get; set; }
         
         public byte Number { get; set; }
-        
-        public Guid EndPointId { get; set; }
     }
 }

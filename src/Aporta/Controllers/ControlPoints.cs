@@ -21,10 +21,8 @@ namespace Aporta.Controllers
         [HttpPost]
         public async Task<IActionResult> Set(bool state)
         {
-            var driver = _mainService.Driver(Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"));
-            
-            await driver.Endpoints.Cast<IControlPoint>().First().Set(state);
-            
+            await _mainService.SetOutput(Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"), "1:0", state);
+
             return NoContent();
         }
     }

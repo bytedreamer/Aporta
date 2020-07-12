@@ -44,7 +44,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
         }
 
         [Test]
-        public async Task Get()
+        public async Task InsertThenGet()
         {
             // Arrange
             var endpoints = new[]
@@ -54,17 +54,17 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
                 new Endpoint {Name = "Test3", Type = EndpointType.Reader, ExtensionId = _extensionId}
             };
 
-            int lastEndpointId = -1;
             var endpointRepository = new EndpointRepository(_dataAccess);
             foreach (var endpoint in endpoints)
             {
-                lastEndpointId = await endpointRepository.Insert(endpoint);   
+                await endpointRepository.Insert(endpoint);   
             }
 
             // Act 
-            var actualEndpoint = await endpointRepository.Get(lastEndpointId);
+            var actualEndpoint = await endpointRepository.Get(3);
 
             // Assert
+            Assert.AreEqual(3, endpoints[2].Id);
             Assert.AreEqual(3, actualEndpoint.Id);
             Assert.AreEqual("Test3", actualEndpoint.Name);
             Assert.AreEqual(EndpointType.Reader, actualEndpoint.Type);
