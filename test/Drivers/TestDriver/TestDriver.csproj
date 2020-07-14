@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <OutDir>$(SolutionDir)..\test\Aporta.Core.Tests\bin\$(Configuration)\Drivers\TestDriver</OutDir>
+        <AssemblyName>Aporta.Drivers.TestDriver</AssemblyName>
+        <RootNamespace>Aporta.Drivers.TestDriver</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\src\Aporta.Extensions\Aporta.Extensions.csproj" />
+    </ItemGroup>
+
+</Project>
