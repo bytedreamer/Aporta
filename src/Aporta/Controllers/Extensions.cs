@@ -1,15 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Aporta.Core.Hubs;
 using Aporta.Core.Models;
 using Aporta.Core.Services;
-using Aporta.Shared.Messaging;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace Aporta.Controllers
@@ -20,14 +16,12 @@ namespace Aporta.Controllers
     {
         private readonly ILogger<ExtensionsController> _logger;
         private readonly ExtensionService _extensionService;
-        private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
-        public ExtensionsController(ExtensionService extensionService, IHubContext<DataChangeNotificationHub> hubContext,
+        public ExtensionsController(ExtensionService extensionService,
             ILogger<ExtensionsController> logger)
         {
             _logger = logger;
-            if (extensionService != null) _extensionService = extensionService;
-            if (hubContext != null) _hubContext = hubContext;
+            _extensionService = extensionService;
         }
 
         [HttpGet]
@@ -55,8 +49,6 @@ namespace Aporta.Controllers
                 _logger.LogError(exception, $"Unable to update extension {extensionId}");
                 success = false;
             }
-            
-            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
 
             return success ? (ActionResult) NoContent() : Problem();
         }
@@ -74,8 +66,6 @@ namespace Aporta.Controllers
                 _logger.LogError(exception, $"Unable to update configuration for extension {extensionId}");
                 success = false;
             }
-
-            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
 
             return success ? (ActionResult) NoContent() : Problem();
         }

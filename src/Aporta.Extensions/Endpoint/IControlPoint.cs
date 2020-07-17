@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Aporta.Extensions.Hardware;
 
 namespace Aporta.Extensions.Endpoint
 {
@@ -9,6 +8,7 @@ namespace Aporta.Extensions.Endpoint
         Task<bool> Get();
         
         Task Set(bool state);
+        
         event EventHandler<bool> ControlPointStateChanged;
     }
 }

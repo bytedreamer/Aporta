@@ -8,10 +8,13 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Extension;
+using Aporta.Core.Hubs;
 using Aporta.Core.Models;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
+using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services
@@ -25,13 +28,16 @@ namespace Aporta.Core.Services
         private readonly ILogger<ExtensionService> _logger;
         private readonly ExtensionRepository _extensionRepository;
         private readonly EndpointRepository _endpointRepository;
+        private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
         private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
         
         private readonly List<IControlPoint> _configuredEndpoints = new List<IControlPoint>();
 
-        public ExtensionService(IDataAccess dataAccess, ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
+        public ExtensionService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
+            ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
         {
+            _hubContext = hubContext;
             _logger = logger;
             _loggerFactory = loggerFactory;
             _endpointRepository = new EndpointRepository(dataAccess);
@@ -42,7 +48,7 @@ namespace Aporta.Core.Services
 
         public async Task Startup()
         {
-            _logger.LogInformation("Starting main service");
+            _logger.LogInformation("Starting extension service");
             
             await DiscoverExtensions();
 
@@ -51,55 +57,69 @@ namespace Aporta.Core.Services
 
         public void Shutdown()
         {
-            _logger.LogInformation("Shutting down main service");
+            _logger.LogInformation("Shutting down extension service");
             
             UnloadExtensions();
         }
 
         public async Task EnableExtension(Guid extensionId, bool enabled)
         {
-            var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
+            try
+            {
+                var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
             
-            _logger.LogInformation($"{(enabled ? "Enabling" : "Disabling")} extension {matchingExtension.Name}");
+                _logger.LogInformation($"{(enabled ? "Enabling" : "Disabling")} extension {matchingExtension.Name}");
 
-            matchingExtension.Enabled = enabled;
-            await _extensionRepository.Update(matchingExtension);
+                matchingExtension.Enabled = enabled;
+                await _extensionRepository.Update(matchingExtension);
 
-            if (enabled)
-            {
-                LoadExtension(matchingExtension);
+                if (enabled)
+                {
+                    LoadExtension(matchingExtension);
+                }
+                else
+                {
+                    UnloadExtension(matchingExtension);
+                }
             }
-            else
+            finally
             {
-                UnloadExtension(matchingExtension);
+                await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
             }
-        }
-
-        public IHardwareDriver Driver(Guid extensionId)
-        {
-            return _extensions.First(extension => extension.Id == extensionId).Driver;
         }
 
         public async Task UpdateConfiguration(Guid extensionId, string configuration)
         {
-            var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
+            try
+            {
+                var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
             
-            _logger.LogInformation($"Updating configuration for extension {matchingExtension.Name}");
+                _logger.LogInformation($"Updating configuration for extension {matchingExtension.Name}");
 
-            matchingExtension.Configuration = configuration;
-            await _extensionRepository.Update(matchingExtension);
+                matchingExtension.Configuration = configuration;
+                await _extensionRepository.Update(matchingExtension);
             
-            UnloadExtension(matchingExtension);
-            LoadExtension(matchingExtension);
+                UnloadExtension(matchingExtension);
+                LoadExtension(matchingExtension);
+            }
+            finally
+            {
+                await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
+            }
         }
 
         public async Task<string> PerformAction(Guid extensionId, string action, string parameters)
         {
-            var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
+            var matchingExtension = Driver(extensionId);
             
             _logger.LogInformation($"Performing {action} for extension {matchingExtension.Name}");
 
-            return await matchingExtension.Driver.PerformAction(action, parameters);
+            return await matchingExtension.PerformAction(action, parameters);
+        }
+        
+        private IHardwareDriver Driver(Guid extensionId)
+        {
+            return _extensions.First(extension => extension.Id == extensionId).Driver;
         }
 
         public IControlPoint GetControlPoint(Guid extensionId, string driverId)

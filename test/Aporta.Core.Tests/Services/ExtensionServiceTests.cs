@@ -1,12 +1,17 @@
 using System;
 using System.Data;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
+using Aporta.Core.Hubs;
 using Aporta.Core.Services;
+using Aporta.Shared.Messaging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using NUnit.Framework;
+using SignalR_UnitTestingSupportCommon.IHubContextSupport;
 
 namespace Aporta.Core.Tests.Services
 {
@@ -38,8 +43,10 @@ namespace Aporta.Core.Tests.Services
         public async Task Startup()
         {
             // Arrange
-            var extensionService = new ExtensionService(_dataAccess, _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory);
-            
+            var extensionService = new ExtensionService(_dataAccess,
+                new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
+                _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory);
+
             // Act
             await extensionService.Startup();
 
@@ -47,19 +54,28 @@ namespace Aporta.Core.Tests.Services
             Assert.AreEqual(1, extensionService.Extensions.Count());
             Assert.IsFalse(extensionService.Extensions.First().Loaded);
         }
-        
+
         [Test]
         public async Task Enable()
         {
             // Arrange
-            var extensionService = new ExtensionService(_dataAccess, _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory);
+            var hubContextSupport = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
+            var extensionService = new ExtensionService(_dataAccess, hubContextSupport.IHubContextMock.Object,
+                _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory);
             await extensionService.Startup();
-            
+
             // Act
-            await extensionService.EnableExtension(_extensionId, true);           
+            await extensionService.EnableExtension(_extensionId, true);
 
             // Assert
             Assert.IsTrue(extensionService.Extensions.First().Loaded);
+            hubContextSupport.ClientsAllMock
+                .Verify(
+                    x => x.SendCoreAsync(
+                        Methods.ExtensionDataChanged, 
+                        new object[] {_extensionId}, 
+                        It.IsAny<CancellationToken>())
+                );
         }
     }
 }

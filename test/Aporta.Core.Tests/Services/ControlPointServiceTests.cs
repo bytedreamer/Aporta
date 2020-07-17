@@ -2,10 +2,12 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
+using Aporta.Core.Hubs;
 using Aporta.Core.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
+using SignalR_UnitTestingSupportCommon.IHubContextSupport;
 
 namespace Aporta.Core.Tests.Services
 {
@@ -24,10 +26,12 @@ namespace Aporta.Core.Tests.Services
             _persistConnection.Open();
 
             await _dataAccess.UpdateSchema();
-            _extensionService = new ExtensionService(_dataAccess, _loggerFactory.CreateLogger<ExtensionService>(),
+            _extensionService = new ExtensionService(_dataAccess,
+                new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
+                _loggerFactory.CreateLogger<ExtensionService>(),
                 _loggerFactory);
             await _extensionService.Startup();
-            await _extensionService.EnableExtension(_extensionId, true);  
+            await _extensionService.EnableExtension(_extensionId, true);
         }
 
         [TearDown]
