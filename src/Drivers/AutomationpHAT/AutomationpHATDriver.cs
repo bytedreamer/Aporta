@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Device.Gpio;
 using System.Threading.Tasks;
-using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
 

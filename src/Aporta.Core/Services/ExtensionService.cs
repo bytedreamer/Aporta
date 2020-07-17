@@ -19,10 +19,10 @@ namespace Aporta.Core.Services
     /// <summary>
     /// 
     /// </summary>
-    public class MainService : IMainService
+    public class ExtensionService
     {
         private readonly ILoggerFactory _loggerFactory;
-        private readonly ILogger<MainService> _logger;
+        private readonly ILogger<ExtensionService> _logger;
         private readonly ExtensionRepository _extensionRepository;
         private readonly EndpointRepository _endpointRepository;
 
@@ -30,7 +30,7 @@ namespace Aporta.Core.Services
         
         private readonly List<IControlPoint> _configuredEndpoints = new List<IControlPoint>();
 
-        public MainService(IDataAccess dataAccess, ILogger<MainService> logger, ILoggerFactory loggerFactory)
+        public ExtensionService(IDataAccess dataAccess, ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
         {
             _logger = logger;
             _loggerFactory = loggerFactory;
@@ -97,17 +97,15 @@ namespace Aporta.Core.Services
         {
             var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
             
-            _logger.LogInformation($"Performing  for extension {matchingExtension.Name}");
+            _logger.LogInformation($"Performing {action} for extension {matchingExtension.Name}");
 
             return await matchingExtension.Driver.PerformAction(action, parameters);
         }
 
-        public async Task SetOutput(Guid extensionId, string driverId, bool state)
+        public IControlPoint GetControlPoint(Guid extensionId, string driverId)
         {
-            var matchingEndpoint = _configuredEndpoints.First(endpoint =>
+            return _configuredEndpoints.First(endpoint =>
                 endpoint.ExtensionId == extensionId && endpoint.Id == driverId);
-
-            await matchingEndpoint.Set(state);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

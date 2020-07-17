@@ -25,8 +25,8 @@ namespace Aporta
                     var dataAccess = services.GetRequiredService<IDataAccess>();
                     await dataAccess.UpdateSchema();
                     
-                    var mainService = services.GetRequiredService<IMainService>();
-                    await mainService.Startup();
+                    var extensionService = services.GetRequiredService<ExtensionService>();
+                    await extensionService.Startup();
                 }
                 catch (Exception exception)
                 {

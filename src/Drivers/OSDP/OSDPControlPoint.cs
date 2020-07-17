@@ -28,7 +28,12 @@ namespace Aporta.Drivers.OSDP
         public Guid ExtensionId { get; }
         
         public string Id => $"{_device.Address}:{_output.Number}";
-        
+
+        public Task<bool> Get()
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task Set(bool state)
         {
             await _controlPanel.OutputControl(_connectionId, _device.Address,
@@ -40,5 +45,7 @@ namespace Aporta.Drivers.OSDP
                             : OutputControlCode.PermanentStateOffAbortTimedOperation, 0)
                 }));
         }
+
+        public event EventHandler<bool> ControlPointStateChanged;
     }
 }

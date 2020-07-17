@@ -1,6 +1,5 @@
 using System;
 using System.Data;
-using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Services;
@@ -10,14 +9,14 @@ using NUnit.Framework;
 
 namespace Aporta.Core.Tests.Services
 {
-    [TestFixture]
-    public class MainServiceTests
+    public class ControlPointServiceTests
     {
         private readonly Guid _extensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
         private readonly IDataAccess _dataAccess = new SqlLiteDataAccess(true);
         private readonly ILoggerFactory _loggerFactory = new NullLoggerFactory();
+        private ExtensionService _extensionService;
         private IDbConnection _persistConnection;
-        
+
         [SetUp]
         public async Task Setup()
         {
@@ -25,8 +24,12 @@ namespace Aporta.Core.Tests.Services
             _persistConnection.Open();
 
             await _dataAccess.UpdateSchema();
+            _extensionService = new ExtensionService(_dataAccess, _loggerFactory.CreateLogger<ExtensionService>(),
+                _loggerFactory);
+            await _extensionService.Startup();
+            await _extensionService.EnableExtension(_extensionId, true);  
         }
-        
+
         [TearDown]
         public void TearDown()
         {
@@ -35,31 +38,18 @@ namespace Aporta.Core.Tests.Services
         }
 
         [Test]
-        public async Task Startup()
+        public async Task SetState()
         {
             // Arrange
-            var mainService = new MainService(_dataAccess, _loggerFactory.CreateLogger<MainService>(), _loggerFactory);
+            var controlPointService = new ControlPointService(_extensionService);
             
             // Act
-            await mainService.Startup();
+            await controlPointService.SetOutput(_extensionId, "O1", true);
+            await controlPointService.SetOutput(_extensionId, "O2", false);
 
             // Assert
-            Assert.AreEqual(1, mainService.Extensions.Count());
-            Assert.IsFalse(mainService.Extensions.First().Loaded);
-        }
-        
-        [Test]
-        public async Task Enable()
-        {
-            // Arrange
-            var mainService = new MainService(_dataAccess, _loggerFactory.CreateLogger<MainService>(), _loggerFactory);
-            await mainService.Startup();
-            
-            // Act
-            await mainService.EnableExtension(_extensionId, true);           
-
-            // Assert
-            Assert.IsTrue(mainService.Extensions.First().Loaded);
+            Assert.IsTrue(await controlPointService.GetOutput(_extensionId, "O1"));
+            Assert.IsFalse(await controlPointService.GetOutput(_extensionId, "O2"));
         }
     }
 }

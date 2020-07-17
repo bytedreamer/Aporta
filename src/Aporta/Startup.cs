@@ -26,7 +26,9 @@ namespace Aporta
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<IDataAccess, SqlLiteDataAccess>();
-            services.AddSingleton<IMainService, MainService>();
+            
+            services.AddSingleton<ExtensionService, ExtensionService>();
+            services.AddSingleton<ControlPointService, ControlPointService>();
             
             services.AddSignalR();
             services.AddControllersWithViews();

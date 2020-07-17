@@ -19,27 +19,27 @@ namespace Aporta.Controllers
     public class ExtensionsController : Controller
     {
         private readonly ILogger<ExtensionsController> _logger;
-        private readonly IMainService _mainService;
+        private readonly ExtensionService _extensionService;
         private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
-        public ExtensionsController(IMainService mainService, IHubContext<DataChangeNotificationHub> hubContext,
+        public ExtensionsController(ExtensionService extensionService, IHubContext<DataChangeNotificationHub> hubContext,
             ILogger<ExtensionsController> logger)
         {
             _logger = logger;
-            if (mainService != null) _mainService = mainService;
+            if (extensionService != null) _extensionService = extensionService;
             if (hubContext != null) _hubContext = hubContext;
         }
 
         [HttpGet]
         public IEnumerable<ExtensionHost> Get()
         {
-            return _mainService.Extensions;
+            return _extensionService.Extensions;
         }
         
         [HttpGet("{extensionId:Guid}")]
         public ExtensionHost Get(Guid extensionId)
         {
-            return _mainService.Extensions.First(extension => extension.Id == extensionId);
+            return _extensionService.Extensions.First(extension => extension.Id == extensionId);
         }
 
         [HttpPost("{extensionId:Guid}")]
@@ -48,7 +48,7 @@ namespace Aporta.Controllers
             bool success = true;
             try
             {
-                await _mainService.EnableExtension(extensionId, enabled);
+                await _extensionService.EnableExtension(extensionId, enabled);
             }
             catch (Exception exception)
             {
@@ -60,14 +60,14 @@ namespace Aporta.Controllers
 
             return success ? (ActionResult) NoContent() : Problem();
         }
-        
+
         [HttpPost("{extensionId:Guid}/configuration")]
         public async Task<ActionResult> UpdateConfiguration(Guid extensionId, [FromBody] dynamic configuration)
         {
             bool success = true;
             try
             {
-                await _mainService.UpdateConfiguration(extensionId, JsonSerializer.Serialize(configuration));
+                await _extensionService.UpdateConfiguration(extensionId, JsonSerializer.Serialize(configuration));
             }
             catch (Exception exception)
             {
@@ -76,10 +76,10 @@ namespace Aporta.Controllers
             }
 
             await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
-            
+
             return success ? (ActionResult) NoContent() : Problem();
         }
-        
+
         [HttpPost("{extensionId:Guid}/action/{actionType}")]
         public async Task<ActionResult> PerformAction(Guid extensionId, string actionType, [FromBody] dynamic parameter)
         {
@@ -87,11 +87,12 @@ namespace Aporta.Controllers
             string result = string.Empty;
             try
             {
-                result = await _mainService.PerformAction(extensionId, actionType, JsonSerializer.Serialize(parameter));
+                result = await _extensionService.PerformAction(extensionId, actionType,
+                    JsonSerializer.Serialize(parameter));
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, $"Unable to update configuration for extension {extensionId}");
+                _logger.LogError(exception, $"Unable to perform action {actionType} for extension {extensionId}");
                 success = false;
             }
 

@@ -21,14 +21,21 @@ namespace Aporta.Drivers.AutomationpHAT
         }
 
         public string Name { get; }
-
         public Guid ExtensionId { get; }
-        public string Id => _pin.ToString();
         
-        public async Task Set(bool state)
+        public string Id => _pin.ToString();
+
+        public Task<bool> Get()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Set(bool state)
         {
             _controller.Write(_pin, state ? PinValue.High : PinValue.Low);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
+
+        public event EventHandler<bool> ControlPointStateChanged;
     }
 }
