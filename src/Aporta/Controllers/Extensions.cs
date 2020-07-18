@@ -53,23 +53,6 @@ namespace Aporta.Controllers
             return success ? (ActionResult) NoContent() : Problem();
         }
 
-        [HttpPost("{extensionId:Guid}/configuration")]
-        public async Task<ActionResult> UpdateConfiguration(Guid extensionId, [FromBody] dynamic configuration)
-        {
-            bool success = true;
-            try
-            {
-                await _extensionService.UpdateConfiguration(extensionId, JsonSerializer.Serialize(configuration));
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, $"Unable to update configuration for extension {extensionId}");
-                success = false;
-            }
-
-            return success ? (ActionResult) NoContent() : Problem();
-        }
-
         [HttpPost("{extensionId:Guid}/action/{actionType}")]
         public async Task<ActionResult> PerformAction(Guid extensionId, string actionType, [FromBody] dynamic parameter)
         {

@@ -49,11 +49,10 @@ namespace Aporta.Drivers.OSDP
             var matchingBus = _configuration.Buses.Single(bus =>
                 bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
             var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
-            
-            if (!matchingDevice.CheckedCapabilities && sender is ControlPanel panel && eventArgs.IsConnected)
+
+            List<IControlPoint> controlPoints = new List<IControlPoint>();
+            if (eventArgs.IsConnected &&  sender is ControlPanel panel && !matchingDevice.CheckedCapabilities)
             {
-                List<IControlPoint> controlPoints = new List<IControlPoint>();
-                
                 var capabilities = await panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address);
                 foreach (var outputControl in capabilities.Capabilities.Where(capability =>
                     capability.Function == CapabilityFunction.OutputControl))
@@ -125,7 +124,7 @@ namespace Aporta.Drivers.OSDP
             _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
         }
 
-        public string InitialConfiguration()
+        public string CurrentConfiguration()
         {
             return JsonSerializer.Serialize(_configuration);
         }
@@ -135,6 +134,8 @@ namespace Aporta.Drivers.OSDP
             Enum.TryParse(action, out ActionType actionEnum);
             return actionEnum switch
             {
+                ActionType.AddBus => AddBus(parameters),
+                ActionType.RemoveBus => RemoveBus(parameters),
                 ActionType.AddUpdateDevice => AddUpdateDevice(parameters),
                 ActionType.RemoveDevice => RemoveDevice(parameters),
                 _ => await Task.FromResult(string.Empty)
@@ -142,20 +143,56 @@ namespace Aporta.Drivers.OSDP
         }
 
         public event EventHandler<AddEndpointsEventArgs> AddEndpoints;
+        
+        private string AddBus(string parameters)
+        {
+            var busAction = JsonSerializer.Deserialize<BusAction>(parameters);
+
+            _configuration.Buses.Add(busAction.Bus);
+
+            _portMapping.Add(busAction.Bus.PortName,
+                _panel.StartConnection(new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate)));
+            
+            return string.Empty;
+        }
+        
+        private string RemoveBus(string parameters)
+        {
+            var busAction = JsonSerializer.Deserialize<BusAction>(parameters);
+
+            var devices = _configuration.Buses.First(bus => bus.PortName == busAction.Bus.PortName).Devices;
+            var addresses = devices.Select(device => device.Address).ToArray();
+            devices.Clear();
+            foreach (byte address in addresses)
+            {
+                _panel.RemoveDevice(_portMapping[busAction.Bus.PortName], address);
+            }
+
+            _configuration.Buses.RemoveAll(bus => bus.PortName == busAction.Bus.PortName);
+
+            _portMapping.Remove(busAction.Bus.PortName);
+
+            return string.Empty;
+        }
 
         private string AddUpdateDevice(string parameters)
         {
             var deviceAction = JsonSerializer.Deserialize<DeviceAction>(parameters);
+
+            _configuration.Buses.First(bus => bus.PortName == deviceAction.PortName).Devices.Add(deviceAction.Device);
             
             _panel.AddDevice(_portMapping[deviceAction.PortName], deviceAction.Device.Address, true, false);
             
             return string.Empty;
         }
-        
+
         private string RemoveDevice(string parameters)
         {
             var deviceAction = JsonSerializer.Deserialize<DeviceAction>(parameters);
             
+            _configuration.Buses.First(bus => bus.PortName == deviceAction.PortName).Devices
+                .RemoveAll(device => device.Address == deviceAction.Device.Address);
+
             _panel.RemoveDevice(_portMapping[deviceAction.PortName], deviceAction.Device.Address);
 
             return string.Empty;

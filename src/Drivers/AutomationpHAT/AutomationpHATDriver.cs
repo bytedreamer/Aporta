@@ -31,7 +31,7 @@ namespace Aporta.Drivers.AutomationpHAT
             _controller?.Dispose();
         }
 
-        public string InitialConfiguration()
+        public string CurrentConfiguration()
         {
             return string.Empty;
         }

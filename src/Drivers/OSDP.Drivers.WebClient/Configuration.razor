@@ -48,7 +48,7 @@
                                             Remove
                                         </Button>
                                         
-                                        <Button Clicked="@(async () => await AddDevice(bus.PortName, "OCM-1000", 1))">
+                                        <Button Clicked="@(() =>ShowAddDeviceDialog(bus.PortName))">
                                             Add Device
                                         </Button>
                                     </CollapseHeader>
@@ -57,6 +57,8 @@
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHeaderCell>Name</TableHeaderCell>
+                                                    <TableHeaderCell>Address</TableHeaderCell>
+                                                    <TableHeaderCell></TableHeaderCell>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -65,10 +67,15 @@
                                                     <TableRow>
                                                         <TableRowHeader>
                                                             @device.Name
+                                                        </TableRowHeader>
+                                                        <TableRowCell>
+                                                            @device.Address
+                                                        </TableRowCell>
+                                                        <TableRowCell>
                                                             <Button Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
                                                                 Remove
                                                             </Button>
-                                                        </TableRowHeader>
+                                                        </TableRowCell>
                                                     </TableRow>
                                                 }
                                             </TableBody>
@@ -94,21 +101,25 @@
                 <ModalBody>
                     <Field>
                         <FieldLabel>Port</FieldLabel>
-                        <Select TValue="string" @bind-SelectedValue="_addBus.PortName">
-                            @foreach (var portName in _unusedPorts)
-                            {
-                                <SelectItem Value=@portName>@portName</SelectItem>
-                            }
-                        </Select>
+                        <FieldBody>
+                            <Select TValue="string" @bind-SelectedValue="_addBus.PortName">
+                                @foreach (var portName in _unusedPorts)
+                                {
+                                    <SelectItem Value=@portName>@portName</SelectItem>
+                                }
+                            </Select>
+                        </FieldBody>
                     </Field>
                     <Field>
                         <FieldLabel>Baud Rate</FieldLabel>
-                        <Select TValue="int" @bind-SelectedValue="_addBus.BaudRate">
-                            @foreach (var baudRate in _baudRates)
-                            {
-                                <SelectItem Value=@baudRate>@baudRate</SelectItem>
-                            }
-                        </Select>
+                        <FieldBody>
+                            <Select TValue="int" @bind-SelectedValue="_addBus.BaudRate">
+                                @foreach (var baudRate in _baudRates)
+                                {
+                                    <SelectItem Value=@baudRate>@baudRate</SelectItem>
+                                }
+                            </Select>
+                        </FieldBody>
                     </Field>
                 </ModalBody>
                 <ModalFooter>
@@ -117,14 +128,65 @@
                 </ModalFooter>
             </ModalContent>
         </Modal>
+
+        <Modal @ref="_addDeviceModal">
+            <ModalBackdrop/>
+            <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                        <ModalTitle>
+                            Add Device to @_currentBus?.PortName
+                        </ModalTitle>
+                        <CloseButton Clicked="@_addDeviceModal.Hide"/>
+                    </ModalHeader>
+                    <ModalBody>
+                        <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addDeviceValidations">
+                            <Validation Validator="@ValidationRule.IsNotEmpty" >
+                                <Field>
+                                    <FieldLabel>Name</FieldLabel>
+                                    <FieldBody>
+                                        <TextEdit @bind-Text="_addDevice.Name">
+                                            <Feedback>
+                                                <ValidationError>
+                                                    Please enter a name for the device
+                                                </ValidationError>
+                                            </Feedback>
+                                        </TextEdit>
+                                    </FieldBody>
+                                </Field>
+                            </Validation>
+                            <Validation Validator="@ValidateDeviceAddress">
+                                <Field>
+                                    <FieldLabel>Address</FieldLabel>
+                                    <FieldBody>
+                                        <NumericEdit @bind-Value="_addDevice.Address" TValue="byte" Decimals="0">
+                                            <ValidationError>
+                                                Address already used by a device
+                                            </ValidationError>
+                                        </NumericEdit>
+                                    </FieldBody>
+                                </Field>
+                            </Validation>
+                        </Validations>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button Color="Color.Secondary" Clicked="@_addDeviceModal.Hide">Close</Button>
+                        <Button Color="Color.Primary" Clicked="@(async () => await AddDevice())">Add</Button>
+                    </ModalFooter>
+ 
+            </ModalContent>
+        </Modal>
     }
 
 @code {
     private Bus _addBus;
+    private Bus _currentBus;
+    private Device _addDevice;
     private IEnumerable<string> _unusedPorts;
-
+    
     private Modal _addPortModal;
-
+    private Modal _addDeviceModal;
+    private Validations _addDeviceValidations;
+    
     private readonly IEnumerable<int> _baudRates = new[]
     {
         9600,
@@ -151,6 +213,8 @@
     {
         _configuration = JsonSerializer.Deserialize<Shared.Actions.Configuration>(RawConfiguration);
 
+        _addDevice = new Device{Name = string.Empty, Address = 0};
+        
         InitializeNewBus();
     }  
 
@@ -177,70 +241,62 @@
     private async Task AddBus()
     {
         _addPortModal.Hide();
-
-        _configuration.Buses.Add(_addBus);
-
-        await SendUpdatedConfiguration();
+        
+        await PerformAction(ActionType.AddBus.ToString(),
+            JsonSerializer.Serialize(new BusAction
+            {
+                Bus = _addBus
+            }));
     }
 
     private async Task RemoveBus(string busPortName)
     {
         var matchingBus = _configuration.Buses.First(bus => bus.PortName == busPortName);
         
-        _configuration.Buses.Remove(matchingBus);
-
-        await SendUpdatedConfiguration();
+        await PerformAction(ActionType.RemoveBus.ToString(),
+            JsonSerializer.Serialize(new BusAction
+            {
+                Bus = matchingBus
+            }));
     }
 
-    private async Task AddDevice(string portName, string deviceName, byte address)
+    private void ShowAddDeviceDialog(string portName)
     {
-        var matchingBus = _configuration.Buses.First(bus => bus.PortName == portName);
-        if (matchingBus.Devices.Any(device => device.Address == address))
+        _currentBus = _configuration.Buses.First(bus => bus.PortName == portName);
+        _addDevice = new Device{Name = string.Empty, Address = 0};
+        
+        _addDeviceModal.Show();
+    }
+
+    private async Task AddDevice()
+    {
+        if (!_addDeviceValidations.ValidateAll())
         {
-            throw new Exception($"Device already exists at address {address}");
+            return;
         }
-
-        var addedDevice = new Device {Name = deviceName, Address = address};
-
-        matchingBus.Devices.Add(addedDevice);
-
-        await SendUpdatedConfiguration();
+        
+        _addDeviceModal.Hide();
 
         await PerformAction(ActionType.AddUpdateDevice.ToString(),
             JsonSerializer.Serialize(new DeviceAction
             {
-                PortName = matchingBus.PortName,
-                Device = addedDevice
+                PortName = _currentBus.PortName,
+                Device = _addDevice
             }));
     }
 
     private async Task RemoveDevice(string portName, byte address)
     {
-        var matchingBus = _configuration.Buses.First(bus => bus.PortName == portName);
+        _currentBus = _configuration.Buses.First(bus => bus.PortName == portName);
 
-        var removingDevice = matchingBus.Devices.First(device => device.Address == address);
-
-        matchingBus.Devices.Remove(removingDevice);
-
-        await SendUpdatedConfiguration();
+        var removingDevice = _currentBus.Devices.First(device => device.Address == address);
 
         await PerformAction(ActionType.RemoveDevice.ToString(),
             JsonSerializer.Serialize(new DeviceAction
             {
-                PortName = matchingBus.PortName,
+                PortName = _currentBus.PortName,
                 Device = removingDevice
             }));
-    }
-
-    private async Task SendUpdatedConfiguration()
-    {
-        string url = string.Format(Paths.ExtensionConfiguration, ExtensionId);
-        var response = await Http.PostAsync(url,
-            new StringContent(JsonSerializer.Serialize(_configuration), Encoding.UTF8, "application/json"));
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new Exception($"Unable to update extension configuration. Response reason - {(int) response.StatusCode}:{response.ReasonPhrase}");
-        }
     }
     
     private async Task PerformAction(string actionType, string parameters)
@@ -253,4 +309,11 @@
             throw new Exception($"Unable to perform action. Response reason - {(int) response.StatusCode}:{response.ReasonPhrase}");
         }
     }
+
+    private void ValidateDeviceAddress(ValidatorEventArgs eventArgs)
+    {
+        byte address = Convert.ToByte(eventArgs.Value);
+        eventArgs.Status = _currentBus.Devices.All(device => device.Address != address) ? ValidationStatus.Success : ValidationStatus.Error;
+    }
+
 }

@@ -88,38 +88,32 @@ namespace Aporta.Core.Services
             }
         }
 
-        public async Task UpdateConfiguration(Guid extensionId, string configuration)
+        public async Task<string> PerformAction(Guid extensionId, string action, string parameters)
         {
+            var matchingExtension = MatchingExtensionHost(extensionId);
+            
+            _logger.LogInformation($"Performing {action} for extension {matchingExtension.Name}");
+
+            string result =  await matchingExtension.Driver.PerformAction(action, parameters);
+            
+            _logger.LogInformation($"Saving configuration for extension {matchingExtension.Name}");
+
             try
             {
-                var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
-            
-                _logger.LogInformation($"Updating configuration for extension {matchingExtension.Name}");
-
-                matchingExtension.Configuration = configuration;
+                matchingExtension.Configuration = matchingExtension.Driver.CurrentConfiguration();
                 await _extensionRepository.Update(matchingExtension);
-            
-                UnloadExtension(matchingExtension);
-                LoadExtension(matchingExtension);
             }
             finally
             {
                 await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
             }
-        }
 
-        public async Task<string> PerformAction(Guid extensionId, string action, string parameters)
-        {
-            var matchingExtension = Driver(extensionId);
-            
-            _logger.LogInformation($"Performing {action} for extension {matchingExtension.Name}");
-
-            return await matchingExtension.PerformAction(action, parameters);
+            return result;
         }
         
-        private IHardwareDriver Driver(Guid extensionId)
+        private ExtensionHost MatchingExtensionHost(Guid extensionId)
         {
-            return _extensions.First(extension => extension.Id == extensionId).Driver;
+            return _extensions.First(extension => extension.Id == extensionId);
         }
 
         public IControlPoint GetControlPoint(Guid extensionId, string driverId)
@@ -197,7 +191,7 @@ namespace Aporta.Core.Services
             extension.Driver.AddEndpoints += DriverOnAddEndpoints;
             
             extension.Driver.Load(extension.Configuration, _loggerFactory);
-            extension.Configuration = extension.Driver.InitialConfiguration();
+            extension.Configuration = extension.Driver.CurrentConfiguration();
 
             extension.Loaded = true;
         }

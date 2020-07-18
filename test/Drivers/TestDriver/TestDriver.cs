@@ -34,7 +34,7 @@ namespace Aporta.Drivers.TestDriver
 
         }
 
-        public string InitialConfiguration()
+        public string CurrentConfiguration()
         {
             return string.Empty;
         }

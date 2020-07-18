@@ -29,7 +29,7 @@ namespace Aporta.Extensions.Hardware
         /// The initial configuration after loading the driver
         /// </summary>
         /// <returns>A configuration with initial values</returns>
-        string InitialConfiguration();
+        string CurrentConfiguration();
 
         /// <summary>
         /// Perform a custom action for the driver
