@@ -51,34 +51,4 @@ namespace Aporta.Drivers.TestDriver
             AddEndpoints?.Invoke(this, new AddEndpointsEventArgs {Endpoints = endpoints});
         }
     }
-
-    public sealed class TestControlPoint : IControlPoint
-    {
-        private bool _currentState;
-
-        public string Name { get; internal set; }
-        
-        public Guid ExtensionId { get; internal set; }
-        
-        public string Id { get; internal set;}
-
-        public Task<bool> Get()
-        {
-            return Task.FromResult(_currentState);
-        }
-
-        public Task Set(bool state)
-        {
-            _currentState = state;
-            OnControlPointStateChanged(_currentState);
-            return Task.CompletedTask;
-        }
-
-        public event EventHandler<bool> ControlPointStateChanged;
-
-        private void OnControlPointStateChanged(bool state)
-        {
-            ControlPointStateChanged?.Invoke(this, state);
-        }
-    }
 }
