@@ -9,9 +9,10 @@ using NUnit.Framework;
 
 namespace Aporta.Core.Tests.DataAccess.Repositories
 {
+    [TestFixture]
     public class EndpointTest
     {
-        private readonly IDataAccess _dataAccess = new SqlLiteDataAccess(true);
+        private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private IDbConnection _persistConnection;
         private Guid _extensionId;
         

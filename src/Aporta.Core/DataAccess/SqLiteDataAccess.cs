@@ -9,7 +9,7 @@ using Microsoft.Data.Sqlite;
 
 namespace Aporta.Core.DataAccess
 {
-    public class SqlLiteDataAccess : IDataAccess
+    public class SqLiteDataAccess : IDataAccess
     {
         private const string MemorySource = "Aporta;Mode=Memory;Cache=Shared";
         private const string FileName = "Aporta.sqlite";
@@ -26,7 +26,7 @@ namespace Aporta.Core.DataAccess
         /// 
         /// </summary>
         /// <param name="inMemory">Set to true if database is temporarily created in memory</param>
-        public SqlLiteDataAccess(bool inMemory = false)
+        public SqLiteDataAccess(bool inMemory = false)
         {
             _inMemory = inMemory;
         }

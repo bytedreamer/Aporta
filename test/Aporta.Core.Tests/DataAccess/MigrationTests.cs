@@ -5,10 +5,11 @@ using NUnit.Framework;
 
 namespace Aporta.Core.Tests.DataAccess
 {
+    [TestFixture]
     public class MigrationTests
     {
         private const int CurrentVersion = 2;
-        private readonly IDataAccess _dataAccess = new SqlLiteDataAccess(true);
+        private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private IDbConnection _persistConnection;
         
         [SetUp]

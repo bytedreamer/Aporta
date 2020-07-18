@@ -19,7 +19,7 @@ namespace Aporta.Core.Tests.Services
     public class ExtensionServiceTests
     {
         private readonly Guid _extensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
-        private readonly IDataAccess _dataAccess = new SqlLiteDataAccess(true);
+        private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private readonly ILoggerFactory _loggerFactory = new NullLoggerFactory();
         private IDbConnection _persistConnection;
         

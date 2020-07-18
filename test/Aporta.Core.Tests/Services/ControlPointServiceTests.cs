@@ -11,10 +11,11 @@ using SignalR_UnitTestingSupportCommon.IHubContextSupport;
 
 namespace Aporta.Core.Tests.Services
 {
+    [TestFixture]
     public class ControlPointServiceTests
     {
         private readonly Guid _extensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
-        private readonly IDataAccess _dataAccess = new SqlLiteDataAccess(true);
+        private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private readonly ILoggerFactory _loggerFactory = new NullLoggerFactory();
         private ExtensionService _extensionService;
         private IDbConnection _persistConnection;

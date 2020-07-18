@@ -12,7 +12,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
     [TestFixture]
     public class ExtensionTests
     {
-        private readonly IDataAccess _dataAccess = new SqlLiteDataAccess(true);
+        private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private IDbConnection _persistConnection;
         
         [SetUp]
