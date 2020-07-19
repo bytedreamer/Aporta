@@ -9,7 +9,7 @@ namespace Aporta.Shared.Models
         public string Name { get; set; }
         
         
-        public string DriverId { get; set; } = "";
+        public string EndpointId { get; set; } = "";
         
         public Guid ExtensionId { get; set; }
 

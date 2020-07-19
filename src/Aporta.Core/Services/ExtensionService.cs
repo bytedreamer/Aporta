@@ -32,7 +32,7 @@ namespace Aporta.Core.Services
 
         private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
         
-        private readonly List<IControlPoint> _configuredEndpoints = new List<IControlPoint>();
+        private readonly List<IEndpoint> _configuredEndpoints = new List<IEndpoint>();
 
         public ExtensionService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
             ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
@@ -98,15 +98,7 @@ namespace Aporta.Core.Services
             
             _logger.LogInformation($"Saving configuration for extension {matchingExtension.Name}");
 
-            try
-            {
-                matchingExtension.Configuration = matchingExtension.Driver.CurrentConfiguration();
-                await _extensionRepository.Update(matchingExtension);
-            }
-            finally
-            {
-                await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
-            }
+            await SaveCurrentConfiguration(matchingExtension);
 
             return result;
         }
@@ -116,10 +108,13 @@ namespace Aporta.Core.Services
             return _extensions.First(extension => extension.Id == extensionId);
         }
 
-        public IControlPoint GetControlPoint(Guid extensionId, string driverId)
+        public IControlPoint GetControlPoint(Guid extensionId, string endpointId)
         {
-            return _configuredEndpoints.First(endpoint =>
-                endpoint.ExtensionId == extensionId && endpoint.Id == driverId);
+            var controlPoints = _configuredEndpoints.Where(endpoint =>
+                    endpoint.ExtensionId == extensionId && endpoint.Id == endpointId)
+                .Cast<IControlPoint>();
+
+            return controlPoints.First(endpoint => endpoint.Id == endpointId);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -201,20 +196,35 @@ namespace Aporta.Core.Services
             if (!(sender is IHardwareDriver driver)) return;
 
             var existingEndpoints = (await _endpointRepository.GetForExtension(driver.Id)).ToArray();
-            foreach (var endpoint in eventArgs.Endpoints.Cast<IControlPoint>())
+            foreach (var endpoint in eventArgs.Endpoints)
             {
                 if (!existingEndpoints.Any(configuredEndpoint =>
-                    configuredEndpoint.ExtensionId == driver.Id && configuredEndpoint.DriverId != endpoint.Id))
+                    configuredEndpoint.ExtensionId == driver.Id && configuredEndpoint.EndpointId != endpoint.Id))
                 {
                     var configuredEndpoint = new Endpoint
                     {
-                        DriverId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
-                        Type = EndpointType.Output
+                        EndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
+                        Type = endpoint.GetType() == typeof(IControlPoint) ? EndpointType.Output : EndpointType.Reader
                     };
 
                     await _endpointRepository.Insert(configuredEndpoint);
                 }
                 _configuredEndpoints.Add(endpoint);
+            }
+            
+            await SaveCurrentConfiguration(MatchingExtensionHost(driver.Id));
+        }
+
+        private async Task SaveCurrentConfiguration(ExtensionHost extension)
+        {
+            try
+            {
+                extension.Configuration = extension.Driver.CurrentConfiguration();
+                await _extensionRepository.Update(extension);
+            }
+            finally
+            {
+                await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extension.Id);
             }
         }
 

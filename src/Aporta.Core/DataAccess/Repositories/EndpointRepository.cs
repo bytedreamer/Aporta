@@ -62,7 +62,7 @@ namespace Aporta.Core.DataAccess.Repositories
                 new
                 {
                     name = endpoint.Name, endpointType = endpoint.Type,
-                    configuration = endpoint.DriverId, extensionId = endpoint.ExtensionId
+                    configuration = endpoint.EndpointId, extensionId = endpoint.ExtensionId
                 });
         }
 

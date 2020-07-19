@@ -36,6 +36,7 @@ namespace Aporta.Drivers.OSDP
             _panel = new ControlPanel(loggerFactory.CreateLogger<ControlPanel>());
             
             _panel.ConnectionStatusChanged += PanelOnConnectionStatusChanged;
+            _panel.RawCardDataReplyReceived += PanelOnRawCardDataReplyReceived;
 
             ExtractConfiguration(configuration);
             
@@ -43,23 +44,24 @@ namespace Aporta.Drivers.OSDP
 
             AddDevices();
         }
-
+        
         private async void PanelOnConnectionStatusChanged(object sender, ControlPanel.ConnectionStatusEventArgs eventArgs)
         {
             var matchingBus = _configuration.Buses.Single(bus =>
                 bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
             var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
 
-            List<IControlPoint> controlPoints = new List<IControlPoint>();
-            if (eventArgs.IsConnected &&  sender is ControlPanel panel && !matchingDevice.CheckedCapabilities)
+            List<IEndpoint> endpoints = new List<IEndpoint>();
+            
+            if (eventArgs.IsConnected && !matchingDevice.CheckedCapabilities)
             {
-                var capabilities = await panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address);
-                foreach (var outputControl in capabilities.Capabilities.Where(capability =>
+                var capabilities = await _panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address);
+                foreach (var outputCapability in capabilities.Capabilities.Where(capability =>
                     capability.Function == CapabilityFunction.OutputControl))
                 {
                     if (matchingDevice.Outputs.Any()) continue;
 
-                    for (byte outputNumber = 0; outputNumber < outputControl.NumberOf; outputNumber++)
+                    for (byte outputNumber = 0; outputNumber < outputCapability.NumberOf; outputNumber++)
                     {
                         var output = new Output
                         {
@@ -67,15 +69,48 @@ namespace Aporta.Drivers.OSDP
                             Number = outputNumber
                         };
                         matchingDevice.Outputs.Add(output);
-                        controlPoints.Add(new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                        endpoints.Add(new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
                             output));
                     }
                 }
-                
-                OnAddEndpoints(controlPoints);
+
+                foreach (var readerCapability in capabilities.Capabilities.Where(capability =>
+                    capability.Function == CapabilityFunction.Readers))
+                {
+                    if (matchingDevice.Readers.Any()) continue;
+
+                    for (byte readerNumber = 0; readerNumber < readerCapability.NumberOf; readerNumber++)
+                    {
+                        var reader = new Reader
+                        {
+                            Name = $"{matchingDevice.Name} - Reader {readerNumber}",
+                            Number = readerNumber
+                        };
+                        matchingDevice.Readers.Add(reader);
+                        endpoints.Add(new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                            reader));
+                    }
+                }
 
                 matchingDevice.CheckedCapabilities = true;
+                
+                OnAddEndpoints(endpoints);
             }
+            else if (eventArgs.IsConnected && matchingDevice.CheckedCapabilities)
+            {
+                endpoints.AddRange(matchingDevice.Readers.Select(matchingDeviceReader =>
+                    new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                        matchingDeviceReader)));
+                endpoints.AddRange(matchingDevice.Outputs.Select(matchingDeviceOutput =>
+                    new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice, matchingDeviceOutput)));
+                
+                OnAddEndpoints(endpoints);
+            }
+        }
+        
+        private void PanelOnRawCardDataReplyReceived(object sender, ControlPanel.RawCardDataReplyEventArgs eventArgs)
+        {
+
         }
 
         private void AddDevices()
@@ -122,6 +157,7 @@ namespace Aporta.Drivers.OSDP
             _panel.Shutdown();
             
             _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
+            _panel.RawCardDataReplyReceived -= PanelOnRawCardDataReplyReceived;
         }
 
         public string CurrentConfiguration()
