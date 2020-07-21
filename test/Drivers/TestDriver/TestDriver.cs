@@ -18,7 +18,9 @@ namespace Aporta.Drivers.TestDriver
         public string Name => "Test Driver";
 
         public Guid Id => Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
-            
+
+        public IEnumerable<IEndpoint> Endpoints => _controlPoints;
+
         public void Load(string configuration, ILoggerFactory loggerFactory)
         {
             foreach (var controlPoint in _controlPoints)
@@ -26,7 +28,7 @@ namespace Aporta.Drivers.TestDriver
                 controlPoint.ExtensionId = Id;
             }
             
-            OnAddEndpoints(_controlPoints);
+            OnUpdatedEndpoints();
         }
 
         public void Unload()
@@ -44,11 +46,11 @@ namespace Aporta.Drivers.TestDriver
             throw new NotImplementedException();
         }
 
-        public event EventHandler<AddEndpointsEventArgs> AddEndpoints;
+        public event EventHandler<EventArgs> UpdatedEndpoints;
 
-        protected virtual void OnAddEndpoints(IEnumerable<IEndpoint> endpoints)
+        protected virtual void OnUpdatedEndpoints()
         {
-            AddEndpoints?.Invoke(this, new AddEndpointsEventArgs {Endpoints = endpoints});
+            UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
         }
     }
 }

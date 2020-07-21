@@ -8,7 +8,7 @@ namespace Aporta.Core.DataAccess.Repositories
 {
     public class EndpointRepository
     {
-        private const string SqlSelect = @"select id, name, endpoint_type as type, driver_id, extension_id as extensionId
+        private const string SqlSelect = @"select id, name, endpoint_type as type, driver_id as endpointId, extension_id as extensionId
                                             from endpoint";
 
         private const string SqlInsert = @"insert into endpoint

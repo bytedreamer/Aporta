@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -24,6 +25,8 @@ namespace Aporta.Core.Services
     /// </summary>
     public class ExtensionService
     {
+        private static readonly SemaphoreSlim EndpointUpdateSemaphore = new SemaphoreSlim(1, 1);
+
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ExtensionService> _logger;
         private readonly ExtensionRepository _extensionRepository;
@@ -31,8 +34,6 @@ namespace Aporta.Core.Services
         private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
         private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
-        
-        private readonly List<IEndpoint> _configuredEndpoints = new List<IEndpoint>();
 
         public ExtensionService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
             ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
@@ -49,7 +50,7 @@ namespace Aporta.Core.Services
         public async Task Startup()
         {
             _logger.LogInformation("Starting extension service");
-            
+
             await DiscoverExtensions();
 
             LoadExtensions();
@@ -58,7 +59,7 @@ namespace Aporta.Core.Services
         public void Shutdown()
         {
             _logger.LogInformation("Shutting down extension service");
-            
+
             UnloadExtensions();
         }
 
@@ -67,7 +68,7 @@ namespace Aporta.Core.Services
             try
             {
                 var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
-            
+
                 _logger.LogInformation($"{(enabled ? "Enabling" : "Disabling")} extension {matchingExtension.Name}");
 
                 matchingExtension.Enabled = enabled;
@@ -91,18 +92,18 @@ namespace Aporta.Core.Services
         public async Task<string> PerformAction(Guid extensionId, string action, string parameters)
         {
             var matchingExtension = MatchingExtensionHost(extensionId);
-            
+
             _logger.LogInformation($"Performing {action} for extension {matchingExtension.Name}");
 
-            string result =  await matchingExtension.Driver.PerformAction(action, parameters);
-            
+            string result = await matchingExtension.Driver.PerformAction(action, parameters);
+
             _logger.LogInformation($"Saving configuration for extension {matchingExtension.Name}");
 
             await SaveCurrentConfiguration(matchingExtension);
 
             return result;
         }
-        
+
         private ExtensionHost MatchingExtensionHost(Guid extensionId)
         {
             return _extensions.First(extension => extension.Id == extensionId);
@@ -110,11 +111,9 @@ namespace Aporta.Core.Services
 
         public IControlPoint GetControlPoint(Guid extensionId, string endpointId)
         {
-            var controlPoints = _configuredEndpoints.Where(endpoint =>
-                    endpoint.ExtensionId == extensionId && endpoint.Id == endpointId)
-                .Cast<IControlPoint>();
+            var endpoints = Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints;
 
-            return controlPoints.First(endpoint => endpoint.Id == endpointId);
+            return endpoints.First(endpoint => endpoint.Id == endpointId) as IControlPoint;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -171,7 +170,7 @@ namespace Aporta.Core.Services
                 {
                     LoadExtension(extension);
                 }
-                catch(Exception exception)
+                catch (Exception exception)
                 {
                     _logger.LogError(exception, $"Unable to load extension {extension.Name}");
                 }
@@ -183,36 +182,61 @@ namespace Aporta.Core.Services
             extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
             extension.Host.Load();
             extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
-            extension.Driver.AddEndpoints += DriverOnAddEndpoints;
-            
+            extension.Driver.UpdatedEndpoints += DriverOnUpdatedEndpoints;
+
             extension.Driver.Load(extension.Configuration, _loggerFactory);
             extension.Configuration = extension.Driver.CurrentConfiguration();
 
             extension.Loaded = true;
         }
 
-        private async void DriverOnAddEndpoints(object sender, AddEndpointsEventArgs eventArgs)
+        private async void DriverOnUpdatedEndpoints(object sender, EventArgs eventArgs)
         {
             if (!(sender is IHardwareDriver driver)) return;
 
-            var existingEndpoints = (await _endpointRepository.GetForExtension(driver.Id)).ToArray();
-            foreach (var endpoint in eventArgs.Endpoints)
+            await EndpointUpdateSemaphore.WaitAsync();
+
+            try
             {
-                if (!existingEndpoints.Any(configuredEndpoint =>
-                    configuredEndpoint.ExtensionId == driver.Id && configuredEndpoint.EndpointId != endpoint.Id))
+                var existingEndpoints = (await _endpointRepository.GetForExtension(driver.Id)).ToArray();
+                foreach (var endpoint in EndpointsToBeInserted(driver, existingEndpoints))
                 {
-                    var configuredEndpoint = new Endpoint
+                    var insertEndpoint = new Endpoint
                     {
                         EndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
-                        Type = endpoint.GetType() == typeof(IControlPoint) ? EndpointType.Output : EndpointType.Reader
+                        Type = endpoint is IControlPoint ? EndpointType.Output : EndpointType.Reader
                     };
 
-                    await _endpointRepository.Insert(configuredEndpoint);
+                    await _endpointRepository.Insert(insertEndpoint);
                 }
-                _configuredEndpoints.Add(endpoint);
+
+                foreach (var endpoint in EndpointsToBeDeleted(driver, existingEndpoints))
+                {
+                    await _endpointRepository.Delete(endpoint.Id);
+                }
+
+                await SaveCurrentConfiguration(MatchingExtensionHost(driver.Id));
             }
-            
-            await SaveCurrentConfiguration(MatchingExtensionHost(driver.Id));
+            finally
+            {
+                EndpointUpdateSemaphore.Release();
+            }
+        }
+
+        private static IEnumerable<IEndpoint> EndpointsToBeInserted(IHardwareDriver driver,
+            Endpoint[] existingEndpoints)
+        {
+            return driver.Endpoints.Where(endpoint =>
+                endpoint.ExtensionId == driver.Id && !existingEndpoints
+                    .Select(existingEndpoint => existingEndpoint.EndpointId).Contains(endpoint.Id));
+        }
+
+        private static IEnumerable<Endpoint> EndpointsToBeDeleted(IHardwareDriver driver,
+            IEnumerable<Endpoint> existingEndpoints)
+        {
+            return existingEndpoints.Where(existingEndpoint =>
+                existingEndpoint.ExtensionId == driver.Id && !driver.Endpoints
+                    .Select(endpoint => endpoint.Id).Contains(existingEndpoint.EndpointId));
         }
 
         private async Task SaveCurrentConfiguration(ExtensionHost extension)
@@ -248,7 +272,7 @@ namespace Aporta.Core.Services
         private void UnloadExtension(ExtensionHost extension)
         {
             extension.Driver.Unload();
-            extension.Driver.AddEndpoints -= DriverOnAddEndpoints;
+            extension.Driver.UpdatedEndpoints -= DriverOnUpdatedEndpoints;
             
             extension.Host.Unload();
             extension.Loaded = false;

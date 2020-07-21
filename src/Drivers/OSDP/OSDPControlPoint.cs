@@ -27,7 +27,7 @@ namespace Aporta.Drivers.OSDP
 
         public Guid ExtensionId { get; }
         
-        public string Id => $"{_device.Address}:{_output.Number}";
+        public string Id => $"{_device.Address}:O{_output.Number}";
 
         public Task<bool> Get()
         {

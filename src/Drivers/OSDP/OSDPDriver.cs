@@ -21,6 +21,7 @@ namespace Aporta.Drivers.OSDP
     public class OSDPDriver : IHardwareDriver
     {
         private readonly Dictionary<string, Guid> _portMapping = new Dictionary<string, Guid>();
+        private readonly List<IEndpoint> _endpoints = new List<IEndpoint>();
 
         private ControlPanel _panel;
         private ILogger<OSDPDriver> _logger;
@@ -41,18 +42,42 @@ namespace Aporta.Drivers.OSDP
             ExtractConfiguration(configuration);
             
             StartConnections();
+            
+            // need to do before adding devices, add known endpoints before devices come online
+            AddEndpoints();
 
             AddDevices();
         }
-        
+
+        private void AddEndpoints()
+        {
+            foreach (var bus in _configuration.Buses)
+            {
+                foreach (var device in bus.Devices)
+                {
+                    foreach (var output in device.Outputs)
+                    {
+                        _endpoints.Add(new OSDPControlPoint(Id, _panel, _portMapping[bus.PortName], device,
+                            output));
+                    }
+
+                    foreach (var reader in device.Readers)
+                    {
+                        _endpoints.Add(new OSDPAccessPoint(Id, _panel, _portMapping[bus.PortName], device,
+                            reader));
+                    }
+                }
+            }
+        }
+
+        public IEnumerable<IEndpoint> Endpoints => _endpoints;
+
         private async void PanelOnConnectionStatusChanged(object sender, ControlPanel.ConnectionStatusEventArgs eventArgs)
         {
             var matchingBus = _configuration.Buses.Single(bus =>
                 bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
             var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
 
-            List<IEndpoint> endpoints = new List<IEndpoint>();
-            
             if (eventArgs.IsConnected && !matchingDevice.CheckedCapabilities)
             {
                 var capabilities = await _panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address);
@@ -65,11 +90,11 @@ namespace Aporta.Drivers.OSDP
                     {
                         var output = new Output
                         {
-                            Name = $"{matchingDevice.Name} - Output {outputNumber}",
+                            Name = $"Output {outputNumber}",
                             Number = outputNumber
                         };
                         matchingDevice.Outputs.Add(output);
-                        endpoints.Add(new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                        _endpoints.Add(new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
                             output));
                     }
                 }
@@ -83,28 +108,18 @@ namespace Aporta.Drivers.OSDP
                     {
                         var reader = new Reader
                         {
-                            Name = $"{matchingDevice.Name} - Reader {readerNumber}",
+                            Name = $"Reader {readerNumber}",
                             Number = readerNumber
                         };
                         matchingDevice.Readers.Add(reader);
-                        endpoints.Add(new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                        _endpoints.Add(new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
                             reader));
                     }
                 }
 
                 matchingDevice.CheckedCapabilities = true;
                 
-                OnAddEndpoints(endpoints);
-            }
-            else if (eventArgs.IsConnected && matchingDevice.CheckedCapabilities)
-            {
-                endpoints.AddRange(matchingDevice.Readers.Select(matchingDeviceReader =>
-                    new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
-                        matchingDeviceReader)));
-                endpoints.AddRange(matchingDevice.Outputs.Select(matchingDeviceOutput =>
-                    new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice, matchingDeviceOutput)));
-                
-                OnAddEndpoints(endpoints);
+                OnUpdatedEndpoints();
             }
         }
         
@@ -178,7 +193,7 @@ namespace Aporta.Drivers.OSDP
             };
         }
 
-        public event EventHandler<AddEndpointsEventArgs> AddEndpoints;
+        public event EventHandler<EventArgs> UpdatedEndpoints;
         
         private string AddBus(string parameters)
         {
@@ -186,15 +201,24 @@ namespace Aporta.Drivers.OSDP
 
             _configuration.Buses.Add(busAction.Bus);
 
-            _portMapping.Add(busAction.Bus.PortName,
-                _panel.StartConnection(new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate)));
-            
+            if (!_portMapping.ContainsKey(busAction.Bus.PortName))
+            {
+                _portMapping.Add(busAction.Bus.PortName,
+                    _panel.StartConnection(new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate)));
+            }
+
             return string.Empty;
         }
         
         private string RemoveBus(string parameters)
         {
             var busAction = JsonSerializer.Deserialize<BusAction>(parameters);
+
+            foreach (var device in busAction.Bus.Devices)
+            {
+                _endpoints.RemoveAll(endpoint => endpoint.Id.Split(':').First() == device.Address.ToString());
+            }
+            OnUpdatedEndpoints();
 
             var devices = _configuration.Buses.First(bus => bus.PortName == busAction.Bus.PortName).Devices;
             var addresses = devices.Select(device => device.Address).ToArray();
@@ -205,8 +229,6 @@ namespace Aporta.Drivers.OSDP
             }
 
             _configuration.Buses.RemoveAll(bus => bus.PortName == busAction.Bus.PortName);
-
-            _portMapping.Remove(busAction.Bus.PortName);
 
             return string.Empty;
         }
@@ -225,6 +247,9 @@ namespace Aporta.Drivers.OSDP
         private string RemoveDevice(string parameters)
         {
             var deviceAction = JsonSerializer.Deserialize<DeviceAction>(parameters);
+
+            _endpoints.RemoveAll(endpoint => endpoint.Id.Split(':').First() == deviceAction.Device.Address.ToString());
+            OnUpdatedEndpoints();
             
             _configuration.Buses.First(bus => bus.PortName == deviceAction.PortName).Devices
                 .RemoveAll(device => device.Address == deviceAction.Device.Address);
@@ -234,9 +259,9 @@ namespace Aporta.Drivers.OSDP
             return string.Empty;
         }
 
-        protected virtual void OnAddEndpoints(IEnumerable<IEndpoint> endpoints)
+        protected virtual void OnUpdatedEndpoints()
         {
-            AddEndpoints?.Invoke(this, new AddEndpointsEventArgs{Endpoints = endpoints});
+            UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
         }
     }
 }
