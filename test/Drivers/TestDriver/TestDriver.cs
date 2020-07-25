@@ -9,23 +9,31 @@ namespace Aporta.Drivers.TestDriver
 {
     public class TestDriver : IHardwareDriver
     {
-        private readonly TestControlPoint[] _controlPoints = 
-        {
-            new TestControlPoint{Name="Output 1", Id = "O1"},
-            new TestControlPoint{Name="Output 2", Id = "O2"}
-        };
-        
+        // ReSharper disable once InconsistentNaming
+        private static readonly Guid ExtensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
+        private readonly List<IEndpoint> _endPoints = new List<IEndpoint>();
+
         public string Name => "Test Driver";
 
-        public Guid Id => Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
+        public Guid Id => ExtensionId;
 
-        public IEnumerable<IEndpoint> Endpoints => _controlPoints;
+        public IEnumerable<IEndpoint> Endpoints => _endPoints;
 
         public void Load(string configuration, ILoggerFactory loggerFactory)
         {
-            foreach (var controlPoint in _controlPoints)
+            _endPoints.AddRange(new IEndpoint[] 
             {
-                controlPoint.ExtensionId = Id;
+                new TestAccessPoint{Name="Reader 1", Id = "R1", ExtensionId = ExtensionId},
+                new TestControlPoint{Name="Output 1", Id = "O1", ExtensionId = ExtensionId},
+                new TestControlPoint{Name="Output 2", Id = "O2", ExtensionId = ExtensionId}
+            });
+
+            foreach (var endpoint in _endPoints)
+            {
+                if (endpoint is IAccessPoint accessEndpoint)
+                {
+                    accessEndpoint.AccessCredentialReceived += AccessEndpointOnAccessCredentialReceived;
+                }
             }
             
             OnUpdatedEndpoints();
@@ -33,7 +41,13 @@ namespace Aporta.Drivers.TestDriver
 
         public void Unload()
         {
-
+            foreach (var endpoint in _endPoints)
+            {
+                if (endpoint is IAccessPoint accessEndpoint)
+                {
+                    accessEndpoint.AccessCredentialReceived -= AccessEndpointOnAccessCredentialReceived;
+                }
+            }
         }
 
         public string CurrentConfiguration()
@@ -43,14 +57,20 @@ namespace Aporta.Drivers.TestDriver
 
         public Task<string> PerformAction(string action, string parameters)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(string.Empty);
         }
 
         public event EventHandler<EventArgs> UpdatedEndpoints;
+        public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
 
         protected virtual void OnUpdatedEndpoints()
         {
             UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
+        }
+        
+        private void AccessEndpointOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
+        {
+            AccessCredentialReceived?.Invoke(this, eventArgs);
         }
     }
 }

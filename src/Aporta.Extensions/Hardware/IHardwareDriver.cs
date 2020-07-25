@@ -42,5 +42,7 @@ namespace Aporta.Extensions.Hardware
         Task<string> PerformAction(string action, string parameters);
         
         event EventHandler<EventArgs> UpdatedEndpoints;
+        
+        public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
     }
 }

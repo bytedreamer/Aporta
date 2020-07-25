@@ -29,6 +29,7 @@ namespace Aporta
             
             services.AddSingleton<ExtensionService, ExtensionService>();
             services.AddSingleton<ControlPointService, ControlPointService>();
+            services.AddSingleton<AccessPointService, AccessPointService>();
             
             services.AddSignalR();
             services.AddControllersWithViews();

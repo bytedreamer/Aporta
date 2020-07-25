@@ -47,5 +47,6 @@ namespace Aporta.Drivers.AutomationpHAT
         }
 
         public event EventHandler<EventArgs> UpdatedEndpoints;
+        public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
     }
 }

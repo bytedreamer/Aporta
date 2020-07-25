@@ -34,6 +34,7 @@ namespace Aporta.Core.Services
         private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
         private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
+        private readonly object _extensionLock = new object();
 
         public ExtensionService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
             ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
@@ -115,6 +116,19 @@ namespace Aporta.Core.Services
 
             return endpoints.First(endpoint => endpoint.Id == endpointId) as IControlPoint;
         }
+        
+        public IAccessPoint GetAccessPoint(Guid extensionId, string endpointId)
+        {
+            var endpoints = Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints;
+
+            return endpoints.First(endpoint => endpoint.Id == endpointId) as IAccessPoint;
+        }
+        
+        public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
+        protected virtual void OnAccessCredentialReceived(AccessCredentialReceivedEventArgs eventArgs)
+        {
+            AccessCredentialReceived?.Invoke(this, eventArgs);
+        }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task DiscoverExtensions()
@@ -139,6 +153,7 @@ namespace Aporta.Core.Services
             }
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task GetExtensionsFromAssembly(string assemblyPath)
         {
             var host = new Host<IHardwareDriver>(assemblyPath);
@@ -162,6 +177,7 @@ namespace Aporta.Core.Services
             host.Unload();
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private void LoadExtensions()
         {
             foreach (var extension in _extensions.Where(extension => extension.Enabled))
@@ -179,21 +195,30 @@ namespace Aporta.Core.Services
 
         private void LoadExtension(ExtensionHost extension)
         {
-            extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
-            extension.Host.Load();
-            extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
-            extension.Driver.UpdatedEndpoints += DriverOnUpdatedEndpoints;
+            lock (_extensionLock)
+            {
+                if (extension.Loaded)
+                {
+                    return;
+                }
 
-            extension.Driver.Load(extension.Configuration, _loggerFactory);
-            extension.Configuration = extension.Driver.CurrentConfiguration();
+                extension.Host = new Host<IHardwareDriver>(extension.AssemblyPath);
+                extension.Host.Load();
+                extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
+                extension.Driver.UpdatedEndpoints += DriverOnUpdatedEndpoints;
+                extension.Driver.AccessCredentialReceived += DriverOnAccessCredentialReceived;
 
-            extension.Loaded = true;
+                extension.Driver.Load(extension.Configuration, _loggerFactory);
+                extension.Configuration = extension.Driver.CurrentConfiguration();
+
+                extension.Loaded = true;
+            }
         }
 
         private async void DriverOnUpdatedEndpoints(object sender, EventArgs eventArgs)
         {
             if (!(sender is IHardwareDriver driver)) return;
-
+            
             await EndpointUpdateSemaphore.WaitAsync();
 
             try
@@ -221,6 +246,11 @@ namespace Aporta.Core.Services
             {
                 EndpointUpdateSemaphore.Release();
             }
+        }
+        
+        private void DriverOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
+        {
+            OnAccessCredentialReceived(eventArgs);
         }
 
         private static IEnumerable<IEndpoint> EndpointsToBeInserted(IHardwareDriver driver,
@@ -271,11 +301,20 @@ namespace Aporta.Core.Services
 
         private void UnloadExtension(ExtensionHost extension)
         {
-            extension.Driver.Unload();
-            extension.Driver.UpdatedEndpoints -= DriverOnUpdatedEndpoints;
-            
-            extension.Host.Unload();
-            extension.Loaded = false;
+            lock (_extensionLock)
+            {
+                if (!extension.Loaded)
+                {
+                    return;
+                }
+                
+                extension.Driver.Unload();
+                extension.Driver.UpdatedEndpoints -= DriverOnUpdatedEndpoints;
+                extension.Driver.AccessCredentialReceived -= DriverOnAccessCredentialReceived;
+
+                extension.Host.Unload();
+                extension.Loaded = false;
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
@@ -122,12 +123,23 @@ namespace Aporta.Drivers.OSDP
                 OnUpdatedEndpoints();
             }
         }
-        
+
         private void PanelOnRawCardDataReplyReceived(object sender, ControlPanel.RawCardDataReplyEventArgs eventArgs)
         {
-
+            AccessCredentialReceived?.Invoke(this,
+                new AccessCredentialReceivedEventArgs(
+                    _endpoints.Where(endpoint => endpoint is IAccessPoint).Cast<IAccessPoint>().First(accessPoint =>
+                        accessPoint.Id.Split(":").First() == eventArgs.Address.ToString()),
+                    ConvertToByte(eventArgs.RawCardData.Data)));
         }
 
+        static byte[] ConvertToByte(BitArray bits) {
+            // Make sure we have enough space allocated even when number of bits is not a multiple of 8
+            var bytes = new byte[(bits.Length - 1) / 8 + 1];
+            bits.CopyTo(bytes, 0);
+            return bytes;
+        }
+        
         private void AddDevices()
         {
             foreach (var bus in _configuration.Buses)
@@ -135,7 +147,7 @@ namespace Aporta.Drivers.OSDP
                 var connection = _portMapping[bus.PortName];
                 foreach (var device in bus.Devices)
                 {
-                    _panel.AddDevice(connection, device.Address, true, false);
+                    _panel.AddDevice(connection, device.Address, true, device.RequireSecurity);
                 }
             }
         }
@@ -194,7 +206,8 @@ namespace Aporta.Drivers.OSDP
         }
 
         public event EventHandler<EventArgs> UpdatedEndpoints;
-        
+        public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
+
         private string AddBus(string parameters)
         {
             var busAction = JsonSerializer.Deserialize<BusAction>(parameters);

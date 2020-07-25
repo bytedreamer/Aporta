@@ -7,6 +7,8 @@ namespace OSDP.Drivers.Shared
         public string Name { get; set; }
         
         public byte Address { get; set; }
+        
+        public bool RequireSecurity { get; set; }
 
         public bool CheckedCapabilities { get; set; }
 

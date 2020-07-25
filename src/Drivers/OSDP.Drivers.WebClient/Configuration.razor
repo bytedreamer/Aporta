@@ -166,6 +166,11 @@
                                     </FieldBody>
                                 </Field>
                             </Validation>
+                            <Field>
+                                <FieldBody>
+                                    <Check @bind-Checked="@_addDevice.RequireSecurity" TValue="bool">Require Security</Check>
+                                </FieldBody>
+                            </Field>
                         </Validations>
                     </ModalBody>
                     <ModalFooter>
@@ -213,10 +218,10 @@
     {
         _configuration = JsonSerializer.Deserialize<Shared.Actions.Configuration>(RawConfiguration);
 
-        _addDevice = new Device{Name = string.Empty, Address = 0};
-        
+        _addDevice = new Device {Name = string.Empty, Address = 0, RequireSecurity = true};
+
         InitializeNewBus();
-    }  
+    }
 
     private void InitializeNewBus()
     {
@@ -263,7 +268,7 @@
     private void ShowAddDeviceDialog(string portName)
     {
         _currentBus = _configuration.Buses.First(bus => bus.PortName == portName);
-        _addDevice = new Device{Name = string.Empty, Address = 0};
+        _addDevice = new Device{Name = string.Empty, Address = 0, RequireSecurity = true};
         
         _addDeviceModal.Show();
     }
