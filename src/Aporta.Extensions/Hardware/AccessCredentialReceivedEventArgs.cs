@@ -1,17 +1,20 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using Aporta.Extensions.Endpoint;
 
 namespace Aporta.Extensions.Hardware
 {
     public class AccessCredentialReceivedEventArgs : EventArgs
     {
-        public AccessCredentialReceivedEventArgs(IAccessPoint accessPoint, IEnumerable<byte> cardData)
+        public AccessCredentialReceivedEventArgs(IAccessPoint accessPoint, BitArray cardData, ushort bitCount)
         {
             AccessPoint = accessPoint;
             CardData = cardData;
+            this.bitCount = bitCount;
         }
         public IAccessPoint AccessPoint { get; }
-        public IEnumerable<byte> CardData { get; }
+        public BitArray CardData { get; }
+        
+        public ushort bitCount { get; }
     }
 }

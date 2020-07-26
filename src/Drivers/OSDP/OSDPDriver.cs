@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
@@ -130,14 +129,7 @@ namespace Aporta.Drivers.OSDP
                 new AccessCredentialReceivedEventArgs(
                     _endpoints.Where(endpoint => endpoint is IAccessPoint).Cast<IAccessPoint>().First(accessPoint =>
                         accessPoint.Id.Split(":").First() == eventArgs.Address.ToString()),
-                    ConvertToByte(eventArgs.RawCardData.Data)));
-        }
-
-        static byte[] ConvertToByte(BitArray bits) {
-            // Make sure we have enough space allocated even when number of bits is not a multiple of 8
-            var bytes = new byte[(bits.Length - 1) / 8 + 1];
-            bits.CopyTo(bytes, 0);
-            return bytes;
+                    eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount));
         }
         
         private void AddDevices()

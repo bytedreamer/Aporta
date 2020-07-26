@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Data;
 using System.IO;
 using System.IO.Pipes;
@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
+using Aporta.Extensions;
 using Aporta.Extensions.Endpoint;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -50,9 +51,11 @@ namespace Aporta.Core.Tests.Services
         public async Task ReceiveCredential()
         {
             // Arrange
-            IEnumerable<byte> receivedCardData = new byte[] { };
+            var receivedCardData = new BitArray(new bool[] { });
             IAccessPoint accessEndpoint = null;
-            var cardData = new byte[] {0x01, 0x12};
+            string bitArrayString = "110101010111";
+
+            var cardData = bitArrayString.ToBitArray();
             var accessPointService = new AccessPointService(_extensionService);
             accessPointService.AccessCredentialReceived += (sender, args) =>
             {
@@ -64,17 +67,18 @@ namespace Aporta.Core.Tests.Services
             await SendBadgeData(cardData);
 
             // Assert
-            Assert.That(() => accessEndpoint?.Id == "R1" && receivedCardData.FirstOrDefault() == cardData.First(),
+            Assert.That(() => accessEndpoint?.Id == "R1" && 
+                              receivedCardData.Xor(cardData).OfType<bool>().All(bit => !bit),
                 Is.True.After(1000, 100));
         }
 
-        private static async Task SendBadgeData(IEnumerable<byte> badgeData)
+        private static async Task SendBadgeData(BitArray bitArray)
         {
             await using var pipeClient =
                 new NamedPipeClientStream(".", "Aporta.TestAccessPoint", PipeDirection.Out);
             await pipeClient.ConnectAsync();
             await using var writer = new StreamWriter(pipeClient) {AutoFlush = true};
-            await writer.WriteLineAsync(string.Join(":", badgeData.Select(b => b.ToString("X2"))));
+            await writer.WriteLineAsync(bitArray.ToBitString());
         }
     }
 }

@@ -1,9 +1,9 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.IO;
 using System.IO.Pipes;
-using System.Linq;
 using System.Threading.Tasks;
+using Aporta.Extensions;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 
@@ -21,8 +21,9 @@ namespace Aporta.Drivers.TestDriver
                 {
                     await pipeServer.WaitForConnectionAsync();
                     using var reader = new StreamReader(pipeServer);
-                    OnAccessCredentialReceived((await reader.ReadLineAsync() ?? string.Empty).Split(':')
-                        .Select(hex => Convert.ToByte(hex, 16)));
+                    string bitArrayString = await reader.ReadLineAsync() ?? string.Empty;
+                    
+                    OnAccessCredentialReceived(bitArrayString.ToBitArray(), (ushort)bitArrayString.Length);
                 }
             }, TaskCreationOptions.LongRunning);
         }
@@ -35,9 +36,9 @@ namespace Aporta.Drivers.TestDriver
         
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
 
-        protected virtual void OnAccessCredentialReceived(IEnumerable<byte> cardData)
+        private void OnAccessCredentialReceived(BitArray cardData, ushort bitCount)
         {
-            AccessCredentialReceived?.Invoke(this, new AccessCredentialReceivedEventArgs(this, cardData));
+            AccessCredentialReceived?.Invoke(this, new AccessCredentialReceivedEventArgs(this, cardData, bitCount));
         }
     }
 }
