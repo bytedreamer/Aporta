@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -10,7 +11,7 @@ using NUnit.Framework;
 namespace Aporta.Core.Tests.DataAccess.Repositories
 {
     [TestFixture]
-    public class EndpointTest
+    public class EndpointRepositoryTests
     {
         private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private IDbConnection _persistConnection;
@@ -45,7 +46,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
         }
 
         [Test]
-        public async Task InsertThenGet()
+        public async Task Insert()
         {
             // Arrange
             var endpoints = new[]
@@ -70,6 +71,31 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             Assert.AreEqual("Test3", actualEndpoint.Name);
             Assert.AreEqual(EndpointType.Reader, actualEndpoint.Type);
             Assert.AreEqual(_extensionId, actualEndpoint.ExtensionId);
+        }
+        
+        [Test]
+        public async Task Delete()
+        {
+            // Arrange
+            var endpoints = new[]
+            {
+                new Endpoint {Name = "Test1", Type = EndpointType.Output, ExtensionId = _extensionId},
+                new Endpoint {Name = "Test2", Type = EndpointType.Input, ExtensionId = _extensionId},
+                new Endpoint {Name = "Test3", Type = EndpointType.Reader, ExtensionId = _extensionId}
+            };
+
+            var endpointRepository = new EndpointRepository(_dataAccess);
+            foreach (var endpoint in endpoints)
+            {
+                await endpointRepository.Insert(endpoint);   
+            }
+
+            // Act 
+            await endpointRepository.Delete(3);
+
+            // Assert
+            var actualEndpoints = await endpointRepository.GetAll();
+            Assert.AreEqual(2, actualEndpoints.Count());
         }
     }
 }

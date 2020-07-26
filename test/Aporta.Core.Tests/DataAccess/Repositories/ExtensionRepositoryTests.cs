@@ -10,7 +10,7 @@ using NUnit.Framework;
 namespace Aporta.Core.Tests.DataAccess.Repositories
 {
     [TestFixture]
-    public class ExtensionTests
+    public class ExtensionRepositoryTests
     {
         private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private IDbConnection _persistConnection;

@@ -7,8 +7,7 @@ namespace Aporta.Shared.Models
         public int Id { get; set; }
         
         public string Name { get; set; }
-        
-        
+
         public string EndpointId { get; set; } = "";
         
         public Guid ExtensionId { get; set; }

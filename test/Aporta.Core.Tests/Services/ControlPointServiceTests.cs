@@ -46,15 +46,15 @@ namespace Aporta.Core.Tests.Services
         public async Task SetState()
         {
             // Arrange
-            var controlPointService = new ControlPointService(_extensionService);
+            var controlPointService = new OutputService(_extensionService);
             
             // Act
-            await controlPointService.SetOutput(_extensionId, "O1", true);
-            await controlPointService.SetOutput(_extensionId, "O2", false);
+            await controlPointService.Set(_extensionId, "O1", true);
+            await controlPointService.Set(_extensionId, "O2", false);
 
             // Assert
-            Assert.IsTrue(await controlPointService.GetOutput(_extensionId, "O1"));
-            Assert.IsFalse(await controlPointService.GetOutput(_extensionId, "O2"));
+            Assert.IsTrue(await controlPointService.Get(_extensionId, "O1"));
+            Assert.IsFalse(await controlPointService.Get(_extensionId, "O2"));
         }
     }
 }
