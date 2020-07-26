@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using Aporta.Extensions.Endpoint;
-using Aporta.Extensions.Hardware;
 using OSDP.Drivers.Shared;
 using OSDP.Net;
 
@@ -28,7 +26,5 @@ namespace Aporta.Drivers.OSDP
         public Guid ExtensionId { get; }
         
         public string Id => $"{_device.Address}:R{_reader.Number}";
-        
-        public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
     }
 }

@@ -125,10 +125,6 @@ namespace Aporta.Core.Services
         }
         
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
-        protected virtual void OnAccessCredentialReceived(AccessCredentialReceivedEventArgs eventArgs)
-        {
-            AccessCredentialReceived?.Invoke(this, eventArgs);
-        }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task DiscoverExtensions()
@@ -193,6 +189,7 @@ namespace Aporta.Core.Services
             }
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private void LoadExtension(ExtensionHost extension)
         {
             lock (_extensionLock)
@@ -250,7 +247,7 @@ namespace Aporta.Core.Services
         
         private void DriverOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
         {
-            OnAccessCredentialReceived(eventArgs);
+            AccessCredentialReceived?.Invoke(this, eventArgs);
         }
 
         private static IEnumerable<IEndpoint> EndpointsToBeInserted(IHardwareDriver driver,

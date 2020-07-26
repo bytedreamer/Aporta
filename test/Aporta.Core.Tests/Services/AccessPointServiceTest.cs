@@ -3,7 +3,6 @@ using System.Collections;
 using System.Data;
 using System.IO;
 using System.IO.Pipes;
-using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
@@ -52,15 +51,17 @@ namespace Aporta.Core.Tests.Services
         {
             // Arrange
             var receivedCardData = new BitArray(new bool[] { });
+            ushort receivedBitCount = 0;
             IAccessPoint accessEndpoint = null;
             string bitArrayString = "110101010111";
-
+            
             var cardData = bitArrayString.ToBitArray();
-            var accessPointService = new AccessPointService(_extensionService);
+            using var accessPointService = new AccessPointService(_extensionService);
             accessPointService.AccessCredentialReceived += (sender, args) =>
             {
                 accessEndpoint = args.AccessPoint;
                 receivedCardData = args.CardData;
+                receivedBitCount = args.bitCount;
             };
 
             // Act
@@ -68,14 +69,15 @@ namespace Aporta.Core.Tests.Services
 
             // Assert
             Assert.That(() => accessEndpoint?.Id == "R1" && 
-                              receivedCardData.Xor(cardData).OfType<bool>().All(bit => !bit),
+                              receivedCardData.ToBitString() == bitArrayString &&
+                              receivedBitCount == 12,
                 Is.True.After(1000, 100));
         }
 
         private static async Task SendBadgeData(BitArray bitArray)
         {
             await using var pipeClient =
-                new NamedPipeClientStream(".", "Aporta.TestAccessPoint", PipeDirection.Out);
+                new NamedPipeClientStream(".", "Aporta.TestDriverAccessPoint", PipeDirection.Out);
             await pipeClient.ConnectAsync();
             await using var writer = new StreamWriter(pipeClient) {AutoFlush = true};
             await writer.WriteLineAsync(bitArray.ToBitString());

@@ -3,11 +3,14 @@ using Aporta.Extensions.Hardware;
 
 namespace Aporta.Core.Services
 {
-    public class AccessPointService
+    public class AccessPointService : IDisposable
     {
+        private readonly ExtensionService _extensionService;
+        
         public AccessPointService(ExtensionService extensionService)
         {
-            extensionService.AccessCredentialReceived += ExtensionServiceOnAccessCredentialReceived;
+            _extensionService = extensionService;
+            _extensionService.AccessCredentialReceived += ExtensionServiceOnAccessCredentialReceived;
         }
         
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
@@ -15,6 +18,11 @@ namespace Aporta.Core.Services
         private void ExtensionServiceOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
         {
             AccessCredentialReceived?.Invoke(this, eventArgs);
+        }
+
+        public void Dispose()
+        {
+            _extensionService.AccessCredentialReceived -= ExtensionServiceOnAccessCredentialReceived;
         }
     }
 }
