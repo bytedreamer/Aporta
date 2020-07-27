@@ -225,7 +225,7 @@ namespace Aporta.Core.Services
                 {
                     var insertEndpoint = new Endpoint
                     {
-                        EndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
+                        DriverEndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
                         Type = endpoint is IControlPoint ? EndpointType.Output : EndpointType.Reader
                     };
 
@@ -255,7 +255,7 @@ namespace Aporta.Core.Services
         {
             return driver.Endpoints.Where(endpoint =>
                 endpoint.ExtensionId == driver.Id && !existingEndpoints
-                    .Select(existingEndpoint => existingEndpoint.EndpointId).Contains(endpoint.Id));
+                    .Select(existingEndpoint => existingEndpoint.DriverEndpointId).Contains(endpoint.Id));
         }
 
         private static IEnumerable<Endpoint> EndpointsToBeDeleted(IHardwareDriver driver,
@@ -263,7 +263,7 @@ namespace Aporta.Core.Services
         {
             return existingEndpoints.Where(existingEndpoint =>
                 existingEndpoint.ExtensionId == driver.Id && !driver.Endpoints
-                    .Select(endpoint => endpoint.Id).Contains(existingEndpoint.EndpointId));
+                    .Select(endpoint => endpoint.Id).Contains(existingEndpoint.DriverEndpointId));
         }
 
         private async Task SaveCurrentConfiguration(ExtensionHost extension)

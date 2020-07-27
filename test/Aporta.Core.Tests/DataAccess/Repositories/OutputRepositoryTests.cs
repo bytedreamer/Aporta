@@ -56,9 +56,9 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Arrange
             var outputs = new[]
             {
-                new Output {Name = "Test1", EndpointId = _endpointId},
+                new Output {Name = "Test1", EndpointId = _endpointId, PulseTimer = 3},
                 new Output {Name = "Test2", EndpointId = _endpointId},
-                new Output {Name = "Test3", EndpointId = _endpointId}
+                new Output {Name = "Test3", EndpointId = _endpointId, PulseTimer = 8}
             };
             
             var outputRepository = new OutputRepository(_dataAccess);
@@ -75,6 +75,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             Assert.AreEqual(3, actualOutput.Id);
             Assert.AreEqual("Test3", actualOutput.Name);
             Assert.AreEqual(_endpointId, actualOutput.EndpointId);
+            Assert.AreEqual(8, actualOutput.PulseTimer);
         }
         
         [Test]

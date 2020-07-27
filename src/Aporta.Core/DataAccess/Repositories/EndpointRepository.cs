@@ -17,12 +17,12 @@ namespace Aporta.Core.DataAccess.Repositories
         
         protected override IDataAccess DataAccess { get; }
         
-        protected override string SqlSelect => @"select id, name, endpoint_type as type, driver_id as endpointId, extension_id as extensionId
+        protected override string SqlSelect => @"select id, name, endpoint_type as type, driver_id as driverEndpointId, extension_id as extensionId
                                             from endpoint";
         
         protected override string SqlInsert => @"insert into endpoint
                                             (name, endpoint_type, driver_id, extension_id) values 
-                                            (@name, @endpointType, @configuration, @extensionId)";
+                                            (@name, @endpointType, @driverEndpointId, @extensionId)";
 
         
         protected override string SqlDelete => @"delete from endpoint
@@ -43,7 +43,7 @@ namespace Aporta.Core.DataAccess.Repositories
             {
                 name = endpoint.Name, 
                 endpointType = endpoint.Type,
-                configuration = endpoint.EndpointId, 
+                driverEndpointId = endpoint.DriverEndpointId, 
                 extensionId = endpoint.ExtensionId
             };
         }

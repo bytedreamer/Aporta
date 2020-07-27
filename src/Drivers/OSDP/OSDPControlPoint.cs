@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 using OSDP.Drivers.Shared;
@@ -29,9 +30,10 @@ namespace Aporta.Drivers.OSDP
         
         public string Id => $"{_device.Address}:O{_output.Number}";
 
-        public Task<bool> Get()
+        public async Task<bool> Get()
         {
-            throw new NotImplementedException();
+            return (await _controlPanel.OutputStatus(_connectionId, _device.Address)).OutputStatuses.ToArray()[
+                _output.Number];
         }
 
         public async Task Set(bool state)

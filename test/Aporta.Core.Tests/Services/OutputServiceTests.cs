@@ -2,8 +2,10 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
+using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
+using Aporta.Shared.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
@@ -12,12 +14,14 @@ using SignalR_UnitTestingSupportCommon.IHubContextSupport;
 namespace Aporta.Core.Tests.Services
 {
     [TestFixture]
-    public class ControlPointServiceTests
+    public class OutputServiceTests
     {
         private readonly Guid _extensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
         private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private readonly ILoggerFactory _loggerFactory = new NullLoggerFactory();
         private ExtensionService _extensionService;
+        private EndpointRepository _endpointRepository;
+        private OutputRepository _outputRepository;
         private IDbConnection _persistConnection;
 
         [SetUp]
@@ -33,6 +37,9 @@ namespace Aporta.Core.Tests.Services
                 _loggerFactory);
             await _extensionService.Startup();
             await _extensionService.EnableExtension(_extensionId, true);
+            
+            _endpointRepository = new EndpointRepository(_dataAccess);
+            _outputRepository = new OutputRepository(_dataAccess);
         }
 
         [TearDown]
@@ -46,15 +53,25 @@ namespace Aporta.Core.Tests.Services
         public async Task SetState()
         {
             // Arrange
-            var controlPointService = new OutputService(_extensionService);
+            var outputService = new OutputService(_outputRepository, _endpointRepository, _extensionService);
+            var outputs = new[]
+            {
+                new Output{Name = "TestOutput1", EndpointId = 2},
+                new Output{Name = "TestOutput2", EndpointId = 3} 
+            };
+            
+            foreach (var output in outputs)
+            {
+                await _outputRepository.Insert(output);
+            }
             
             // Act
-            await controlPointService.Set(_extensionId, "O1", true);
-            await controlPointService.Set(_extensionId, "O2", false);
+            await outputService.Set(outputs[0].Id, true);
+            await outputService.Set(outputs[1].Id, false);
 
             // Assert
-            Assert.IsTrue(await controlPointService.Get(_extensionId, "O1"));
-            Assert.IsFalse(await controlPointService.Get(_extensionId, "O2"));
+            Assert.IsTrue(await outputService.Get(outputs[0].Id));
+            Assert.IsFalse(await outputService.Get(outputs[1].Id));
         }
     }
 }
