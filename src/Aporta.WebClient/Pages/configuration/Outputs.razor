@@ -139,6 +139,10 @@ else
 
     private async Task AddOutput()
     {
+        if (!_addOutputValidations.ValidateAll())
+        {
+            return;
+        }
         _addOutputModal.Hide();
 
         string url = string.Format(Paths.Outputs);
