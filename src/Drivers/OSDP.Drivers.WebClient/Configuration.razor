@@ -17,7 +17,7 @@
 
         <Row>
             <Column ColumnSize="ColumnSize.Is6.OnDesktop">
-                @if (_addBus != null)
+                @if (_unusedPorts.Any())
                 {
                     <Button Color="Color.Primary" Clicked="_addPortModal.Show">Add RS-485 Port</Button>
                 }
@@ -29,65 +29,56 @@
                 }
             </Column>
         </Row>
+        @foreach (var bus in _configuration.Buses)
+        {
         <Row>
             <Column>
                 <Card Margin="Margin.Is4.OnY">
-                    <CardTitle>
+                    <CardTitle Margin="Margin.Is4.OnX">
+                        <Heading Size="HeadingSize.Is5">
+                            Port @bus.PortName Devices
+                        </Heading>
+                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">
+                            Remove
+                        </Button>
 
+                        <Button Color="Color.Primary" Clicked="@(() => ShowAddDeviceDialog(bus.PortName))">
+                            Add Device
+                        </Button>
                     </CardTitle>
                     <CardBody>
-                        <Accordion>
-                            @foreach (var bus in _configuration.Buses)
-                            {
-                                <Collapse Visible="true">
-                                    <CollapseHeader>
-                                        <Heading Size="HeadingSize.Is5">
-                                            Port @bus.PortName Devices
-                                        </Heading>
-                                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">
-                                            Remove
-                                        </Button>
-                                        
-                                        <Button Color="Color.Primary" Clicked="@(() =>ShowAddDeviceDialog(bus.PortName))">
-                                            Add Device
-                                        </Button>
-                                    </CollapseHeader>
-                                    <CollapseBody>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHeaderCell>Name</TableHeaderCell>
-                                                    <TableHeaderCell>Address</TableHeaderCell>
-                                                    <TableHeaderCell></TableHeaderCell>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                @foreach (var device in bus.Devices)
-                                                {
-                                                    <TableRow>
-                                                        <TableRowHeader>
-                                                            @device.Name
-                                                        </TableRowHeader>
-                                                        <TableRowCell>
-                                                            @device.Address
-                                                        </TableRowCell>
-                                                        <TableRowCell>
-                                                            <Button Color="Color.Danger" Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
-                                                                Remove
-                                                            </Button>
-                                                        </TableRowCell>
-                                                    </TableRow>
-                                                }
-                                            </TableBody>
-                                        </Table>
-                                    </CollapseBody>
-                                </Collapse>
-                            }
-                        </Accordion>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHeaderCell>Name</TableHeaderCell>
+                                    <TableHeaderCell>Address</TableHeaderCell>
+                                    <TableHeaderCell></TableHeaderCell>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                @foreach (var device in bus.Devices)
+                                {
+                                    <TableRow>
+                                        <TableRowHeader>
+                                            @device.Name
+                                        </TableRowHeader>
+                                        <TableRowCell>
+                                            @device.Address
+                                        </TableRowCell>
+                                        <TableRowCell>
+                                            <Button Color="Color.Danger" Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
+                                                Remove
+                                            </Button>
+                                        </TableRowCell>
+                                    </TableRow>
+                                }
+                            </TableBody>
+                        </Table>
                     </CardBody>
                 </Card>
             </Column>
         </Row>
+        }
 
         <Modal @ref="_addPortModal">
             <ModalBackdrop/>
@@ -186,7 +177,7 @@
     private Bus _addBus;
     private Bus _currentBus;
     private Device _addDevice;
-    private IEnumerable<string> _unusedPorts;
+    private string[] _unusedPorts;
     
     private Modal _addPortModal;
     private Modal _addDeviceModal;
@@ -225,21 +216,17 @@
 
     private void InitializeNewBus()
     {
-        _unusedPorts = _configuration.AvailablePorts.Except(_configuration.Buses.Select(bus => bus.PortName));
+        _unusedPorts = _configuration.AvailablePorts.Except(_configuration.Buses.Select(bus => bus.PortName)).ToArray();
 
-        var unusedPorts = _unusedPorts as string[] ?? _unusedPorts.ToArray();
-        if (unusedPorts.Any())
+        _addBus = new Bus
         {
-            _addBus = new Bus
-            {
-                Devices = new List<Device>(),
-                PortName = unusedPorts.First(),
-                BaudRate = 9600
-            };
-        }
-        else
+            Devices = new List<Device>(),
+            BaudRate = 9600
+        };
+
+        if (_unusedPorts.Any())
         {
-            _addBus = null;
+            _addBus.PortName = _unusedPorts.First();
         }
     }
 
