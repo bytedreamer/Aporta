@@ -11,7 +11,7 @@
         <ApplicationURL>https://localhost:5001;http://localhost:5000</ApplicationURL>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Blazorise.AntDesign" Version="0.9.1.2" />
+        <PackageReference Include="Blazorise.Frolic" Version="0.9.1.2" />
         <PackageReference Include="Blazorise.Icons.FontAwesome" Version="0.9.1.2" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="3.2.1" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="3.2.1" PrivateAssets="all" />
@@ -104,6 +104,9 @@
       <Content Update="wwwroot\css\antd.css.map">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+      <Content Update="Pages\configuration\Outputs.razor">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </Content>
     </ItemGroup>
     <ItemGroup>

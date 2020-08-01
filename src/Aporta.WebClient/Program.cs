@@ -1,15 +1,11 @@
 using System;
 using System.Net.Http;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Text;
 using Blazorise;
-using Blazorise.AntDesign;
+using Blazorise.Frolic;
 using Blazorise.Icons.FontAwesome;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Aporta.WebClient
 {
@@ -24,7 +20,7 @@ namespace Aporta.WebClient
                 {
                     options.ChangeTextOnKeyPress = true;
                 } )
-                .AddAntDesignProviders()
+                .AddFrolicProviders()
                 .AddFontAwesomeIcons();
 
             builder.Services.AddSingleton( new HttpClient
@@ -40,7 +36,7 @@ namespace Aporta.WebClient
             var host = builder.Build();
 
             host.Services
-                .UseAntDesignProviders()
+                .UseFrolicProviders()
                 .UseFontAwesomeIcons();
 
             await host.RunAsync();

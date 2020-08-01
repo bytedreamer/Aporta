@@ -20,8 +20,6 @@ namespace Aporta.Core.Tests.Services
         private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private readonly ILoggerFactory _loggerFactory = new NullLoggerFactory();
         private ExtensionService _extensionService;
-        private EndpointRepository _endpointRepository;
-        private OutputRepository _outputRepository;
         private IDbConnection _persistConnection;
 
         [SetUp]
@@ -37,9 +35,6 @@ namespace Aporta.Core.Tests.Services
                 _loggerFactory);
             await _extensionService.Startup();
             await _extensionService.EnableExtension(_extensionId, true);
-            
-            _endpointRepository = new EndpointRepository(_dataAccess);
-            _outputRepository = new OutputRepository(_dataAccess);
         }
 
         [TearDown]
@@ -53,16 +48,17 @@ namespace Aporta.Core.Tests.Services
         public async Task SetState()
         {
             // Arrange
-            var outputService = new OutputService(_outputRepository, _endpointRepository, _extensionService);
+            var outputService = new OutputService(_dataAccess, _extensionService);
             var outputs = new[]
             {
                 new Output{Name = "TestOutput1", EndpointId = 2},
                 new Output{Name = "TestOutput2", EndpointId = 3} 
             };
             
+            var outputRepository = new OutputRepository(_dataAccess);
             foreach (var output in outputs)
             {
-                await _outputRepository.Insert(output);
+                await outputRepository.Insert(output);
             }
             
             // Act

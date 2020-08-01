@@ -90,7 +90,7 @@ namespace Aporta.Drivers.OSDP
                     {
                         var output = new Output
                         {
-                            Name = $"Output {outputNumber}",
+                            Name = $"{matchingDevice.Name} [Output {outputNumber}]",
                             Number = outputNumber
                         };
                         matchingDevice.Outputs.Add(output);
@@ -108,7 +108,7 @@ namespace Aporta.Drivers.OSDP
                     {
                         var reader = new Reader
                         {
-                            Name = $"Reader {readerNumber}",
+                            Name = $"{matchingDevice.Name} [Reader {readerNumber}]",
                             Number = readerNumber
                         };
                         matchingDevice.Readers.Add(reader);

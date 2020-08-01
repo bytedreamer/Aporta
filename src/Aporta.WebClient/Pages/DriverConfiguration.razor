@@ -38,7 +38,7 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        string url = $"{Paths.Extension}/{ExtensionId}";
+        string url = $"{Paths.Extensions}/{ExtensionId}";
         _extension = await Http.GetFromJsonAsync<Extension>(url);
         
         _hubConnection = new HubConnectionBuilder()

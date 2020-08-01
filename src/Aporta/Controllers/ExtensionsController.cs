@@ -12,7 +12,7 @@ namespace Aporta.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ExtensionsController : Controller
+    public class ExtensionsController : ControllerBase
     {
         private readonly ILogger<ExtensionsController> _logger;
         private readonly ExtensionService _extensionService;

@@ -19,7 +19,7 @@
             <Column ColumnSize="ColumnSize.Is6.OnDesktop">
                 @if (_addBus != null)
                 {
-                    <Button Clicked="_addPortModal.Show">Add RS-485 Port</Button>
+                    <Button Color="Color.Primary" Clicked="_addPortModal.Show">Add RS-485 Port</Button>
                 }
                 else
                 {
@@ -44,11 +44,11 @@
                                         <Heading Size="HeadingSize.Is5">
                                             Port @bus.PortName Devices
                                         </Heading>
-                                        <Button Clicked="@(async () => await RemoveBus(bus.PortName))">
+                                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">
                                             Remove
                                         </Button>
                                         
-                                        <Button Clicked="@(() =>ShowAddDeviceDialog(bus.PortName))">
+                                        <Button Color="Color.Primary" Clicked="@(() =>ShowAddDeviceDialog(bus.PortName))">
                                             Add Device
                                         </Button>
                                     </CollapseHeader>
@@ -72,7 +72,7 @@
                                                             @device.Address
                                                         </TableRowCell>
                                                         <TableRowCell>
-                                                            <Button Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
+                                                            <Button Color="Color.Danger" Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
                                                                 Remove
                                                             </Button>
                                                         </TableRowCell>

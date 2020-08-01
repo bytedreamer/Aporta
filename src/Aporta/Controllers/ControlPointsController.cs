@@ -7,11 +7,11 @@ namespace Aporta.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ControlPoints : Controller
+    public class ControlPointsController : ControllerBase
     {
         private readonly OutputService _outputService;
 
-        public ControlPoints(OutputService outputService)
+        public ControlPointsController(OutputService outputService)
         {
             _outputService = outputService;
         }

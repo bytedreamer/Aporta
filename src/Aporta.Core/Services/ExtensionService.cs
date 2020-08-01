@@ -112,18 +112,16 @@ namespace Aporta.Core.Services
 
         public IControlPoint GetControlPoint(Guid extensionId, string endpointId)
         {
-            var endpoints = Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints;
-
-            return endpoints.First(endpoint => endpoint.Id == endpointId) as IControlPoint;
+            return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
+                .First(endpoint => endpoint.Id == endpointId) as IControlPoint;
         }
-        
+
         public IAccessPoint GetAccessPoint(Guid extensionId, string endpointId)
         {
-            var endpoints = Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints;
-
-            return endpoints.First(endpoint => endpoint.Id == endpointId) as IAccessPoint;
+            return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
+                .First(endpoint => endpoint.Id == endpointId) as IAccessPoint;
         }
-        
+
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
 
         [MethodImpl(MethodImplOptions.NoInlining)]
