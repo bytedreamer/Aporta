@@ -24,7 +24,7 @@
       <Content Update="Pages\Extensions.razor">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </Content>
-      <Content Update="Pages\Control.razor">
+      <Content Update="Pages\Monitoring.razor">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </Content>
       <Content Update="Pages\DriverConfiguration.razor">

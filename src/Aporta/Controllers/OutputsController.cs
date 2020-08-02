@@ -40,5 +40,13 @@ namespace Aporta.Controllers
         {
             return await _outputService.AvailableControlPoints();
         }
+        
+        [HttpPost("set/{outputId:int}")]
+        public async Task<IActionResult> Set(int outputId, [FromQuery]bool state)
+        {
+            await _outputService.Set(outputId, state);
+
+            return NoContent();
+        }
     }
 }
