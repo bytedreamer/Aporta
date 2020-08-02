@@ -23,9 +23,10 @@
                 }
                 else
                 {
-                    <Heading Size="HeadingSize.Is3">
-                        No additional available ports
-                    </Heading>
+                    <Alert Color="Color.Info">
+                        <AlertMessage>Add RS-485 Port</AlertMessage>
+                        <AlertDescription>None are available</AlertDescription>
+                    </Alert>
                 }
             </Column>
         </Row>
@@ -35,19 +36,28 @@
             <Column>
                 <Card Margin="Margin.Is4.OnY">
                     <CardTitle Margin="Margin.Is4.OnX">
-                        <Heading Size="HeadingSize.Is5">
-                            Port @bus.PortName Devices
-                        </Heading>
-                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">
-                            Remove
-                        </Button>
-
-                        <Button Color="Color.Primary" Clicked="@(() => ShowAddDeviceDialog(bus.PortName))">
-                            Add Device
-                        </Button>
+                        <Row>
+                            <Column ColumnSize="ColumnSize.IsAuto">
+                                <Heading Size="HeadingSize.Is5">
+                                    Port @bus.PortName Devices
+                                </Heading>
+                            </Column>
+                            <Column ColumnSize="ColumnSize.IsAuto">
+                                <Button Style="float: right" Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">
+                                    Remove
+                                </Button>
+                            </Column>
+                        </Row>
+                        <Row>
+                            <Column>
+                                <Button Color="Color.Primary" Clicked="@(() => ShowAddDeviceDialog(bus.PortName))">
+                                    Add Device
+                                </Button>
+                            </Column>
+                        </Row>
                     </CardTitle>
                     <CardBody>
-                        <Table>
+                        <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
                             <TableHeader>
                                 <TableRow>
                                     <TableHeaderCell>Name</TableHeaderCell>
@@ -56,7 +66,7 @@
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                @foreach (var device in bus.Devices)
+                                @foreach (var device in bus.Devices.OrderBy(device => device.Address))
                                 {
                                     <TableRow>
                                         <TableRowHeader>
@@ -65,7 +75,7 @@
                                         <TableRowCell>
                                             @device.Address
                                         </TableRowCell>
-                                        <TableRowCell>
+                                        <TableRowCell TextAlignment="TextAlignment.Right">
                                             <Button Color="Color.Danger" Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
                                                 Remove
                                             </Button>
@@ -114,7 +124,7 @@
                     </Field>
                 </ModalBody>
                 <ModalFooter>
-                    <Button Color="Color.Secondary" Clicked="@_addPortModal.Hide">Close</Button>
+                    <Button Color="Color.Secondary" Clicked="@_addPortModal.Hide">Cancel</Button>
                     <Button Color="Color.Primary" Clicked="@(async () => await AddBus())">Add</Button>
                 </ModalFooter>
             </ModalContent>
@@ -165,7 +175,7 @@
                         </Validations>
                     </ModalBody>
                     <ModalFooter>
-                        <Button Color="Color.Secondary" Clicked="@_addDeviceModal.Hide">Close</Button>
+                        <Button Color="Color.Secondary" Clicked="@_addDeviceModal.Hide">Cancel</Button>
                         <Button Color="Color.Primary" Clicked="@(async () => await AddDevice())">Add</Button>
                     </ModalFooter>
  

@@ -23,20 +23,21 @@ else
             }
             else
             {
-                <Heading Size="HeadingSize.Is3">
-                    No additional available outputs
-                </Heading>
+                <Alert Color="Color.Info">
+                    <AlertMessage>Add Output</AlertMessage>
+                    <AlertDescription>None are available</AlertDescription>
+                </Alert>
             }
         </Column>
     </Row>
     <Row>
         <Column>
             <Card Margin="Margin.Is4.OnY">
-                <CardTitle>
+                <CardTitle Margin="Margin.Is4.OnX">
                     Outputs
                 </CardTitle>
                 <CardBody>
-                    <Table>
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
                         <TableHeader>
                             <TableRow>
                                 <TableHeaderCell>Name</TableHeaderCell>
@@ -50,7 +51,7 @@ else
                                     <TableRowHeader>
                                         @output.Name
                                     </TableRowHeader>
-                                    <TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.Right">
                                         <Button Color="Color.Danger" Clicked="@(async () => await RemoveOutput(output.Id))">
                                             Remove
                                         </Button>
