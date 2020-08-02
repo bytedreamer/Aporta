@@ -21,13 +21,7 @@
         <PackageReference Include="System.Net.Http.Json" Version="3.2.1" />
     </ItemGroup>
     <ItemGroup>
-      <Content Update="Pages\Extensions.razor">
-        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      </Content>
       <Content Update="Pages\Monitoring.razor">
-        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      </Content>
-      <Content Update="Pages\DriverConfiguration.razor">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </Content>
       <Content Update="Shared\RootLayout.razor">
@@ -98,6 +92,12 @@
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </Content>
       <Content Update="Pages\configuration\Outputs.razor">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </Content>
+      <Content Update="Pages\configuration\DriverConfiguration.razor">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </Content>
+      <Content Update="Pages\configuration\Drivers.razor">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </Content>
     </ItemGroup>

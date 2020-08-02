@@ -11,14 +11,14 @@
 
 @implements IDisposable
 
+<Heading Size="HeadingSize.Is1">@_extension.Name Driver Configuration</Heading>
+
 @if (_extension == null)
 {
     <div class="spinner"></div>
 }
 else
 {
-    <Heading Size="HeadingSize.Is1">@_extension.Name Driver Configuration</Heading>
-                                
     @if (_extension.Id == Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"))
     {
         <OSDP.Drivers.WebClient.Configuration @bind-ExtensionId="_extension.Id" @bind-RawConfiguration="_extension.Configuration"/>

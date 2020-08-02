@@ -2,11 +2,9 @@
 @inherits LayoutComponentBase
 
 <Layout>
-    <LayoutHeader>
-        <Bar Breakpoint="Breakpoint.Desktop" 
-             NavigationBreakpoint="Breakpoint.Tablet"
-             Mode="BarMode.Horizontal" 
-             CollapseMode="BarCollapseMode.Small">
+    <LayoutHeader Fixed="true">
+        <Bar Background="Background.Light"
+             ThemeContrast="ThemeContrast.Light">
             <BarBrand>
                 <BarItem>
                     <BarLink To="">
@@ -29,7 +27,7 @@
                                 Configuration
                             </BarDropdownToggle>
                             <BarDropdownMenu>
-                                <BarDropdownItem To="extensions">Extensions</BarDropdownItem>
+                                <BarDropdownItem To="configuration/drivers">Drivers</BarDropdownItem>
                                 <BarDropdownItem To="configuration/outputs">Outputs</BarDropdownItem>
                             </BarDropdownMenu>
                         </BarDropdown>
@@ -50,11 +48,5 @@
 </Layout>
 
 @code{
-    private bool _siderVisible = true;
-    
-    void ToggleSidebar()
-    {
-        _siderVisible = !_siderVisible;
-        StateHasChanged();
-    }
+
 }
