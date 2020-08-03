@@ -6,4 +6,8 @@
         <RootNamespace>OSDP.Drivers.Shared</RootNamespace>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Blazorise.Snackbar" Version="0.9.1.2" />
+    </ItemGroup>
+
 </Project>

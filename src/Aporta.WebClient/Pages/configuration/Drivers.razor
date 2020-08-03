@@ -28,7 +28,7 @@ else
             </TableRow>
         </TableHeader>
         <TableBody>
-        @foreach (var extension in _extensions)
+        @foreach (var extension in _extensions.OrderBy(extension => extension.Name))
         {
             <TableRow>
                 <TableRowHeader>
@@ -55,9 +55,19 @@ else
     </Table>
 }
 
+<Snackbar @ref="_snackbar" Color="@_snackbarColor"> 
+    <SnackbarBody>
+        @_snackbarMessage
+    </SnackbarBody>
+</Snackbar>
+
 @code {
     private Extension[] _extensions;
     private HubConnection _hubConnection;
+    
+    private Snackbar _snackbar;
+    private SnackbarColor _snackbarColor;
+    private string _snackbarMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,7 +93,9 @@ else
         var response = await Http.PostAsync(url, new StringContent(string.Empty));
         if (!response.IsSuccessStatusCode)
         {
-            throw new Exception($"Unable to update extension. Response reason - {(int)response.StatusCode}:{response.ReasonPhrase}");
+            _snackbarMessage = "Unable to update driver";
+            _snackbarColor = SnackbarColor.Danger;
+            _snackbar.Show();
         }
     }
         

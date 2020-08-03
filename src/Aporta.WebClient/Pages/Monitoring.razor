@@ -35,7 +35,7 @@ else
                                     @output.Name
                                 </TableRowHeader>
                                 <TableRowCell>
-                                    <Check TValue="bool" CheckedChanged="async (bool checkedValue) => await SetControlPoint(output.Id, checkedValue)" /> 
+                                    <Check TValue="bool" CheckedChanged="async (bool checkedValue) => await SetOutput(output.Id, checkedValue)" /> 
                                 </TableRowCell>
                             </TableRow>
                         }
@@ -47,24 +47,34 @@ else
 </Row>
 }
 
-
+<Snackbar @ref="_snackbar" Color="@_snackbarColor">
+    <SnackbarBody>
+        @_snackbarMessage
+    </SnackbarBody>
+</Snackbar>
 
 @code {
     private Output[] _outputs;
+    
+    private Snackbar _snackbar;
+    private SnackbarColor _snackbarColor;
+    private string _snackbarMessage = string.Empty;
     
     protected override async Task OnInitializedAsync()
     {
         _outputs = await Http.GetFromJsonAsync<Output[]>(Paths.Outputs);
     }
     
-    async Task SetControlPoint(int outputId, bool checkedValue)
+    async Task SetOutput(int outputId, bool checkedValue)
     {
         string url = $"{Paths.Outputs}/set/{outputId}";
         url = QueryHelpers.AddQueryString(url, "state", checkedValue.ToString());
         var response = await Http.PostAsync(url, new StringContent(string.Empty));
         if (!response.IsSuccessStatusCode)
         {
-            throw new Exception($"Unable to update extension. Response reason - {(int) response.StatusCode}:{response.ReasonPhrase}");
+            _snackbarMessage = "Unable to set output";
+            _snackbarColor = SnackbarColor.Danger;
+            _snackbar.Show();
         }
     }
 }
