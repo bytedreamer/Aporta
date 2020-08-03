@@ -1,9 +1,13 @@
 @page "/monitoring"
 
+@using Microsoft.AspNetCore.SignalR.Client
+
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
+@using Aporta.Shared.Messaging
 
 @inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Monitoring</Heading>
 
@@ -54,7 +58,9 @@ else
 </Snackbar>
 
 @code {
-    private Output[] _outputs;
+    private List<Output> _outputs;
+    
+    private HubConnection _hubConnection;
     
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
@@ -62,7 +68,28 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _outputs = await Http.GetFromJsonAsync<Output[]>(Paths.Outputs);
+        _outputs = await Http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
+        
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithAutomaticReconnect()
+            .Build();
+        _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
+        {
+            _outputs.Add( await Http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
+            
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.OutputDeleted, outputId =>
+        {
+            var output = _outputs.FirstOrDefault(o => o.Id == outputId);
+            if (output == null) return;
+            
+            _outputs.Remove(output);
+
+            StateHasChanged();
+        });
+        await _hubConnection.StartAsync();
     }
     
     async Task SetOutput(int outputId, bool checkedValue)

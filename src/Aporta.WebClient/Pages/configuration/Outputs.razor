@@ -1,11 +1,16 @@
 @page "/configuration/outputs"
 
-@inject HttpClient Http
+@using System.Text
+@using System.Text.Json
+
+@using Microsoft.AspNetCore.SignalR.Client
 
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
-@using System.Text
-@using System.Text.Json
+@using Aporta.Shared.Messaging
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Outputs</Heading>
 
@@ -119,9 +124,11 @@ else
 </Snackbar>
 
 @code {
-    private Output[] _outputs;
+    private List<Output> _outputs;
     private Endpoint[] _availableControlPoints;
     private Output _addOutput;
+    
+    private HubConnection _hubConnection;
     
     private Modal _addOutputModal;
     private Validations _addOutputValidations;
@@ -132,9 +139,34 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _outputs = await Http.GetFromJsonAsync<Output[]>(Paths.Outputs);
+        _outputs = await Http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
 
         await InitializedAvailableOutputs();
+        
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithAutomaticReconnect()
+            .Build();
+        _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
+        {
+            _outputs.Add( await Http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
+            
+            await InitializedAvailableOutputs();
+            
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.OutputDeleted, async outputId =>
+        {
+            var output = _outputs.FirstOrDefault(o => o.Id == outputId);
+            if (output == null) return;
+            
+            _outputs.Remove(output);
+            
+            await InitializedAvailableOutputs();
+
+            StateHasChanged();
+        });
+        await _hubConnection.StartAsync();
     }
 
     private async Task InitializedAvailableOutputs()

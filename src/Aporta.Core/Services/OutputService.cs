@@ -3,7 +3,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
+using Aporta.Core.Hubs;
+using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Aporta.Core.Services
 {
@@ -11,10 +14,12 @@ namespace Aporta.Core.Services
     {
         private readonly OutputRepository _outputRepository;
         private readonly EndpointRepository _endpointRepository;
+        private readonly IHubContext<DataChangeNotificationHub> _hubContext;
         private readonly ExtensionService _extensionService;
 
-        public OutputService(IDataAccess dataAccess, ExtensionService extensionService)
+        public OutputService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext, ExtensionService extensionService)
         {
+            _hubContext = hubContext;
             _extensionService = extensionService;
             _outputRepository = new OutputRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
@@ -24,16 +29,25 @@ namespace Aporta.Core.Services
         {
             return await _outputRepository.GetAll();
         }
+        
+        
+        public async Task<Output> Get(int outputId)
+        {
+            return await _outputRepository.Get(outputId);
+        }
 
-        public async Task<int> Insert(Output output)
+        public async Task Insert(Output output)
         {
             await _outputRepository.Insert(output);
-            return output.Id;
+            
+            await _hubContext.Clients.All.SendAsync(Methods.OutputInserted, output.Id);
         }
 
         public async Task Delete(int id)
         {
             await _outputRepository.Delete(id);
+            
+            await _hubContext.Clients.All.SendAsync(Methods.OutputDeleted, id);
         }
 
         public async Task<IEnumerable<Endpoint>> AvailableControlPoints()
@@ -45,14 +59,14 @@ namespace Aporta.Core.Services
                 !outputs.Select(output => output.EndpointId).Contains(endpoint.Id));
         }
 
-        public async Task Set(int outputId, bool state)
+        public async Task SetState(int outputId, bool state)
         {
             var output = await _outputRepository.Get(outputId);
             var endpoint = await _endpointRepository.Get(output.EndpointId);
             await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).Set(state);
         }
 
-        public async Task<bool?> Get(int outputId)
+        public async Task<bool?> GetState(int outputId)
         {
             var output = await _outputRepository.Get(outputId);
             var endpoint = await _endpointRepository.Get(output.EndpointId);

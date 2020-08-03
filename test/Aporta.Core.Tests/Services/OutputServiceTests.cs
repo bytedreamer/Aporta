@@ -48,26 +48,28 @@ namespace Aporta.Core.Tests.Services
         public async Task SetState()
         {
             // Arrange
-            var outputService = new OutputService(_dataAccess, _extensionService);
+            var outputService = new OutputService(_dataAccess,
+                new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
+                _extensionService);
             var outputs = new[]
             {
-                new Output{Name = "TestOutput1", EndpointId = 2},
-                new Output{Name = "TestOutput2", EndpointId = 3} 
+                new Output {Name = "TestOutput1", EndpointId = 2},
+                new Output {Name = "TestOutput2", EndpointId = 3}
             };
-            
+
             var outputRepository = new OutputRepository(_dataAccess);
             foreach (var output in outputs)
             {
                 await outputRepository.Insert(output);
             }
-            
+
             // Act
-            await outputService.Set(outputs[0].Id, true);
-            await outputService.Set(outputs[1].Id, false);
+            await outputService.SetState(outputs[0].Id, true);
+            await outputService.SetState(outputs[1].Id, false);
 
             // Assert
-            Assert.IsTrue(await outputService.Get(outputs[0].Id));
-            Assert.IsFalse(await outputService.Get(outputs[1].Id));
+            Assert.IsTrue(await outputService.GetState(outputs[0].Id));
+            Assert.IsFalse(await outputService.GetState(outputs[1].Id));
         }
     }
 }

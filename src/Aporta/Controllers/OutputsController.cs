@@ -22,6 +22,12 @@ namespace Aporta.Controllers
         {
             return await _outputService.GetAll();
         }
+        
+        [HttpGet("{outputId}")]
+        public async Task<Output> Get(int outputId)
+        {
+            return await _outputService.Get(outputId);
+        }
 
         [HttpPut]
         public async Task Put([FromBody]Output output)
@@ -44,7 +50,7 @@ namespace Aporta.Controllers
         [HttpPost("set/{outputId:int}")]
         public async Task<IActionResult> Set(int outputId, [FromQuery]bool state)
         {
-            await _outputService.Set(outputId, state);
+            await _outputService.SetState(outputId, state);
 
             return NoContent();
         }
