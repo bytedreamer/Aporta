@@ -10,11 +10,12 @@ namespace Aporta.Extensions.Hardware
         {
             AccessPoint = accessPoint;
             CardData = cardData;
-            this.bitCount = bitCount;
+            BitCount = bitCount;
         }
         public IAccessPoint AccessPoint { get; }
+        
         public BitArray CardData { get; }
         
-        public ushort bitCount { get; }
+        public ushort BitCount { get; }
     }
 }

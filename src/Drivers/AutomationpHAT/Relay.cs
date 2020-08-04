@@ -26,12 +26,12 @@ namespace Aporta.Drivers.AutomationpHAT
         
         public string Id => _pin.ToString();
 
-        public Task<bool> Get()
+        public Task<bool> GetState()
         {
             return Task.FromResult(_controller.Read(_pin) == PinValue.High);
         }
 
-        public Task Set(bool state)
+        public Task SetState(bool state)
         {
             _controller.Write(_pin, state ? PinValue.High : PinValue.Low);
             return Task.CompletedTask;

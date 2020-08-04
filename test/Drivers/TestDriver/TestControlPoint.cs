@@ -14,12 +14,12 @@ namespace Aporta.Drivers.TestDriver
         
         public string Id { get; internal set;}
 
-        public Task<bool> Get()
+        public Task<bool> GetState()
         {
             return Task.FromResult(_currentState);
         }
 
-        public Task Set(bool state)
+        public Task SetState(bool state)
         {
             _currentState = state;
             OnControlPointStateChanged(_currentState);

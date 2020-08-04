@@ -61,7 +61,7 @@ namespace Aporta.Core.Tests.Services
             {
                 accessEndpoint = args.AccessPoint;
                 receivedCardData = args.CardData;
-                receivedBitCount = args.bitCount;
+                receivedBitCount = args.BitCount;
             };
 
             // Act

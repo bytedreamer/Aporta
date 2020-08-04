@@ -36,7 +36,7 @@ namespace Aporta.Core.DataAccess.Repositories
             return await connection.QueryAsync<Endpoint>(SqlSelect + @" where extension_id = @extensionId",
                 new {extensionId});
         }
-        
+
         protected override object InsertParameters(Endpoint endpoint)
         {
             return new

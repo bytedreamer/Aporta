@@ -30,13 +30,13 @@ namespace Aporta.Drivers.OSDP
         
         public string Id => $"{_device.Address}:O{_output.Number}";
 
-        public async Task<bool> Get()
+        public async Task<bool> GetState()
         {
             return (await _controlPanel.OutputStatus(_connectionId, _device.Address)).OutputStatuses.ToArray()[
                 _output.Number];
         }
 
-        public async Task Set(bool state)
+        public async Task SetState(bool state)
         {
             await _controlPanel.OutputControl(_connectionId, _device.Address,
                 new OutputControls(new[]
@@ -46,8 +46,8 @@ namespace Aporta.Drivers.OSDP
                             ? OutputControlCode.PermanentStateOnAbortTimedOperation
                             : OutputControlCode.PermanentStateOffAbortTimedOperation, 0)
                 }));
-        }
 
-        public event EventHandler<bool> ControlPointStateChanged;
+            await GetState();
+        }
     }
 }

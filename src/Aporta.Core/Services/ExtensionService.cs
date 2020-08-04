@@ -123,6 +123,8 @@ namespace Aporta.Core.Services
         }
 
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
+        
+        public event EventHandler<OutputStateChangedEventArgs> OutputStateChanged;
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task DiscoverExtensions()
@@ -202,6 +204,7 @@ namespace Aporta.Core.Services
                 extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
                 extension.Driver.UpdatedEndpoints += DriverOnUpdatedEndpoints;
                 extension.Driver.AccessCredentialReceived += DriverOnAccessCredentialReceived;
+                extension.Driver.OutputStateChanged += DriverOnOutputStateChanged;
 
                 extension.Driver.Load(extension.Configuration, _loggerFactory);
                 extension.Configuration = extension.Driver.CurrentConfiguration();
@@ -246,6 +249,11 @@ namespace Aporta.Core.Services
         private void DriverOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
         {
             AccessCredentialReceived?.Invoke(this, eventArgs);
+        }
+        
+        private void DriverOnOutputStateChanged(object sender, OutputStateChangedEventArgs eventArgs)
+        {
+            OutputStateChanged?.Invoke(this, eventArgs);
         }
 
         private static IEnumerable<IEndpoint> EndpointsToBeInserted(IHardwareDriver driver,
@@ -306,6 +314,7 @@ namespace Aporta.Core.Services
                 extension.Driver.Unload();
                 extension.Driver.UpdatedEndpoints -= DriverOnUpdatedEndpoints;
                 extension.Driver.AccessCredentialReceived -= DriverOnAccessCredentialReceived;
+                extension.Driver.OutputStateChanged -= DriverOnOutputStateChanged;
 
                 extension.Host.Unload();
                 extension.Loaded = false;

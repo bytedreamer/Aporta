@@ -47,8 +47,14 @@ namespace Aporta.Controllers
             return await _outputService.AvailableControlPoints();
         }
         
+        [HttpGet("set/{outputId:int}")]
+        public async Task<bool?> GetState(int outputId)
+        {
+            return await _outputService.GetState(outputId);
+        }
+        
         [HttpPost("set/{outputId:int}")]
-        public async Task<IActionResult> Set(int outputId, [FromQuery]bool state)
+        public async Task<IActionResult> SetState(int outputId, [FromQuery]bool state)
         {
             await _outputService.SetState(outputId, state);
 

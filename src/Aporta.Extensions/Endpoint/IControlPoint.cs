@@ -5,10 +5,8 @@ namespace Aporta.Extensions.Endpoint
 {
     public interface IControlPoint : IEndpoint
     {
-        Task<bool> Get();
+        Task<bool> GetState();
         
-        Task Set(bool state);
-        
-        event EventHandler<bool> ControlPointStateChanged;
+        Task SetState(bool state);
     }
 }

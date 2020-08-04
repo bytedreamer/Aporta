@@ -39,7 +39,7 @@ else
                                     @output.Name
                                 </TableRowHeader>
                                 <TableRowCell>
-                                    <Check TValue="bool" CheckedChanged="async (bool checkedValue) => await SetOutput(output.Id, checkedValue)" /> 
+                                    <Check TValue="bool?" Checked="@_outputStates[output.Id]" CheckedChanged="async (bool? checkedValue) => await SetOutputState(output.Id, checkedValue)" /> 
                                 </TableRowCell>
                             </TableRow>
                         }
@@ -59,6 +59,7 @@ else
 
 @code {
     private List<Output> _outputs;
+    private readonly Dictionary<int, bool?> _outputStates = new Dictionary<int, bool?>();
     
     private HubConnection _hubConnection;
     
@@ -69,6 +70,10 @@ else
     protected override async Task OnInitializedAsync()
     {
         _outputs = await Http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
+        foreach (var output in _outputs)
+        {
+            _outputStates[output.Id] = await GetOutputState(output.Id);
+        }
         
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
@@ -77,6 +82,7 @@ else
         _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
         {
             _outputs.Add( await Http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
+            _outputStates[outputId] = await GetOutputState(outputId);
             
             StateHasChanged();
         });
@@ -86,13 +92,32 @@ else
             if (output == null) return;
             
             _outputs.Remove(output);
+            _outputStates.Remove(output.Id);
 
+            StateHasChanged();
+        });
+        _hubConnection.On<int, bool>(Methods.OutputStateChanged, (outputId, newState) =>
+        {
+            _outputStates[outputId] = newState;
+            
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
     }
     
-    async Task SetOutput(int outputId, bool checkedValue)
+    private async Task<bool?> GetOutputState(int outputId)
+    {
+        string url = $"{Paths.Outputs}/set/{outputId}";
+        var response = await Http.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return bool.Parse(await response.Content.ReadAsStringAsync());
+    }
+    
+    private async Task SetOutputState(int outputId, bool? checkedValue)
     {
         string url = $"{Paths.Outputs}/set/{outputId}";
         url = QueryHelpers.AddQueryString(url, "state", checkedValue.ToString());

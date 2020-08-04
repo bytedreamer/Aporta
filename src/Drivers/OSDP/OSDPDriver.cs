@@ -38,6 +38,7 @@ namespace Aporta.Drivers.OSDP
             
             _panel.ConnectionStatusChanged += PanelOnConnectionStatusChanged;
             _panel.RawCardDataReplyReceived += PanelOnRawCardDataReplyReceived;
+            _panel.OutputStatusReportReplyReceived += PanelOnOutputStatusReportReplyReceived;
 
             ExtractConfiguration(configuration);
             
@@ -131,7 +132,20 @@ namespace Aporta.Drivers.OSDP
                         accessPoint.Id.Split(":").First() == eventArgs.Address.ToString()),
                     eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount));
         }
-        
+
+        private void PanelOnOutputStatusReportReplyReceived(object sender,
+            ControlPanel.OutputStatusReportReplyEventArgs eventArgs)
+        {
+            var controlPoint = _endpoints.Where(endpoint => endpoint is IControlPoint).Cast<IControlPoint>().First(
+                cp =>
+                    cp.Id.Split(":").First() == eventArgs.Address.ToString());
+
+            OutputStateChanged?.Invoke(this,
+                new OutputStateChangedEventArgs(controlPoint,
+                    eventArgs.OutputStatus.OutputStatuses.ToArray()[
+                        short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))]));
+        }
+
         private void AddDevices()
         {
             foreach (var bus in _configuration.Buses)
@@ -177,6 +191,7 @@ namespace Aporta.Drivers.OSDP
             
             _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
             _panel.RawCardDataReplyReceived -= PanelOnRawCardDataReplyReceived;
+            _panel.OutputStatusReportReplyReceived -= PanelOnOutputStatusReportReplyReceived;
         }
 
         public string CurrentConfiguration()
@@ -199,6 +214,7 @@ namespace Aporta.Drivers.OSDP
 
         public event EventHandler<EventArgs> UpdatedEndpoints;
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
+        public event EventHandler<OutputStateChangedEventArgs> OutputStateChanged;
 
         private string AddBus(string parameters)
         {

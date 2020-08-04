@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Hubs;
+using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
@@ -17,19 +18,28 @@ namespace Aporta.Core.Services
         private readonly IHubContext<DataChangeNotificationHub> _hubContext;
         private readonly ExtensionService _extensionService;
 
-        public OutputService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext, ExtensionService extensionService)
+        public OutputService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
+            ExtensionService extensionService)
         {
             _hubContext = hubContext;
             _extensionService = extensionService;
             _outputRepository = new OutputRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
+
+            _extensionService.OutputStateChanged += ExtensionServiceOnOutputStateChanged;
         }
-        
+
+        private async void ExtensionServiceOnOutputStateChanged(object sender, OutputStateChangedEventArgs eventArgs)
+        {
+            var output = await _outputRepository.GetForDriverId(eventArgs.ControlPoint.Id);
+
+            await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, eventArgs.NewState);
+        }
+
         public async Task<IEnumerable<Output>> GetAll()
         {
             return await _outputRepository.GetAll();
         }
-        
         
         public async Task<Output> Get(int outputId)
         {
@@ -63,14 +73,14 @@ namespace Aporta.Core.Services
         {
             var output = await _outputRepository.Get(outputId);
             var endpoint = await _endpointRepository.Get(output.EndpointId);
-            await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).Set(state);
+            await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
         }
 
         public async Task<bool?> GetState(int outputId)
         {
             var output = await _outputRepository.Get(outputId);
             var endpoint = await _endpointRepository.Get(output.EndpointId);
-            return await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).Get();
+            return await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).GetState();
         }
     }
 }
