@@ -103,8 +103,8 @@
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Aporta.Shared\Aporta.Shared.csproj" />
-      <ProjectReference Include="..\Drivers\OSDP.Drivers.Shared\OSDP.Drivers.Shared.csproj" />
-      <ProjectReference Include="..\Drivers\OSDP.Drivers.WebClient\OSDP.Drivers.WebClient.csproj" />
+      <ProjectReference Include="..\Drivers\Aporta.Drivers.OSDP.Shared\Aporta.Drivers.OSDP.Shared.csproj" />
+      <ProjectReference Include="..\Drivers\Aporta.Drivers.OSDP.WebClient\Aporta.Drivers.OSDP.WebClient.csproj" />
     </ItemGroup>
     <ItemGroup>
       <_ContentIncludedByDefault Remove="wwwroot\css\bootstrap\bootstrap.min.css" />

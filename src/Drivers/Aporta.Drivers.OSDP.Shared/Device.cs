@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace OSDP.Drivers.Shared
+namespace Aporta.Drivers.OSDP.Shared
 {
     public class Device
     {

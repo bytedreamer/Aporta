@@ -1,4 +1,4 @@
-namespace OSDP.Drivers.Shared.Actions
+namespace Aporta.Drivers.OSDP.Shared.Actions
 {
     public enum ActionType
     {

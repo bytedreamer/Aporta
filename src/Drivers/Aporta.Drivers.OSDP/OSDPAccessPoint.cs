@@ -1,6 +1,6 @@
 using System;
 using Aporta.Extensions.Endpoint;
-using OSDP.Drivers.Shared;
+using Aporta.Drivers.OSDP.Shared;
 using OSDP.Net;
 
 namespace Aporta.Drivers.OSDP

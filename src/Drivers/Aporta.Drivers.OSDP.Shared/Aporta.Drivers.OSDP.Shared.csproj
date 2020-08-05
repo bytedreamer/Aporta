@@ -2,8 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
-        <AssemblyName>OSDP.Drivers.Shared</AssemblyName>
-        <RootNamespace>OSDP.Drivers.Shared</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
-using OSDP.Drivers.Shared;
+using Aporta.Drivers.OSDP.Shared;
 using OSDP.Net;
 using OSDP.Net.Model.CommandData;
 

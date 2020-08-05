@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace OSDP.Drivers.Shared.Actions
+namespace Aporta.Drivers.OSDP.Shared
 {
     public class Configuration
     {

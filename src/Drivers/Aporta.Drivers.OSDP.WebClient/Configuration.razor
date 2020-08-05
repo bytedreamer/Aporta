@@ -1,11 +1,12 @@
 ﻿@using System.Text.Json
 @using System.Text
 
-@using Aporta.Shared.Calls
 @using Blazorise.Snackbar
-@using OSDP.Drivers.Shared
 
-@using OSDP.Drivers.Shared.Actions
+@using Aporta.Shared.Calls
+
+@using Aporta.Drivers.OSDP.Shared
+@using Aporta.Drivers.OSDP.Shared.Actions
 
 @inject HttpClient Http
 
@@ -212,7 +213,7 @@
         115200
     };
 
-    private Shared.Actions.Configuration _configuration;
+    private Aporta.Drivers.OSDP.Shared.Configuration _configuration;
     
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -228,7 +229,7 @@
 
     protected override void OnParametersSet()
     {
-        _configuration = JsonSerializer.Deserialize<Shared.Actions.Configuration>(RawConfiguration);
+        _configuration = JsonSerializer.Deserialize<Aporta.Drivers.OSDP.Shared.Configuration>(RawConfiguration);
 
         _addDevice = new Device {Name = string.Empty, Address = 0, RequireSecurity = true};
 

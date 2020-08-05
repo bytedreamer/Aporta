@@ -1,6 +1,4 @@
-using System.Runtime.CompilerServices;
-
-namespace OSDP.Drivers.Shared.Actions
+namespace Aporta.Drivers.OSDP.Shared.Actions
 {
     public class DeviceAction
     {

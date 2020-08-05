@@ -17,7 +17,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\Aporta.Shared\Aporta.Shared.csproj" />
-      <ProjectReference Include="..\OSDP.Drivers.Shared\OSDP.Drivers.Shared.csproj" />
+      <ProjectReference Include="..\Aporta.Drivers.OSDP.Shared\Aporta.Drivers.OSDP.Shared.csproj" />
     </ItemGroup>
 
 </Project>
