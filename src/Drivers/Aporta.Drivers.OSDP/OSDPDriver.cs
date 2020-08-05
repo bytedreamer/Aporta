@@ -79,49 +79,58 @@ namespace Aporta.Drivers.OSDP
                 bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
             var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
 
-            if (eventArgs.IsConnected && !matchingDevice.CheckedCapabilities)
+            if (!eventArgs.IsConnected || matchingDevice.CheckedCapabilities) return;
+            
+            DeviceCapabilities capabilities;
+            try
             {
-                var capabilities = await _panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address);
-                foreach (var outputCapability in capabilities.Capabilities.Where(capability =>
-                    capability.Function == CapabilityFunction.OutputControl))
-                {
-                    if (matchingDevice.Outputs.Any()) continue;
-
-                    for (byte outputNumber = 0; outputNumber < outputCapability.NumberOf; outputNumber++)
-                    {
-                        var output = new Output
-                        {
-                            Name = $"{matchingDevice.Name} [Output {outputNumber}]",
-                            Number = outputNumber
-                        };
-                        matchingDevice.Outputs.Add(output);
-                        _endpoints.Add(new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
-                            output));
-                    }
-                }
-
-                foreach (var readerCapability in capabilities.Capabilities.Where(capability =>
-                    capability.Function == CapabilityFunction.Readers))
-                {
-                    if (matchingDevice.Readers.Any()) continue;
-
-                    for (byte readerNumber = 0; readerNumber < readerCapability.NumberOf; readerNumber++)
-                    {
-                        var reader = new Reader
-                        {
-                            Name = $"{matchingDevice.Name} [Reader {readerNumber}]",
-                            Number = readerNumber
-                        };
-                        matchingDevice.Readers.Add(reader);
-                        _endpoints.Add(new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
-                            reader));
-                    }
-                }
-
-                matchingDevice.CheckedCapabilities = true;
-                
-                OnUpdatedEndpoints();
+                capabilities = await _panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address);
             }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "Unable to get device capabilities");
+                return;
+            }
+            
+            foreach (var outputCapability in capabilities.Capabilities.Where(capability =>
+                capability.Function == CapabilityFunction.OutputControl))
+            {
+                if (matchingDevice.Outputs.Any()) continue;
+
+                for (byte outputNumber = 0; outputNumber < outputCapability.NumberOf; outputNumber++)
+                {
+                    var output = new Output
+                    {
+                        Name = $"{matchingDevice.Name} [Output {outputNumber}]",
+                        Number = outputNumber
+                    };
+                    matchingDevice.Outputs.Add(output);
+                    _endpoints.Add(new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                        output));
+                }
+            }
+
+            foreach (var readerCapability in capabilities.Capabilities.Where(capability =>
+                capability.Function == CapabilityFunction.Readers))
+            {
+                if (matchingDevice.Readers.Any()) continue;
+
+                for (byte readerNumber = 0; readerNumber < readerCapability.NumberOf; readerNumber++)
+                {
+                    var reader = new Reader
+                    {
+                        Name = $"{matchingDevice.Name} [Reader {readerNumber}]",
+                        Number = readerNumber
+                    };
+                    matchingDevice.Readers.Add(reader);
+                    _endpoints.Add(new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                        reader));
+                }
+            }
+
+            matchingDevice.CheckedCapabilities = true;
+                
+            OnUpdatedEndpoints();
         }
 
         private void PanelOnRawCardDataReplyReceived(object sender, ControlPanel.RawCardDataReplyEventArgs eventArgs)
