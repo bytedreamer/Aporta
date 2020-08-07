@@ -46,8 +46,6 @@ namespace Aporta.Drivers.OSDP
                             ? OutputControlCode.PermanentStateOnAbortTimedOperation
                             : OutputControlCode.PermanentStateOffAbortTimedOperation, 0)
                 }));
-
-            await GetState();
         }
     }
 }

@@ -6,6 +6,10 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
+
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Extension;
@@ -15,8 +19,6 @@ using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services
 {
@@ -124,7 +126,7 @@ namespace Aporta.Core.Services
 
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
         
-        public event EventHandler<OutputStateChangedEventArgs> OutputStateChanged;
+        public event EventHandler<StateChangedEventArgs> OutputStateChanged;
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task DiscoverExtensions()
@@ -204,7 +206,7 @@ namespace Aporta.Core.Services
                 extension.Driver = extension.Host.GetExtensions().First(ext => ext.Id == extension.Id);
                 extension.Driver.UpdatedEndpoints += DriverOnUpdatedEndpoints;
                 extension.Driver.AccessCredentialReceived += DriverOnAccessCredentialReceived;
-                extension.Driver.OutputStateChanged += DriverOnOutputStateChanged;
+                extension.Driver.StateChanged += DriverOnStateChanged;
 
                 extension.Driver.Load(extension.Configuration, _loggerFactory);
                 extension.Configuration = extension.Driver.CurrentConfiguration();
@@ -251,7 +253,7 @@ namespace Aporta.Core.Services
             AccessCredentialReceived?.Invoke(this, eventArgs);
         }
         
-        private void DriverOnOutputStateChanged(object sender, OutputStateChangedEventArgs eventArgs)
+        private void DriverOnStateChanged(object sender, StateChangedEventArgs eventArgs)
         {
             OutputStateChanged?.Invoke(this, eventArgs);
         }
@@ -314,7 +316,7 @@ namespace Aporta.Core.Services
                 extension.Driver.Unload();
                 extension.Driver.UpdatedEndpoints -= DriverOnUpdatedEndpoints;
                 extension.Driver.AccessCredentialReceived -= DriverOnAccessCredentialReceived;
-                extension.Driver.OutputStateChanged -= DriverOnOutputStateChanged;
+                extension.Driver.StateChanged -= DriverOnStateChanged;
 
                 extension.Host.Unload();
                 extension.Loaded = false;

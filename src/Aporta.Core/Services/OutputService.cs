@@ -29,11 +29,18 @@ namespace Aporta.Core.Services
             _extensionService.OutputStateChanged += ExtensionServiceOnOutputStateChanged;
         }
 
-        private async void ExtensionServiceOnOutputStateChanged(object sender, OutputStateChangedEventArgs eventArgs)
+        private async void ExtensionServiceOnOutputStateChanged(object sender, StateChangedEventArgs eventArgs)
         {
-            var output = await _outputRepository.GetForDriverId(eventArgs.ControlPoint.Id);
+            try
+            {
+                var output = await _outputRepository.GetForDriverId(eventArgs.Endpoint.Id);
 
-            await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, eventArgs.NewState);
+                await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, eventArgs.ControlPointState.NewState);
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         public async Task<IEnumerable<Output>> GetAll()
@@ -74,6 +81,8 @@ namespace Aporta.Core.Services
             var output = await _outputRepository.Get(outputId);
             var endpoint = await _endpointRepository.Get(output.EndpointId);
             await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
+            
+            await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, state);
         }
 
         public async Task<bool?> GetState(int outputId)

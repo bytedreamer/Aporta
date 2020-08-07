@@ -149,10 +149,10 @@ namespace Aporta.Drivers.OSDP
                 cp =>
                     cp.Id.Split(":").First() == eventArgs.Address.ToString());
 
-            OutputStateChanged?.Invoke(this,
-                new OutputStateChangedEventArgs(controlPoint,
+            StateChanged?.Invoke(this,
+                new StateChangedEventArgs(controlPoint, new ControlPointState(
                     eventArgs.OutputStatus.OutputStatuses.ToArray()[
-                        short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))]));
+                        short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))])));
         }
 
         private void AddDevices()
@@ -223,7 +223,7 @@ namespace Aporta.Drivers.OSDP
 
         public event EventHandler<EventArgs> UpdatedEndpoints;
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
-        public event EventHandler<OutputStateChangedEventArgs> OutputStateChanged;
+        public event EventHandler<StateChangedEventArgs> StateChanged;
 
         private string AddBus(string parameters)
         {
