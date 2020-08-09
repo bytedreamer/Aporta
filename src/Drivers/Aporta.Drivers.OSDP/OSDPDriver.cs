@@ -92,6 +92,25 @@ namespace Aporta.Drivers.OSDP
                 return;
             }
             
+            foreach (var inputCapability in capabilities.Capabilities.Where(capability =>
+                capability.Function == CapabilityFunction.ContactStatusMonitoring))
+            {
+                if (matchingDevice.Outputs.Any()) continue;
+
+                for (byte inputNumber = 0; inputNumber < inputCapability.NumberOf; inputNumber++)
+                {
+                    var input = new Input
+                    {
+                        Name = $"{matchingDevice.Name} [Input {inputNumber}]",
+                        Number = inputNumber
+                    };
+                    matchingDevice.Inputs.Add(input);
+                    _endpoints.Add(new OSDPMonitorPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                        input));
+                }
+            }
+            
+            
             foreach (var outputCapability in capabilities.Capabilities.Where(capability =>
                 capability.Function == CapabilityFunction.OutputControl))
             {

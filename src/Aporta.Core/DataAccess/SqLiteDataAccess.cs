@@ -20,7 +20,8 @@ namespace Aporta.Core.DataAccess
             new _0000_InitialCreate(),
             new _0001_AddExtensionTable(),
             new _0002_AddEndpointTable(),
-            new _0003_AddOutputTable()
+            new _0003_AddOutputTable(),
+            new _0004_AddInputTable()
         };
 
         /// <summary>

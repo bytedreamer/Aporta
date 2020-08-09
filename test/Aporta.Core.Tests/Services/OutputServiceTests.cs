@@ -40,6 +40,8 @@ namespace Aporta.Core.Tests.Services
         [TearDown]
         public void TearDown()
         {
+            _extensionService.Shutdown();
+            
             _persistConnection?.Close();
             _persistConnection?.Dispose();
         }

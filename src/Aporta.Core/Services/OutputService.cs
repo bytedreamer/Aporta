@@ -26,11 +26,16 @@ namespace Aporta.Core.Services
             _outputRepository = new OutputRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
 
-            _extensionService.OutputStateChanged += ExtensionServiceOnOutputStateChanged;
+            _extensionService.StateChanged += ExtensionServiceOnOutputStateChanged;
         }
 
         private async void ExtensionServiceOnOutputStateChanged(object sender, StateChangedEventArgs eventArgs)
         {
+            if (eventArgs.ControlPointState == null)
+            {
+                return;
+            }
+            
             try
             {
                 var output = await _outputRepository.GetForDriverId(eventArgs.Endpoint.Id);

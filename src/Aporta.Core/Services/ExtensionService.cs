@@ -117,6 +117,12 @@ namespace Aporta.Core.Services
             return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
                 .First(endpoint => endpoint.Id == endpointId) as IControlPoint;
         }
+        
+        public IMonitorPoint GetMonitorPoint(Guid extensionId, string endpointId)
+        {
+            return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
+                .First(endpoint => endpoint.Id == endpointId) as IMonitorPoint;
+        }
 
         public IAccessPoint GetAccessPoint(Guid extensionId, string endpointId)
         {
@@ -126,7 +132,7 @@ namespace Aporta.Core.Services
 
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
         
-        public event EventHandler<StateChangedEventArgs> OutputStateChanged;
+        public event EventHandler<StateChangedEventArgs> StateChanged;
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private async Task DiscoverExtensions()
@@ -229,7 +235,13 @@ namespace Aporta.Core.Services
                     var insertEndpoint = new Endpoint
                     {
                         DriverEndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
-                        Type = endpoint is IControlPoint ? EndpointType.Output : EndpointType.Reader
+                        Type = endpoint switch
+                        {
+                            IControlPoint _ => EndpointType.Output,
+                            IMonitorPoint _ => EndpointType.Input,
+                            IAccessPoint _ => EndpointType.Reader,
+                            _ => throw new Exception("Invalid endpoint type")
+                        }
                     };
 
                     await _endpointRepository.Insert(insertEndpoint);
@@ -255,7 +267,7 @@ namespace Aporta.Core.Services
         
         private void DriverOnStateChanged(object sender, StateChangedEventArgs eventArgs)
         {
-            OutputStateChanged?.Invoke(this, eventArgs);
+            StateChanged?.Invoke(this, eventArgs);
         }
 
         private static IEnumerable<IEndpoint> EndpointsToBeInserted(IHardwareDriver driver,

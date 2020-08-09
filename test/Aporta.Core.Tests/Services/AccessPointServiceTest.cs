@@ -3,6 +3,7 @@ using System.Collections;
 using System.Data;
 using System.IO;
 using System.IO.Pipes;
+using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
@@ -37,11 +38,15 @@ namespace Aporta.Core.Tests.Services
                 _loggerFactory);
             await _extensionService.Startup();
             await _extensionService.EnableExtension(_extensionId, true);
+            Assert.That(() => _extensionService.Extensions.First().Loaded,
+                Is.True.After(1000, 100));
         }
 
         [TearDown]
         public void TearDown()
         {
+            _extensionService?.Shutdown();
+                
             _persistConnection?.Close();
             _persistConnection?.Dispose();
         }
@@ -77,7 +82,7 @@ namespace Aporta.Core.Tests.Services
         private static async Task SendBadgeData(BitArray bitArray)
         {
             await using var pipeClient =
-                new NamedPipeClientStream(".", "Aporta.TestDriverAccessPoint", PipeDirection.Out);
+                new NamedPipeClientStream(".", "Aporta.TestDriverAccessPoint", PipeDirection.Out, PipeOptions.Asynchronous);
             await pipeClient.ConnectAsync();
             await using var writer = new StreamWriter(pipeClient) {AutoFlush = true};
             await writer.WriteLineAsync(bitArray.ToBitString());

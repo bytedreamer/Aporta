@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Aporta.Drivers.OSDP.Shared
 {
@@ -12,8 +12,16 @@ namespace Aporta.Drivers.OSDP.Shared
 
         public bool CheckedCapabilities { get; set; }
 
-        public List<Output> Outputs { get; set; } = new List<Output>();
-        public List<Reader> Readers { get; set; } = new List<Reader>();
+        public ConcurrentBag<Input> Inputs { get; } = new ConcurrentBag<Input>();
+        public ConcurrentBag<Output> Outputs { get; } = new ConcurrentBag<Output>();
+        public ConcurrentBag<Reader> Readers { get; } = new ConcurrentBag<Reader>();
+    }
+    
+    public class Input
+    {
+        public string Name { get; set; }
+        
+        public byte Number { get; set; }
     }
 
     public class Output

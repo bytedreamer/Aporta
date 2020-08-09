@@ -53,6 +53,8 @@ namespace Aporta.Core.Tests.Services
             // Assert
             Assert.AreEqual(1, extensionService.Extensions.Count());
             Assert.IsFalse(extensionService.Extensions.First().Loaded);
+            
+            extensionService.Shutdown();
         }
 
         [Test]
@@ -68,7 +70,8 @@ namespace Aporta.Core.Tests.Services
             await extensionService.EnableExtension(_extensionId, true);
 
             // Assert
-            Assert.IsTrue(extensionService.Extensions.First().Loaded);
+            Assert.That(() => extensionService.Extensions.First().Loaded,
+                Is.True.After(1000, 100));
             hubContextSupport.ClientsAllMock
                 .Verify(
                     x => x.SendCoreAsync(
@@ -76,6 +79,8 @@ namespace Aporta.Core.Tests.Services
                         new object[] {_extensionId}, 
                         It.IsAny<CancellationToken>())
                 );
+            
+            extensionService.Shutdown();
         }
     }
 }
