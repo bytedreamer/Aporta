@@ -44,8 +44,9 @@ namespace Aporta.Core.Tests.Services
         {
             // Arrange
             var extensionService = new ExtensionService(_dataAccess,
-                new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
-                _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory);
+                    new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
+                    _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
+                {CurrentDirectory = Environment.CurrentDirectory};
 
             // Act
             await extensionService.Startup();
@@ -63,7 +64,8 @@ namespace Aporta.Core.Tests.Services
             // Arrange
             var hubContextSupport = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
             var extensionService = new ExtensionService(_dataAccess, hubContextSupport.IHubContextMock.Object,
-                _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory);
+                    _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
+                {CurrentDirectory = Environment.CurrentDirectory};
             await extensionService.Startup();
 
             // Act

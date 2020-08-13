@@ -47,6 +47,8 @@ namespace Aporta.Core.Services
             _endpointRepository = new EndpointRepository(dataAccess);
             _extensionRepository = new ExtensionRepository(dataAccess);
         }
+        
+        public string CurrentDirectory { get; set; }
 
         public IEnumerable<ExtensionHost> Extensions => _extensions;
 
@@ -140,8 +142,8 @@ namespace Aporta.Core.Services
             var extensionFinder = new Finder<IHardwareDriver>();
             var assemblyPaths =
                 extensionFinder.FindAssembliesWithPlugins(
-                    Path.Combine(
-                        Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory,
+                    Path.Combine(CurrentDirectory ??
+                        Path.GetDirectoryName(CurrentDirectory ?? Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory,
                         "Drivers"), _loggerFactory.CreateLogger<Finder<IHardwareDriver>>());
 
             foreach (string assemblyPath in assemblyPaths)

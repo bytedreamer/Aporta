@@ -41,7 +41,7 @@ namespace Aporta.Core.Tests.Services
             _extensionService = new ExtensionService(_dataAccess,
                 new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
                 _loggerFactory.CreateLogger<ExtensionService>(),
-                _loggerFactory);
+                _loggerFactory){CurrentDirectory = Environment.CurrentDirectory};
             await _extensionService.Startup();
             await _extensionService.EnableExtension(_extensionId, true);
             Assert.That(() => _extensionService.Extensions.First().Loaded,
