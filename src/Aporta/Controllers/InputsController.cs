@@ -47,7 +47,7 @@ namespace Aporta.Controllers
             return await _inputService.AvailableMonitorPoints();
         }
         
-        [HttpGet("set/{inputId:int}")]
+        [HttpGet("state/{inputId:int}")]
         public async Task<bool?> GetState(int inputId)
         {
             return await _inputService.GetState(inputId);

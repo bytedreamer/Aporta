@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
@@ -39,6 +38,7 @@ namespace Aporta.Drivers.OSDP
             
             _panel.ConnectionStatusChanged += PanelOnConnectionStatusChanged;
             _panel.RawCardDataReplyReceived += PanelOnRawCardDataReplyReceived;
+            _panel.InputStatusReportReplyReceived += PanelOnInputStatusReportReplyReceived;
             _panel.OutputStatusReportReplyReceived += PanelOnOutputStatusReportReplyReceived;
 
             ExtractConfiguration(configuration);
@@ -168,17 +168,32 @@ namespace Aporta.Drivers.OSDP
                     eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount));
         }
 
+        private void PanelOnInputStatusReportReplyReceived(object sender,
+            ControlPanel.InputStatusReportReplyEventArgs eventArgs)
+        {
+            var monitorPoints = _endpoints.Where(endpoint => endpoint is IMonitorPoint).Cast<IMonitorPoint>();
+
+            foreach (var monitorPoint in monitorPoints)
+            {
+                StateChanged?.Invoke(this,
+                    new StateChangedEventArgs(monitorPoint, new MonitorPointState(
+                        eventArgs.InputStatus.InputStatuses.ToArray()[
+                            short.Parse(monitorPoint.Id.Split(":").Last().TrimStart('I'))])));
+            }
+        }
+
         private void PanelOnOutputStatusReportReplyReceived(object sender,
             ControlPanel.OutputStatusReportReplyEventArgs eventArgs)
         {
-            var controlPoint = _endpoints.Where(endpoint => endpoint is IControlPoint).Cast<IControlPoint>().First(
-                cp =>
-                    cp.Id.Split(":").First() == eventArgs.Address.ToString());
+            var controlPoints = _endpoints.Where(endpoint => endpoint is IControlPoint).Cast<IControlPoint>();
 
-            StateChanged?.Invoke(this,
-                new StateChangedEventArgs(controlPoint, new ControlPointState(
-                    eventArgs.OutputStatus.OutputStatuses.ToArray()[
-                        short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))])));
+            foreach (var controlPoint in controlPoints)
+            {
+                StateChanged?.Invoke(this,
+                    new StateChangedEventArgs(controlPoint, new ControlPointState(
+                        eventArgs.OutputStatus.OutputStatuses.ToArray()[
+                            short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))])));
+            }
         }
 
         private void AddDevices()
@@ -226,6 +241,7 @@ namespace Aporta.Drivers.OSDP
             
             _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
             _panel.RawCardDataReplyReceived -= PanelOnRawCardDataReplyReceived;
+            _panel.InputStatusReportReplyReceived -= PanelOnInputStatusReportReplyReceived;
             _panel.OutputStatusReportReplyReceived -= PanelOnOutputStatusReportReplyReceived;
         }
 

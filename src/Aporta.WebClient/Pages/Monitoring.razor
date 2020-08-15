@@ -19,6 +19,43 @@ else
 {
 <Row>
     <Column ColumnSize="ColumnSize.IsHalf">
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    Inputs
+                </CardTitle>
+                <CardBody>
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Name</TableHeaderCell>
+                                <TableHeaderCell>State</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var input in _inputs.OrderBy(output => output.Name))
+                            {
+                                <TableRow>
+                                    <TableRowHeader>
+                                        @input.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @if (_inputStates[input.Id].HasValue && _inputStates[input.Id].Value)
+                                        {
+                                            <Icon Name="IconName.ExclamationCircle" Style="color: red"/>
+                                        }
+                                        else if (_inputStates[input.Id].HasValue && !_inputStates[input.Id].Value)
+                                        {
+                                            <Icon Name="IconName.CheckCircle" Style="color: green"/>
+                                        }
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column> 
+    <Column ColumnSize="ColumnSize.IsHalf">
         <Card Margin="Margin.Is4.OnY">
             <CardTitle Margin="Margin.Is4.OnX">
                 Outputs
@@ -28,6 +65,7 @@ else
                     <TableHeader>
                         <TableRow>
                             <TableHeaderCell>Name</TableHeaderCell>
+                            <TableHeaderCell>State</TableHeaderCell>
                             <TableHeaderCell></TableHeaderCell>
                         </TableRow>
                     </TableHeader>
@@ -38,8 +76,18 @@ else
                                 <TableRowHeader>
                                     @output.Name
                                 </TableRowHeader>
+                                <TableHeaderCell>
+                                    @if (_outputStates[output.Id].HasValue && _outputStates[output.Id].Value)
+                                    {
+                                        <Icon Name="IconName.ExclamationCircle" Style="color: red"/>
+                                    }
+                                    else if (_outputStates[output.Id].HasValue && !_outputStates[output.Id].Value)
+                                    {
+                                        <Icon Name="IconName.CheckCircle" Style="color: green"/>
+                                    }
+                                </TableHeaderCell>
                                 <TableRowCell>
-                                    <Check TValue="bool?" Checked="@_outputStates[output.Id]" CheckedChanged="async (bool? checkedValue) => await SetOutputState(output.Id, checkedValue)" /> 
+                                    <Check TValue="bool?" Checked="@_outputStates[output.Id]" CheckedChanged="async (bool? checkedValue) => await SetOutputState(output.Id, checkedValue)"/>
                                 </TableRowCell>
                             </TableRow>
                         }
@@ -47,7 +95,7 @@ else
                 </Table>
             </CardBody>
         </Card>
-    </Column> 
+    </Column>
 </Row>
 }
 
@@ -58,6 +106,9 @@ else
 </Snackbar>
 
 @code {
+    private List<Input> _inputs;
+    private readonly Dictionary<int, bool?> _inputStates = new Dictionary<int, bool?>();
+    
     private List<Output> _outputs;
     private readonly Dictionary<int, bool?> _outputStates = new Dictionary<int, bool?>();
     
@@ -69,6 +120,12 @@ else
     
     protected override async Task OnInitializedAsync()
     {
+        _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
+        foreach (var input in _inputs)
+        {
+            _inputStates[input.Id] = await GetInputState(input.Id);
+        }
+        
         _outputs = await Http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
         foreach (var output in _outputs)
         {
@@ -102,7 +159,42 @@ else
             
             StateHasChanged();
         });
+        _hubConnection.On<int>(Methods.InputInserted, async inputId =>
+        {
+            _inputs.Add( await Http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
+            _inputStates[inputId] = await GetInputState(inputId);
+            
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.InputDeleted, inputId =>
+        {
+            var input = _inputs.FirstOrDefault(i => i.Id == inputId);
+            if (input == null) return;
+
+            _inputs.Remove(input);
+            _inputStates.Remove(input.Id);
+
+            StateHasChanged();
+        });
+        _hubConnection.On<int, bool>(Methods.InputStateChanged, (input, newState) =>
+        {
+            _inputStates[input] = newState;
+            
+            StateHasChanged();
+        });
         await _hubConnection.StartAsync();
+    }
+    
+    private async Task<bool?> GetInputState(int inputId)
+    {
+        string url = $"{Paths.Inputs}/state/{inputId}";
+        var response = await Http.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return bool.Parse(await response.Content.ReadAsStringAsync());
     }
     
     private async Task<bool?> GetOutputState(int outputId)
