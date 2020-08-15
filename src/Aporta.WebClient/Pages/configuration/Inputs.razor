@@ -1,0 +1,214 @@
+@page "/configuration/inputs"
+
+@using System.Text
+@using System.Text.Json
+
+@using Microsoft.AspNetCore.SignalR.Client
+
+@using Aporta.Shared.Models
+@using Aporta.Shared.Calls
+@using Aporta.Shared.Messaging
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<Heading Size="HeadingSize.Is1">Inputs</Heading>
+
+@if (_inputs == null)
+{
+    <div class="spinner"></div>
+}
+else
+{
+    <Row>
+        <Column ColumnSize="ColumnSize.Is6.OnDesktop">
+            @if (_availableMonitorPoints.Any())
+            {
+                <Button Color="Color.Primary" Clicked="_addInputModal.Show">Add Input</Button>
+            }
+            else
+            {
+                <Alert Color="Color.Info">
+                    <AlertMessage>Add Input</AlertMessage>
+                    <AlertDescription>None are available</AlertDescription>
+                </Alert>
+            }
+        </Column>
+    </Row>
+    <Row>
+        <Column>
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    Inputs
+                </CardTitle>
+                <CardBody>
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Name</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var input in _inputs.OrderBy(input => input.Name))
+                            {
+                                <TableRow>
+                                    <TableRowHeader>
+                                        @input.Name
+                                    </TableRowHeader>
+                                    <TableRowCell TextAlignment="TextAlignment.Right">
+                                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveInput(input.Id))">
+                                            Remove
+                                        </Button>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column> 
+    </Row>
+    
+    <Modal @ref="_addInputModal">
+        <ModalBackdrop/>
+        <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    Add Input
+                </ModalTitle>
+                <CloseButton Clicked="@_addInputModal.Hide"/>
+            </ModalHeader>
+            <ModalBody>
+                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addInputValidations">
+                    <Validation Validator="@ValidationRule.IsNotEmpty" >
+                        <Field>
+                            <FieldLabel>Name</FieldLabel>
+                            <FieldBody>
+                                <TextEdit @bind-Text="_addInput.Name">
+                                    <Feedback>
+                                        <ValidationError>
+                                            Please enter a name for the ouptut
+                                        </ValidationError>
+                                    </Feedback>
+                                </TextEdit>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+                 
+                    <Field>
+                        <FieldLabel>Device Endpoint</FieldLabel>
+                        <FieldBody>
+                            <Select TValue="int" @bind-SelectedValue="_addInput.EndpointId">
+                                @foreach (var monitorPoint in _availableMonitorPoints)
+                                {
+                                    <SelectItem Value="@monitorPoint.Id">@monitorPoint.Name</SelectItem>
+                                }
+                            </Select>
+                        </FieldBody>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@_addInputModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await AddInput())">Add</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
+}
+
+<Snackbar @ref="_snackbar" Color="@_snackbarColor">
+    <SnackbarBody>
+        @_snackbarMessage
+    </SnackbarBody>
+</Snackbar>
+
+@code {
+    private List<Input> _inputs;
+    private Endpoint[] _availableMonitorPoints;
+    private Input _addInput;
+    
+    private HubConnection _hubConnection;
+    
+    private Modal _addInputModal;
+    private Validations _addInputValidations;
+    
+    private Snackbar _snackbar;
+    private SnackbarColor _snackbarColor;
+    private string _snackbarMessage = string.Empty;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
+
+        await InitializedAvailableInputs();
+        
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithAutomaticReconnect()
+            .Build();
+        _hubConnection.On<int>(Methods.InputInserted, async inputId =>
+        {
+            _inputs.Add( await Http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
+            
+            await InitializedAvailableInputs();
+            
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.InputDeleted, async inputId =>
+        {
+            var input = _inputs.FirstOrDefault(o => o.Id == inputId);
+            if (input == null) return;
+            
+            _inputs.Remove(input);
+            
+            await InitializedAvailableInputs();
+
+            StateHasChanged();
+        });
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task InitializedAvailableInputs()
+    {
+        _availableMonitorPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Inputs}/available");
+
+        _addInput = new Input();
+        if (_availableMonitorPoints.Any())
+        {
+            _addInput.EndpointId = _availableMonitorPoints.First().Id;
+        }
+    }
+
+    private async Task AddInput()
+    {
+        if (!_addInputValidations.ValidateAll())
+        {
+            return;
+        }
+        _addInputModal.Hide();
+
+        string url = string.Format(Paths.Inputs);
+        var response = await Http.PutAsync(url,
+            new StringContent(JsonSerializer.Serialize(_addInput), Encoding.UTF8, "application/json"));
+        if (!response.IsSuccessStatusCode)
+        {
+            _snackbarMessage = "Unable to add input";
+            _snackbarColor = SnackbarColor.Danger;
+            _snackbar.Show();
+         }
+    }
+
+    private async Task RemoveInput(int inputId)
+    {
+        string url = string.Format($"{Paths.Inputs}/{inputId}");
+        var response = await Http.DeleteAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            _snackbarMessage = "Unable to remove input";
+            _snackbarColor = SnackbarColor.Danger;
+            _snackbar.Show();
+        }
+    }
+
+}
