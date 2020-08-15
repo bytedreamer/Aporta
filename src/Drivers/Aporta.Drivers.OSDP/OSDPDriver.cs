@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
-using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
 using Aporta.Drivers.OSDP.Shared;
 using Aporta.Drivers.OSDP.Shared.Actions;
+using Newtonsoft.Json;
 using OSDP.Net;
 using OSDP.Net.Connections;
 using OSDP.Net.Model.ReplyData;
@@ -56,6 +57,12 @@ namespace Aporta.Drivers.OSDP
             {
                 foreach (var device in bus.Devices)
                 {
+                    foreach (var input in device.Inputs)
+                    {
+                        _endpoints.Add(new OSDPMonitorPoint(Id, _panel, _portMapping[bus.PortName], device,
+                            input));
+                    }
+                    
                     foreach (var output in device.Outputs)
                     {
                         _endpoints.Add(new OSDPControlPoint(Id, _panel, _portMapping[bus.PortName], device,
@@ -201,7 +208,7 @@ namespace Aporta.Drivers.OSDP
             {
                 try
                 {
-                    _configuration = JsonSerializer.Deserialize<Configuration>(configuration);
+                    _configuration = JsonConvert.DeserializeObject<Configuration>(configuration);
                 }
                 catch (Exception exception)
                 {
@@ -224,7 +231,7 @@ namespace Aporta.Drivers.OSDP
 
         public string CurrentConfiguration()
         {
-            return JsonSerializer.Serialize(_configuration);
+            return JsonConvert.SerializeObject(_configuration);
         }
 
         public async Task<string> PerformAction(string action, string parameters)
@@ -246,7 +253,7 @@ namespace Aporta.Drivers.OSDP
 
         private string AddBus(string parameters)
         {
-            var busAction = JsonSerializer.Deserialize<BusAction>(parameters);
+            var busAction = JsonConvert.DeserializeObject<BusAction>(parameters);
 
             _configuration.Buses.Add(busAction.Bus);
 
@@ -261,7 +268,7 @@ namespace Aporta.Drivers.OSDP
         
         private string RemoveBus(string parameters)
         {
-            var busAction = JsonSerializer.Deserialize<BusAction>(parameters);
+            var busAction = JsonConvert.DeserializeObject<BusAction>(parameters);
 
             foreach (var device in busAction.Bus.Devices)
             {
@@ -284,7 +291,7 @@ namespace Aporta.Drivers.OSDP
 
         private string AddUpdateDevice(string parameters)
         {
-            var deviceAction = JsonSerializer.Deserialize<DeviceAction>(parameters);
+            var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
 
             _configuration.Buses.First(bus => bus.PortName == deviceAction.PortName).Devices.Add(deviceAction.Device);
             
@@ -295,7 +302,7 @@ namespace Aporta.Drivers.OSDP
 
         private string RemoveDevice(string parameters)
         {
-            var deviceAction = JsonSerializer.Deserialize<DeviceAction>(parameters);
+            var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
 
             _endpoints.RemoveAll(endpoint => endpoint.Id.Split(':').First() == deviceAction.Device.Address.ToString());
             OnUpdatedEndpoints();

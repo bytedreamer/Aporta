@@ -1,10 +1,9 @@
-﻿@using System.Text.Json
-@using System.Text
+﻿@using System.Text
 
 @using Blazorise.Snackbar
+@using Newtonsoft.Json
 
 @using Aporta.Shared.Calls
-
 @using Aporta.Drivers.OSDP.Shared
 @using Aporta.Drivers.OSDP.Shared.Actions
 
@@ -229,7 +228,7 @@
 
     protected override void OnParametersSet()
     {
-        _configuration = JsonSerializer.Deserialize<Aporta.Drivers.OSDP.Shared.Configuration>(RawConfiguration);
+        _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.OSDP.Shared.Configuration>(RawConfiguration);
 
         _addDevice = new Device {Name = string.Empty, Address = 0, RequireSecurity = true};
 
@@ -257,7 +256,7 @@
         _addPortModal.Hide();
         
         await PerformAction(ActionType.AddBus.ToString(),
-            JsonSerializer.Serialize(new BusAction
+            JsonConvert.SerializeObject(new BusAction
             {
                 Bus = _addBus
             }));
@@ -268,7 +267,7 @@
         var matchingBus = _configuration.Buses.First(bus => bus.PortName == busPortName);
         
         await PerformAction(ActionType.RemoveBus.ToString(),
-            JsonSerializer.Serialize(new BusAction
+            JsonConvert.SerializeObject(new BusAction
             {
                 Bus = matchingBus
             }));
@@ -292,7 +291,7 @@
         _addDeviceModal.Hide();
 
         await PerformAction(ActionType.AddUpdateDevice.ToString(),
-            JsonSerializer.Serialize(new DeviceAction
+            JsonConvert.SerializeObject(new DeviceAction
             {
                 PortName = _currentBus.PortName,
                 Device = _addDevice
@@ -306,7 +305,7 @@
         var removingDevice = _currentBus.Devices.First(device => device.Address == address);
 
         await PerformAction(ActionType.RemoveDevice.ToString(),
-            JsonSerializer.Serialize(new DeviceAction
+            JsonConvert.SerializeObject(new DeviceAction
             {
                 PortName = _currentBus.PortName,
                 Device = removingDevice
