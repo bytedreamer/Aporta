@@ -7,7 +7,7 @@ namespace Aporta.Shared.Models
         public int EndpointId { get; set; }
         
         public string Name { get; set; }
-        
-        public int PulseTimer { get; set; }
+
+        public int PulseTimer { get; set; } = 5;
     }
 }

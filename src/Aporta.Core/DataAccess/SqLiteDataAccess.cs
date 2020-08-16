@@ -15,13 +15,14 @@ namespace Aporta.Core.DataAccess
         private const string FileName = "Aporta.sqlite";
         private readonly bool _inMemory;
 
-        private readonly IMigration[] _migrations = new IMigration[]
+        private readonly IMigration[] _migrations = 
         {
             new _0000_InitialCreate(),
             new _0001_AddExtensionTable(),
             new _0002_AddEndpointTable(),
             new _0003_AddOutputTable(),
-            new _0004_AddInputTable()
+            new _0004_AddInputTable(),
+            new _0005_AddDoorTable()
         };
 
         /// <summary>
