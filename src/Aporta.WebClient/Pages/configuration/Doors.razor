@@ -1,4 +1,4 @@
-@page "/configuration/inputs"
+@page "/configuration/doors"
 
 @using System.Text
 @using System.Text.Json
@@ -12,9 +12,9 @@
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 
-<Heading Size="HeadingSize.Is1">Inputs</Heading>
+<Heading Size="HeadingSize.Is1">Doors</Heading>
 
-@if (_inputs == null)
+@if (_doors == null)
 {
     <div class="spinner"></div>
 }
@@ -22,14 +22,14 @@ else
 {
     <Row>
         <Column ColumnSize="ColumnSize.Is6.OnDesktop">
-            @if (_availableMonitorPoints.Any())
+            @if (_availableAccessPoints.Any())
             {
-                <Button Color="Color.Primary" Clicked="_addInputModal.Show">Add Input</Button>
+                <Button Color="Color.Primary" Clicked="_addDoorModal.Show">Add Door</Button>
             }
             else
             {
                 <Alert Color="Color.Info">
-                    <AlertMessage>Add Input</AlertMessage>
+                    <AlertMessage>Add Door</AlertMessage>
                     <AlertDescription>None are available</AlertDescription>
                 </Alert>
             }
@@ -39,7 +39,7 @@ else
         <Column>
             <Card Margin="Margin.Is4.OnY">
                 <CardTitle Margin="Margin.Is4.OnX">
-                    Inputs
+                    Doors
                 </CardTitle>
                 <CardBody>
                     <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
@@ -50,14 +50,14 @@ else
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            @foreach (var input in _inputs.OrderBy(input => input.Name))
+                            @foreach (var door in _doors.OrderBy(door => door.Name))
                             {
                                 <TableRow>
                                     <TableRowHeader>
-                                        @input.Name
+                                        @door.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.Right">
-                                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveInput(input.Id))">
+                                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveDoor(door.Id))">
                                             Remove
                                         </Button>
                                     </TableRowCell>
@@ -70,25 +70,25 @@ else
         </Column> 
     </Row>
     
-    <Modal @ref="_addInputModal">
+    <Modal @ref="_addDoorModal">
         <ModalBackdrop/>
         <ModalContent Size="ModalSize.Default" Centered="true">
             <ModalHeader>
                 <ModalTitle>
-                    Add Input
+                    Add Door
                 </ModalTitle>
-                <CloseButton Clicked="@_addInputModal.Hide"/>
+                <CloseButton Clicked="@_addDoorModal.Hide"/>
             </ModalHeader>
             <ModalBody>
-                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addInputValidations">
+                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addDoorValidations">
                     <Validation Validator="@ValidationRule.IsNotEmpty" >
                         <Field>
                             <FieldLabel>Name</FieldLabel>
                             <FieldBody>
-                                <TextEdit @bind-Text="_addInput.Name">
+                                <TextEdit @bind-Text="_addDoor.Name">
                                     <Feedback>
                                         <ValidationError>
-                                            Please enter a name for the input
+                                            Please enter a name for the door
                                         </ValidationError>
                                     </Feedback>
                                 </TextEdit>
@@ -97,12 +97,13 @@ else
                     </Validation>
                  
                     <Field>
-                        <FieldLabel>Device Endpoint</FieldLabel>
+                        <FieldLabel>Access Reader In</FieldLabel>
                         <FieldBody>
-                            <Select TValue="int" @bind-SelectedValue="_addInput.EndpointId">
-                                @foreach (var monitorPoint in _availableMonitorPoints)
+                            <Select TValue="int?" @bind-SelectedValue="_addDoor.InAccessEndpointId">
+                                <SelectItem Value="-1">None</SelectItem>
+                                @foreach (var accessPoint in _availableAccessPoints)
                                 {
-                                    <SelectItem Value="@monitorPoint.Id">@monitorPoint.Name</SelectItem>
+                                    <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
                                 }
                             </Select>
                         </FieldBody>
@@ -110,8 +111,8 @@ else
                 </Validations>
             </ModalBody>
             <ModalFooter>
-                <Button Color="Color.Secondary" Clicked="@_addInputModal.Hide">Cancel</Button>
-                <Button Color="Color.Primary" Clicked="@(async () => await AddInput())">Add</Button>
+                <Button Color="Color.Secondary" Clicked="@_addDoorModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await AddDoor())">Add</Button>
             </ModalFooter>
         </ModalContent>
     </Modal>
@@ -124,15 +125,15 @@ else
 </Snackbar>
 
 @code {
-    private List<Input> _inputs;
-    private Endpoint[] _availableMonitorPoints;
-    private Input _addInput;
+    private List<Door> _doors;
+    private Endpoint[] _availableAccessPoints;
+    private Door _addDoor;
     
     private HubConnection _hubConnection;
     
 #pragma warning disable 649
-    private Modal _addInputModal;
-    private Validations _addInputValidations;
+    private Modal _addDoorModal;
+    private Validations _addDoorValidations;
     
     private Snackbar _snackbar;
 #pragma warning restore 649
@@ -141,73 +142,73 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
+        _doors = await Http.GetFromJsonAsync<List<Door>>(Paths.Doors);
 
-        await InitializedAvailableInputs();
+        await InitializedAvailableDoors();
         
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
-        _hubConnection.On<int>(Methods.InputInserted, async inputId =>
+        _hubConnection.On<int>(Methods.DoorInserted, async doorId =>
         {
-            _inputs.Add( await Http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
+            _doors.Add( await Http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
             
-            await InitializedAvailableInputs();
+            await InitializedAvailableDoors();
             
             StateHasChanged();
         });
-        _hubConnection.On<int>(Methods.InputDeleted, async inputId =>
+        _hubConnection.On<int>(Methods.DoorDeleted, async doorId =>
         {
-            var input = _inputs.FirstOrDefault(o => o.Id == inputId);
-            if (input == null) return;
+            var door = _doors.FirstOrDefault(o => o.Id == doorId);
+            if (door == null) return;
             
-            _inputs.Remove(input);
+            _doors.Remove(door);
             
-            await InitializedAvailableInputs();
+            await InitializedAvailableDoors();
 
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
     }
 
-    private async Task InitializedAvailableInputs()
+    private async Task InitializedAvailableDoors()
     {
-        _availableMonitorPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Inputs}/available");
+        _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
 
-        _addInput = new Input();
-        if (_availableMonitorPoints.Any())
+        _addDoor = new Door();
+        if (_availableAccessPoints.Any())
         {
-            _addInput.EndpointId = _availableMonitorPoints.First().Id;
+            _addDoor.InAccessEndpointId = _availableAccessPoints.First().Id;
         }
     }
 
-    private async Task AddInput()
+    private async Task AddDoor()
     {
-        if (!_addInputValidations.ValidateAll())
+        if (!_addDoorValidations.ValidateAll())
         {
             return;
         }
-        _addInputModal.Hide();
+        _addDoorModal.Hide();
 
-        string url = string.Format(Paths.Inputs);
+        string url = string.Format(Paths.Doors);
         var response = await Http.PutAsync(url,
-            new StringContent(JsonSerializer.Serialize(_addInput), Encoding.UTF8, "application/json"));
+            new StringContent(JsonSerializer.Serialize(_addDoor), Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {
-            _snackbarMessage = "Unable to add input";
+            _snackbarMessage = "Unable to add door";
             _snackbarColor = SnackbarColor.Danger;
             _snackbar.Show();
          }
     }
 
-    private async Task RemoveInput(int inputId)
+    private async Task RemoveDoor(int doorId)
     {
-        string url = string.Format($"{Paths.Inputs}/{inputId}");
+        string url = string.Format($"{Paths.Doors}/{doorId}");
         var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
-            _snackbarMessage = "Unable to remove input";
+            _snackbarMessage = "Unable to remove door";
             _snackbarColor = SnackbarColor.Danger;
             _snackbar.Show();
         }

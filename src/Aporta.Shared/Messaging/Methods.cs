@@ -4,6 +4,8 @@ namespace Aporta.Shared.Messaging
     {
         public const string ExtensionDataChanged = "ExtensionDataChanged";
         
+        public const string DoorInserted = "DoorInserted";
+        public const string DoorDeleted= "DoorDeleted";
         public const string InputInserted = "InputInserted";
         public const string InputDeleted= "InputDeleted";
         public const string InputStateChanged = "InputStateChanged";

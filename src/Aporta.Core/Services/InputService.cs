@@ -14,6 +14,7 @@ namespace Aporta.Core.Services
     public class InputService
     {
         private readonly InputRepository _inputRepository;
+        private readonly DoorRepository _doorRepository;
         private readonly EndpointRepository _endpointRepository;
         private readonly IHubContext<DataChangeNotificationHub> _hubContext;
         private readonly ExtensionService _extensionService;
@@ -23,6 +24,7 @@ namespace Aporta.Core.Services
         {
             _hubContext = hubContext;
             _extensionService = extensionService;
+            _doorRepository = new DoorRepository(dataAccess);
             _inputRepository = new InputRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
 
@@ -77,9 +79,12 @@ namespace Aporta.Core.Services
         {
             var endpoints = await _endpointRepository.GetAll();
             var inputs = await _inputRepository.GetAll();
+            var doors = (await _doorRepository.GetAll()).ToArray();
             return endpoints.Where(endpoint =>
                 endpoint.Type == EndpointType.Input &&
-                !inputs.Select(input => input.EndpointId).Contains(endpoint.Id));
+                !inputs.Select(input => input.EndpointId).Contains(endpoint.Id) && 
+                !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id) &&
+                !doors.Select(door => door.RequestToExitEndpointId).Contains(endpoint.Id));
         }
 
         public async Task<bool?> GetState(int inputId)

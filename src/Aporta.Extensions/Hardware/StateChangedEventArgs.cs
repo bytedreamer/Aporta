@@ -22,6 +22,20 @@ namespace Aporta.Extensions.Hardware
         public ControlPointState ControlPointState { get; }
         
         public MonitorPointState MonitorPointState { get; }
+        
+        public AccessPointState AccessPointState { get; }
+    }
+    
+    public class AccessPointState
+    {
+        public AccessPointState(bool newState, bool? oldState = null)
+        {
+            NewState = newState;
+            OldState = oldState;
+        }
+        
+        public bool NewState { get; }
+        public bool? OldState { get; }
     }
 
     public class ControlPointState

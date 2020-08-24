@@ -30,7 +30,7 @@ namespace Aporta
             services.AddSingleton<ExtensionService, ExtensionService>();
             services.AddSingleton<InputService, InputService>();
             services.AddSingleton<OutputService, OutputService>();
-            services.AddSingleton<AccessPointService, AccessPointService>();
+            services.AddSingleton<DoorService, DoorService>();
 
             services.AddSignalR();
             services.AddControllersWithViews();
