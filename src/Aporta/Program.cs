@@ -27,6 +27,10 @@ namespace Aporta
                     
                     var extensionService = services.GetRequiredService<ExtensionService>();
                     await extensionService.Startup();
+
+                    services.GetRequiredService<DoorService>();
+                    services.GetRequiredService<InputService>();
+                    services.GetRequiredService<OutputService>();
                 }
                 catch (Exception exception)
                 {

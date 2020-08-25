@@ -161,17 +161,21 @@ namespace Aporta.Drivers.OSDP
 
         private void PanelOnRawCardDataReplyReceived(object sender, ControlPanel.RawCardDataReplyEventArgs eventArgs)
         {
-            AccessCredentialReceived?.Invoke(this,
-                new AccessCredentialReceivedEventArgs(
-                    _endpoints.Where(endpoint => endpoint is IAccessPoint).Cast<IAccessPoint>().First(accessPoint =>
-                        accessPoint.Id.Split(":").First() == eventArgs.Address.ToString()),
-                    eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount));
+            var accessPoints = _endpoints.Where(endpoint => endpoint is IAccessPoint).Cast<IAccessPoint>()
+                .Where(ap => ap.Id.Split(":").First() == eventArgs.Address.ToString());
+            foreach (var accessPoint in accessPoints)
+            {
+                AccessCredentialReceived?.Invoke(this,
+                    new AccessCredentialReceivedEventArgs(
+                        accessPoint, eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount));
+            }
         }
 
         private void PanelOnInputStatusReportReplyReceived(object sender,
             ControlPanel.InputStatusReportReplyEventArgs eventArgs)
         {
-            var monitorPoints = _endpoints.Where(endpoint => endpoint is IMonitorPoint).Cast<IMonitorPoint>();
+            var monitorPoints = _endpoints.Where(endpoint => endpoint is IMonitorPoint).Cast<IMonitorPoint>()
+                .Where(ap => ap.Id.Split(":").First() == eventArgs.Address.ToString());
 
             foreach (var monitorPoint in monitorPoints)
             {
@@ -185,7 +189,8 @@ namespace Aporta.Drivers.OSDP
         private void PanelOnOutputStatusReportReplyReceived(object sender,
             ControlPanel.OutputStatusReportReplyEventArgs eventArgs)
         {
-            var controlPoints = _endpoints.Where(endpoint => endpoint is IControlPoint).Cast<IControlPoint>();
+            var controlPoints = _endpoints.Where(endpoint => endpoint is IControlPoint).Cast<IControlPoint>()
+                .Where(ap => ap.Id.Split(":").First() == eventArgs.Address.ToString());
 
             foreach (var controlPoint in controlPoints)
             {
