@@ -35,7 +35,7 @@ namespace Aporta.Controllers
             await _doorService.Insert(door);
         }
         
-        [HttpDelete("{inputId:int}")]
+        [HttpDelete("{doorId:int}")]
         public async Task Delete(int doorId)
         {
             await _doorService.Delete(doorId);

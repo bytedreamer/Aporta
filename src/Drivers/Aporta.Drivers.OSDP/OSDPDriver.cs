@@ -136,12 +136,26 @@ namespace Aporta.Drivers.OSDP
                 }
             }
 
+            // Some readers don't report Reader capability
+            if (capabilities.Capabilities.Any(capability => capability.Function == CapabilityFunction.CardDataFormat))
+            {
+                const byte readerNumber = 0;
+                var reader = new Reader
+                {
+                    Name = $"{matchingDevice.Name} [Reader {readerNumber}]",
+                    Number = readerNumber
+                };
+                matchingDevice.Readers.Add(reader);
+                _endpoints.Add(new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                    reader));
+            }
+            
             foreach (var readerCapability in capabilities.Capabilities.Where(capability =>
                 capability.Function == CapabilityFunction.Readers))
             {
                 if (matchingDevice.Readers.Any()) continue;
 
-                for (byte readerNumber = 0; readerNumber < readerCapability.NumberOf; readerNumber++)
+                for (byte readerNumber = 1; readerNumber < readerCapability.NumberOf; readerNumber++)
                 {
                     var reader = new Reader
                     {
@@ -162,7 +176,7 @@ namespace Aporta.Drivers.OSDP
         private void PanelOnRawCardDataReplyReceived(object sender, ControlPanel.RawCardDataReplyEventArgs eventArgs)
         {
             var accessPoints = _endpoints.Where(endpoint => endpoint is IAccessPoint).Cast<IAccessPoint>()
-                .Where(ap => ap.Id.Split(":").First() == eventArgs.Address.ToString());
+                .Where(accessPoint => accessPoint.Id.Split(":").First() == eventArgs.Address.ToString());
             foreach (var accessPoint in accessPoints)
             {
                 AccessCredentialReceived?.Invoke(this,
@@ -175,7 +189,7 @@ namespace Aporta.Drivers.OSDP
             ControlPanel.InputStatusReportReplyEventArgs eventArgs)
         {
             var monitorPoints = _endpoints.Where(endpoint => endpoint is IMonitorPoint).Cast<IMonitorPoint>()
-                .Where(ap => ap.Id.Split(":").First() == eventArgs.Address.ToString());
+                .Where(monitorPoint => monitorPoint.Id.Split(":").First() == eventArgs.Address.ToString());
 
             foreach (var monitorPoint in monitorPoints)
             {
@@ -190,7 +204,7 @@ namespace Aporta.Drivers.OSDP
             ControlPanel.OutputStatusReportReplyEventArgs eventArgs)
         {
             var controlPoints = _endpoints.Where(endpoint => endpoint is IControlPoint).Cast<IControlPoint>()
-                .Where(ap => ap.Id.Split(":").First() == eventArgs.Address.ToString());
+                .Where(controlPoint => controlPoint.Id.Split(":").First() == eventArgs.Address.ToString());
 
             foreach (var controlPoint in controlPoints)
             {

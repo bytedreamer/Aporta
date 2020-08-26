@@ -96,14 +96,52 @@ else
                         </Field>
                     </Validation>
                  
+                    <Validation Validator="@ValidateEitherInOrOutIsSelected" >
+                        <Field>
+                            <FieldLabel>Access Reader In</FieldLabel>
+                            <FieldBody>
+                                <Select TValue="int?" @bind-SelectedValue="@_addDoor.InAccessEndpointId">
+                                    <SelectItem Value="-1">None</SelectItem>
+                                    @foreach (var accessPoint in _availableAccessPoints)
+                                    {
+                                        <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                    }
+                                </Select>
+                                <Feedback>
+                                    <ValidationError>
+                                        Validation error
+                                    </ValidationError>
+                                </Feedback>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+                    <Validation Validator="@ValidateEitherInOrOutIsSelected" >
+                        <Field>
+                            <FieldLabel>Access Reader Out</FieldLabel>
+                            <FieldBody>
+                                <Select TValue="int?" @bind-SelectedValue="@_addDoor.OutAccessEndpointId">
+                                    <SelectItem Value="-1">None</SelectItem>
+                                    @foreach (var accessPoint in _availableAccessPoints)
+                                    {
+                                        <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                    }
+                                </Select>
+                            </FieldBody>
+                            <Feedback>
+                                <ValidationError>
+                                    Validation error
+                                </ValidationError>
+                            </Feedback>
+                        </Field>
+                    </Validation>
                     <Field>
-                        <FieldLabel>Access Reader In</FieldLabel>
+                        <FieldLabel>Door Strike Relay</FieldLabel>
                         <FieldBody>
-                            <Select TValue="int?" @bind-SelectedValue="_addDoor.InAccessEndpointId">
+                            <Select TValue="int?" @bind-SelectedValue="@_addDoor.DoorStrikeEndpointId">
                                 <SelectItem Value="-1">None</SelectItem>
-                                @foreach (var accessPoint in _availableAccessPoints)
+                                @foreach (var controlPoint in _availableControlPoints)
                                 {
-                                    <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                    <SelectItem Value="@controlPoint.Id">@controlPoint.Name</SelectItem>
                                 }
                             </Select>
                         </FieldBody>
@@ -127,6 +165,7 @@ else
 @code {
     private List<Door> _doors;
     private Endpoint[] _availableAccessPoints;
+    private Endpoint[] _availableControlPoints;
     private Door _addDoor;
     
     private HubConnection _hubConnection;
@@ -144,7 +183,7 @@ else
     {
         _doors = await Http.GetFromJsonAsync<List<Door>>(Paths.Doors);
 
-        await InitializedAvailableDoors();
+        await InitializedAvailableEndpoints();
         
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
@@ -154,7 +193,7 @@ else
         {
             _doors.Add( await Http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
             
-            await InitializedAvailableDoors();
+            await InitializedAvailableEndpoints();
             
             StateHasChanged();
         });
@@ -165,22 +204,19 @@ else
             
             _doors.Remove(door);
             
-            await InitializedAvailableDoors();
+            await InitializedAvailableEndpoints();
 
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
     }
 
-    private async Task InitializedAvailableDoors()
+    private async Task InitializedAvailableEndpoints()
     {
         _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
+        _availableControlPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Outputs}/available");
 
-        _addDoor = new Door();
-        if (_availableAccessPoints.Any())
-        {
-            _addDoor.InAccessEndpointId = _availableAccessPoints.First().Id;
-        }
+        _addDoor = new Door {InAccessEndpointId = -1, OutAccessEndpointId = -1, DoorStrikeEndpointId = -1};
     }
 
     private async Task AddDoor()
@@ -191,6 +227,10 @@ else
         }
         _addDoorModal.Hide();
 
+        if (_addDoor.InAccessEndpointId == -1) _addDoor.InAccessEndpointId = null;
+        if (_addDoor.OutAccessEndpointId == -1) _addDoor.OutAccessEndpointId = null;
+        if (_addDoor.DoorStrikeEndpointId == -1) _addDoor.DoorStrikeEndpointId = null;
+        
         string url = string.Format(Paths.Doors);
         var response = await Http.PutAsync(url,
             new StringContent(JsonSerializer.Serialize(_addDoor), Encoding.UTF8, "application/json"));
@@ -212,6 +252,23 @@ else
             _snackbarColor = SnackbarColor.Danger;
             _snackbar.Show();
         }
+    }
+
+    private void ValidateEitherInOrOutIsSelected(ValidatorEventArgs eventArgs)
+    {
+        if (_addDoor.InAccessEndpointId > -1 && _addDoor.OutAccessEndpointId > -1)
+        {
+            eventArgs.Status = _addDoor.InAccessEndpointId != _addDoor.OutAccessEndpointId
+                ? ValidationStatus.Success : ValidationStatus.Error;
+            eventArgs.ErrorText = "Both the in and out access points can't be the same";
+        }
+        else
+        {
+            eventArgs.Status = _addDoor.InAccessEndpointId > -1 || _addDoor.OutAccessEndpointId > -1
+                ? ValidationStatus.Success : ValidationStatus.Error;
+            eventArgs.ErrorText = "Either a in or out access point must be selected";
+        }
+
     }
 
 }
