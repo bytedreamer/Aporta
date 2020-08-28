@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Hubs;
+using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
@@ -50,9 +51,30 @@ namespace Aporta.Core.Services
             }
         }
 
-        private void ExtensionServiceOnAccessCredentialReceived(object sender,
+        private async void ExtensionServiceOnAccessCredentialReceived(object sender,
             AccessCredentialReceivedEventArgs eventArgs)
         {
+            var endpoints =
+                (await _endpointRepository.GetAll()).ToArray();
+            var doors = await _doorRepository.GetAll();
+            
+            var matchingDoor = doors.FirstOrDefault(door =>
+                endpoints.Any(endpoint => endpoint.DriverEndpointId == eventArgs.AccessPoint.Id));
+
+            if (matchingDoor != null)
+            {
+                var matchingDoorStrike = endpoints.FirstOrDefault(endpoint => matchingDoor.DoorStrikeEndpointId == endpoint.Id);
+                if (matchingDoorStrike != null)
+                {
+                    await _extensionService
+                        .GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId)
+                        .SetState(true);
+                    await Task.Delay(TimeSpan.FromSeconds(matchingDoor.StrikeTimer));
+                    await _extensionService
+                        .GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId)
+                        .SetState(false);
+                }
+            }
         }
 
         public async Task<IEnumerable<Endpoint>> AvailableAccessPoints()
