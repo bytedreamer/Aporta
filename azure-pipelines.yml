@@ -49,5 +49,5 @@ steps:
 - task: ResharperCli@2
   inputs:
     solutionOrProjectPath: 'src/Aporta.sln'
-    failBuildLevelSelector: 'Warning'
+    failBuildLevelSelector: 'Error'
     additionalArguments: '--no-swea'
