@@ -48,6 +48,6 @@ steps:
     
 - task: ResharperCli@2
   inputs:
-    solutionOrProjectPath: 'src/OSDP.Net.sln'
+    solutionOrProjectPath: 'src/Aporta.sln'
     failBuildLevelSelector: 'Warning'
     additionalArguments: '--no-swea'
