@@ -33,7 +33,7 @@ steps:
   displayName: 'dotnet build'
   inputs:
     command: 'build'
-    projects: '**/*.csproj'
+    projects: 'src/Aporta.sln'
     arguments: '--configuration $(buildConfiguration)'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
