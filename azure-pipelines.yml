@@ -1,0 +1,54 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- main
+- develop
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'#
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  major: 0
+  minor: 1
+  patch: 0
+  AssemblyVersion: $(major).$(minor).$(patch)
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Install .NET Core SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '3.1.x'
+
+- task: NuGetToolInstaller@0
+  displayName: 'Install NuGet'
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet build'
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test'
+  inputs:
+    command: 'test'
+    nobuild: true
+    projects: '**/*Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+#task: ResharperCli@2
+#inputs:
+#solutionOrProjectPath: 'src/OSDP.Net.sln'
+#failBuildLevelSelector: 'Warning'
+#additionalArguments: '--no-swea'
+

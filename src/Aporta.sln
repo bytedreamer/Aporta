@@ -32,6 +32,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "OSDP", "OSDP", "{EF0DDAAE-3
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AutomationpHat", "AutomationpHat", "{3153878A-99CB-4DA2-96DF-7DB639F14A87}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Settings", "Settings", "{3A37D965-DB8E-406E-B472-F58E661921FA}"
+ProjectSection(SolutionItems) = preProject
+	..\azure-pipelines.yml = ..\azure-pipelines.yml
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
