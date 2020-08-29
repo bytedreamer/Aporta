@@ -45,10 +45,9 @@ steps:
     nobuild: true
     projects: '**/*Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
-
-#task: ResharperCli@2
-#inputs:
-#solutionOrProjectPath: 'src/OSDP.Net.sln'
-#failBuildLevelSelector: 'Warning'
-#additionalArguments: '--no-swea'
-
+    
+- task: ResharperCli@2
+  inputs:
+    solutionOrProjectPath: 'src/OSDP.Net.sln'
+    failBuildLevelSelector: 'Warning'
+    additionalArguments: '--no-swea'
