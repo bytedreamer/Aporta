@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Hubs;
-using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
@@ -57,24 +56,31 @@ namespace Aporta.Core.Services
             var endpoints =
                 (await _endpointRepository.GetAll()).ToArray();
             var doors = await _doorRepository.GetAll();
-            
-            var matchingDoor = doors.FirstOrDefault(door =>
-                endpoints.Any(endpoint => endpoint.DriverEndpointId == eventArgs.AccessPoint.Id));
 
-            if (matchingDoor != null)
-            {
-                var matchingDoorStrike = endpoints.FirstOrDefault(endpoint => matchingDoor.DoorStrikeEndpointId == endpoint.Id);
-                if (matchingDoorStrike != null)
-                {
-                    await _extensionService
-                        .GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId)
-                        .SetState(true);
-                    await Task.Delay(TimeSpan.FromSeconds(matchingDoor.StrikeTimer));
-                    await _extensionService
-                        .GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId)
-                        .SetState(false);
-                }
-            }
+            var matchingDoor = doors.FirstOrDefault(door =>
+                MatchingEndpointId(endpoints, eventArgs.AccessPoint.Id, door.InAccessEndpointId) ||
+                MatchingEndpointId(endpoints, eventArgs.AccessPoint.Id, door.OutAccessEndpointId));
+
+            if (matchingDoor == null) return;
+
+            var matchingDoorStrike =
+                endpoints.FirstOrDefault(endpoint => matchingDoor.DoorStrikeEndpointId == endpoint.Id);
+
+            if (matchingDoorStrike == null) return;
+
+            await _extensionService
+                .GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId)
+                .SetState(true);
+            await Task.Delay(TimeSpan.FromSeconds(matchingDoor.StrikeTimer));
+            await _extensionService
+                .GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId)
+                .SetState(false);
+        }
+
+        private static bool MatchingEndpointId(IEnumerable<Endpoint> endpoints, string accessPointId, int? endpointId)
+        {
+            if (endpointId == null) return false;
+            return endpointId == endpoints.FirstOrDefault(endpoint => endpoint.DriverEndpointId == accessPointId)?.Id;
         }
 
         public async Task<IEnumerable<Endpoint>> AvailableAccessPoints()
