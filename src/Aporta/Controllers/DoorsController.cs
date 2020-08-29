@@ -10,41 +10,41 @@ namespace Aporta.Controllers
     [Route("api/[controller]")]
     public class DoorsController : ControllerBase
     {
-        private readonly DoorService _doorService;
+        private readonly DoorConfigurationService _doorConfigurationService;
 
-        public DoorsController(DoorService doorService)
+        public DoorsController(DoorConfigurationService doorConfigurationService)
         {
-            _doorService = doorService;
+            _doorConfigurationService = doorConfigurationService;
         }
         
         [HttpGet]
         public async Task<IEnumerable<Door>> Get()
         {
-            return await _doorService.GetAll();
+            return await _doorConfigurationService.GetAll();
         }
         
         [HttpGet("{doorId:int}")]
         public async Task<Door> Get(int doorId)
         {
-            return await _doorService.Get(doorId);
+            return await _doorConfigurationService.Get(doorId);
         }
 
         [HttpPut]
         public async Task Put([FromBody]Door door)
         {
-            await _doorService.Insert(door);
+            await _doorConfigurationService.Insert(door);
         }
         
         [HttpDelete("{doorId:int}")]
         public async Task Delete(int doorId)
         {
-            await _doorService.Delete(doorId);
+            await _doorConfigurationService.Delete(doorId);
         }
         
         [HttpGet("available")]
         public async Task<IEnumerable<Endpoint>> Available()
         {
-            return await _doorService.AvailableAccessPoints();
+            return await _doorConfigurationService.AvailableAccessPoints();
         }
     }
 }

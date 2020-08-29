@@ -27,10 +27,11 @@ namespace Aporta
         {
             services.AddSingleton<IDataAccess, SqLiteDataAccess>();
             
+            services.AddSingleton<AccessService, AccessService>();
+            services.AddSingleton<DoorConfigurationService, DoorConfigurationService>();
             services.AddSingleton<ExtensionService, ExtensionService>();
             services.AddSingleton<InputService, InputService>();
             services.AddSingleton<OutputService, OutputService>();
-            services.AddSingleton<DoorService, DoorService>();
 
             services.AddSignalR();
             services.AddControllersWithViews();
