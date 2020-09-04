@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Product Id="*" Name="Aporta" Language="1033" Version="0.0.0.1" Manufacturer="Z-bit" UpgradeCode="3155e450-efaf-4294-a12b-097295667284">
+		<Package InstallerVersion="200" 
+             Platform="x64"
+             Compressed="yes" 
+             InstallScope="perMachine"
+             InstallPrivileges="elevated"/>
+
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+		<MediaTemplate />
+
+		<Feature Id="ProductFeature" Title="Aporta" Level="1">
+      <ComponentGroupRef Id="Aporta_Exe" />
+      <ComponentGroupRef Id="Aporta_Project" />
+    </Feature>
+	</Product>
+
+	<Fragment>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="Aporta" />
+      </Directory>
+    </Directory>
+	</Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="Aporta_Exe">
+      <Component Id="Aporta_ExePathEntry" Directory="INSTALLFOLDER" Guid="C1C60C1B-822C-4F12-BE02-D7B7F1024A9B">
+        <CreateFolder/>
+        <RemoveFile Id="InstallState" On="uninstall" Name="aporta.InstallState" />
+        <Environment
+          Id="PATH"
+          Name="PATH"
+          Value="[INSTALLFOLDER]"
+          Permanent="yes"
+          Part="last"
+          Action="set"
+          System="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
