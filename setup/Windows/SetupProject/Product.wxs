@@ -8,7 +8,7 @@
              InstallPrivileges="elevated"/>
 
 		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
-		<MediaTemplate />
+		<MediaTemplate EmbedCab="yes" />
 
 		<Feature Id="ProductFeature" Title="Aporta" Level="1">
       <ComponentGroupRef Id="Aporta_Exe" />
