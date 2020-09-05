@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Extensions;
 using Aporta.Extensions.Endpoint;
@@ -19,6 +20,7 @@ namespace Aporta.Drivers.TestDriver
         private static readonly Guid ExtensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
         private readonly List<IEndpoint> _endPoints = new List<IEndpoint>();
         private readonly ConcurrentBag<NamedPipeServerStream> _serverPipes = new ConcurrentBag<NamedPipeServerStream>();
+        private CancellationTokenSource _tokenSource;
         
         public string Name => "Test Driver";
 
@@ -28,15 +30,16 @@ namespace Aporta.Drivers.TestDriver
 
         public void Load(string configuration, ILoggerFactory loggerFactory)
         {
+            _tokenSource = new CancellationTokenSource();
             Task.Factory.StartNew(async () =>
             {
                 var pipeServer =
                     new NamedPipeServerStream("Aporta.TestDriverAccessPoint", PipeDirection.In, 2,
                         PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
                 _serverPipes.Add(pipeServer);
-                while (true)
+                while (!_tokenSource.Token.IsCancellationRequested)
                 {
-                    await pipeServer.WaitForConnectionAsync();
+                    await pipeServer.WaitForConnectionAsync(_tokenSource.Token);
                     
                     using var reader = new StreamReader(pipeServer);
                     string bitArrayString = await reader.ReadLineAsync() ?? string.Empty;
@@ -51,7 +54,7 @@ namespace Aporta.Drivers.TestDriver
                     new NamedPipeServerStream("Aporta.TestDriverMonitorPoint", PipeDirection.In, 2,
                         PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
                 _serverPipes.Add(pipeServer);
-                while (true)
+                while (!_tokenSource.Token.IsCancellationRequested)
                 {
                     await pipeServer.WaitForConnectionAsync();
 
@@ -81,10 +84,12 @@ namespace Aporta.Drivers.TestDriver
 
         public void Unload()
         {
+            _tokenSource?.Cancel();
             foreach (var namedPipeServerStream in _serverPipes)
             {
-                namedPipeServerStream.Dispose();
+                namedPipeServerStream?.Dispose();
             }
+            _tokenSource?.Dispose();
         }
 
         public string CurrentConfiguration()
