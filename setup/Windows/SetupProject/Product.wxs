@@ -10,6 +10,22 @@
 		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 		<MediaTemplate EmbedCab="yes" />
 
+    <Property Id="DOTNETCORE31">0</Property>
+
+    <Binary Id="WixCA.dll" SourceFile="$(var.CustomActions.TargetDir)$(var.CustomActions.TargetName).CA.dll" />
+    <CustomAction Id="Check.NetCore" BinaryKey="WixCA.dll" DllEntry="CheckDotNetCore31Installed" Execute="firstSequence"  />
+
+    <Condition Message="You must first install the .NET Core 3.1 Runtime">
+      Installed OR DOTNETCORE31="1"
+    </Condition>
+
+    <InstallUISequence>
+      <Custom Action="Check.NetCore" Before="LaunchConditions">NOT Installed</Custom>
+    </InstallUISequence>
+    <InstallExecuteSequence>
+      <Custom Action="Check.NetCore" Before="LaunchConditions">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
 		<Feature Id="ProductFeature" Title="Aporta" Level="1">
       <ComponentGroupRef Id="Aporta_Exe" />
       <ComponentGroupRef Id="Aporta_Project" />
