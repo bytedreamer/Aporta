@@ -12,7 +12,7 @@ namespace Aporta.Core.DataAccess
     public class SqLiteDataAccess : IDataAccess
     {
         private const string MemorySource = "Aporta;Mode=Memory;Cache=Shared";
-        private const string FileName = "Aporta.sqlite";
+        private const string FileName = "Data/Aporta.sqlite";
         private readonly bool _inMemory;
 
         private readonly IMigration[] _migrations = 
