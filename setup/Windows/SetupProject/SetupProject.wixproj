@@ -33,7 +33,7 @@
     <Error Text="The WiX Toolset v3.11 (or newer) build tools must be installed to build this project. To download the WiX Toolset, see http://wixtoolset.org/releases/" />
   </Target>
   <Target Name="BeforeBuild">
-    <Exec Command="dotnet publish ..\..\..\src\Aporta\Aporta.csproj -c $(Configuration) -r win-x64" />
+    <Exec Command="dotnet publish ..\..\..\src\Aporta.sln -c $(Configuration) -r win-x64" />
     <PropertyGroup>
       <LinkerBaseInputPaths>..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish</LinkerBaseInputPaths>
       <DefineConstants>BasePath=..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish</DefineConstants>

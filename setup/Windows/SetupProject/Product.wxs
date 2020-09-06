@@ -17,9 +17,11 @@
 	</Product>
 
 	<Fragment>
-		<Directory Id="TARGETDIR" Name="SourceDir">
+    <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLFOLDER" Name="Aporta" />
+        <Directory Id="INSTALLFOLDER" Name="Aporta">
+          <Directory Id="DATAFOLDER" Name="Data" />
+        </Directory>
       </Directory>
     </Directory>
 	</Fragment>
@@ -37,6 +39,11 @@
           Part="last"
           Action="set"
           System="yes" />
+      </Component>
+      <Component Id="SetFolderPermissions" Directory="DATAFOLDER"  Guid="989FE60B-79C3-4FC9-8CC2-5D3101850576">
+        <CreateFolder>
+          <Permission GenericAll="yes" User="Users"/>
+        </CreateFolder>
       </Component>
     </ComponentGroup>
   </Fragment>

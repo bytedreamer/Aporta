@@ -57,7 +57,7 @@
         <MakeDir Directories="$(OutDir)\Data"/>
     </Target>
 
-    <Target Name="PublishDrivers" AfterTargets="AfterBuild">
+    <Target Name="PublishDrivers" AfterTargets="AfterPublish">
         <Copy SourceFiles="@(DriverFiles)" DestinationFiles="@(DriverFiles->'$(PublishDir)\Drivers\%(RecursiveDir)%(Filename)%(Extension)')" />
         <MakeDir Directories="$(PublishDir)\Data"/>
     </Target>
