@@ -51,3 +51,8 @@ steps:
     solutionOrProjectPath: 'src/Aporta.sln'
     failBuildLevelSelector: 'Error'
     additionalArguments: '--no-swea'
+    
+- task: VSBuild@1
+  inputs:
+    solution: '**/setup/Windows/SetupProject/SetupProject.SetupProject.wixproj'
+    msbuildArchitecture: 'x64'
