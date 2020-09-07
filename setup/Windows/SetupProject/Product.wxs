@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-	<Product Id="*" Name="Aporta" Language="1033" Version="0.0.0.1" Manufacturer="Z-bit" UpgradeCode="3155e450-efaf-4294-a12b-097295667284">
+	<Product Id="*" Name="Aporta" Language="1033" Version="!(bind.FileVersion.AportaService)" Manufacturer="Z-bit" UpgradeCode="3155e450-efaf-4294-a12b-097295667284">
 		<Package InstallerVersion="200" 
              Platform="x64"
              Compressed="yes" 
@@ -56,7 +56,28 @@
           Action="set"
           System="yes" />
       </Component>
-      <Component Id="SetFolderPermissions" Directory="DATAFOLDER"  Guid="989FE60B-79C3-4FC9-8CC2-5D3101850576">
+
+      <Component Id="Aporta_ServiceInstaller" Directory="INSTALLFOLDER" Guid="10C702B9-C283-421F-B166-771543D89A8B">
+        <File Id="AportaService" DiskId="1" KeyPath="yes" Source="$(var.BasePath)\Aporta.exe"/>
+        <ServiceInstall
+          Id="ServiceInstaller"
+          Type="ownProcess"
+          Name="AportaService"
+          DisplayName="Aporta"
+          Description="Open source physical access control controller"
+          Start="auto"
+          Account="LocalSystem"
+          ErrorControl="normal" />
+        <ServiceControl
+          Id="ServiceInstaller"
+          Start="install"
+          Stop="both"
+          Remove="uninstall"
+          Name="AportaService"
+          Wait="yes" />
+      </Component>
+      
+      <Component Id="Aporta_SetFolderPermissions" Directory="DATAFOLDER"  Guid="989FE60B-79C3-4FC9-8CC2-5D3101850576">
         <CreateFolder>
           <Permission GenericAll="yes" User="Users"/>
         </CreateFolder>

@@ -16,7 +16,7 @@ variables:
   buildConfiguration: 'Release'
   major: 0
   minor: 1
-  patch: 0
+  patch: $[counter(variables['minor'], 1)]
   AssemblyVersion: $(major).$(minor).$(patch)
 
 steps:

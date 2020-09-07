@@ -1,12 +1,9 @@
-﻿using System;
+﻿using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Aporta.Workers;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
-
-using Aporta.Core.DataAccess;
-using Aporta.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 
 namespace Aporta
 {
@@ -14,36 +11,32 @@ namespace Aporta
     {
         public static async Task Main(string[] args)
         {
-            var host = CreateHostBuilder(args).Build();
-            
-            using (var serviceScope = host.Services.CreateScope())
-            {
-                var services = serviceScope.ServiceProvider;
-
-                try
-                {
-                    var dataAccess = services.GetRequiredService<IDataAccess>();
-                    await dataAccess.UpdateSchema();
-                    
-                    var extensionService = services.GetRequiredService<ExtensionService>();
-                    await extensionService.Startup();
-
-                    services.GetRequiredService<AccessService>();
-                    services.GetRequiredService<InputService>();
-                    services.GetRequiredService<OutputService>();
-                }
-                catch (Exception exception)
-                {
-                    var logger = services.GetRequiredService<ILogger<Program>>();
-                    logger.LogError(exception, "An error occurred.");
-                }
-            }
+            var host = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? CreateWindowsHostBuilder(args).Build()
+                : CreateSystemdHostBuilder(args).Build();
 
             await host.RunAsync();
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
+        public static IHostBuilder CreateSystemdHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .UseSystemd()
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddHostedService<StartupWorker>();
+                })
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
+
+        public static IHostBuilder CreateWindowsHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .UseWindowsService()
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddHostedService<StartupWorker>();
+                })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();

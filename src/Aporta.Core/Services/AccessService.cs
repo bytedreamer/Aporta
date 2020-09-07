@@ -23,10 +23,18 @@ namespace Aporta.Core.Services
             _logger = logger;
             _doorRepository = new DoorRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
+        }
 
+        public void Startup()
+        {
             _extensionService.AccessCredentialReceived += ExtensionServiceOnAccessCredentialReceived;
         }
-        
+
+        public void Shutdown()
+        {
+            _extensionService.AccessCredentialReceived -= ExtensionServiceOnAccessCredentialReceived;
+        }
+
         private async void ExtensionServiceOnAccessCredentialReceived(object sender,
             AccessCredentialReceivedEventArgs eventArgs)
         {

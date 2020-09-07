@@ -24,6 +24,7 @@
     <Compile Include="Product.wxs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="RemoveExe.xslt" />
     <Content Include="RemovePdbs.xslt" />
     <Content Include="SetupProject.wax" />
   </ItemGroup>
@@ -48,7 +49,7 @@
       <LinkerBaseInputPaths>..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish</LinkerBaseInputPaths>
       <DefineConstants>BasePath=..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish</DefineConstants>
     </PropertyGroup>
-    <HeatDirectory OutputFile="Aporta.wxs" DirectoryRefId="INSTALLFOLDER" ComponentGroupName="Aporta_Project" SuppressCom="true" Directory="..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish" SuppressFragments="true" SuppressRegistry="true" SuppressRootDirectory="true" AutoGenerateGuids="false" GenerateGuidsNow="true" ToolPath="$(WixToolPath)" PreprocessorVariable="var.BasePath" Transforms="RemovePdbs.xslt" />
+    <HeatDirectory OutputFile="Aporta.wxs" DirectoryRefId="INSTALLFOLDER" ComponentGroupName="Aporta_Project" SuppressCom="true" Directory="..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish" SuppressFragments="true" SuppressRegistry="true" SuppressRootDirectory="true" AutoGenerateGuids="false" GenerateGuidsNow="true" ToolPath="$(WixToolPath)" PreprocessorVariable="var.BasePath" Transforms="RemovePdbs.xslt;RemoveExe.xslt" />
   </Target>
   <!--
 	To modify your build process, add your task inside one of the targets below and uncomment it.
