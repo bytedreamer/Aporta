@@ -54,5 +54,5 @@ steps:
     
 - task: VSBuild@1
   inputs:
-    solution: 'setup/Windows/SetupProject/SetupProject.SetupProject.wixproj'
+    solution: 'setup/Windows/SetupProject/SetupProject.wixproj'
     msbuildArchitecture: 'x64'
