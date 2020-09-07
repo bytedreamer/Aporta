@@ -30,7 +30,7 @@ steps:
   displayName: 'Install NuGet'
 
 - task: DotNetCoreCLI@2
-  displayName: 'dotnet build'
+  displayName: 'Build Aporta'
   inputs:
     command: 'build'
     projects: 'src/Aporta.sln'
@@ -39,7 +39,7 @@ steps:
     versionEnvVar: 'AssemblyVersion'
 
 - task: DotNetCoreCLI@2
-  displayName: 'dotnet test'
+  displayName: 'Unit Test Aporta'
   inputs:
     command: 'test'
     nobuild: true
@@ -47,6 +47,7 @@ steps:
     arguments: '--configuration $(buildConfiguration)'
     
 - task: ResharperCli@2
+  displayName: 'ReSharper Inspection'
   inputs:
     solutionOrProjectPath: 'src/Aporta.sln'
     failBuildLevelSelector: 'Error'
@@ -55,4 +56,6 @@ steps:
 - task: VSBuild@1
   inputs:
     solution: 'setup/Windows/SetupProject/SetupProject.wixproj'
-    msbuildArchitecture: 'x64'
+    msbuildArchitecture: 'x86'
+    configuration: 'Release'
+
