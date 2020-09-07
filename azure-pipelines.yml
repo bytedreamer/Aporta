@@ -59,6 +59,9 @@ steps:
     solution: 'setup/Windows/SetupProject/SetupProject.wixproj'
     msbuildArchitecture: 'x86'
     configuration: 'Release'
+    msbuildArguments: >
+          /target:Build
+          /p:RunWixToolsOutOfProc=true
 
 - task: PublishPipelineArtifact@1
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
