@@ -54,8 +54,14 @@ steps:
     additionalArguments: '--no-swea'
     
 - task: VSBuild@1
+  displayName: 'Build Windows Installer'
   inputs:
     solution: 'setup/Windows/SetupProject/SetupProject.wixproj'
     msbuildArchitecture: 'x86'
     configuration: 'Release'
+
+- task: PublishPipelineArtifact@1
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)'
 
