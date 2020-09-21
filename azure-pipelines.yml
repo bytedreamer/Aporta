@@ -61,6 +61,20 @@ steps:
     configuration: 'Release'
     msbuildArgs: '/p:RunWixToolsOutOfProc=true /p:OutputPath=$(Build.ArtifactStagingDirectory)/Setup/Windows'
 
+- task: DotNetCoreCLI@2
+  displayName: 'Install dotnet deb packaging tool'
+  inputs:
+    command: 'custom'
+    custom: 'tool'
+    arguments: 'install --global dotnet-deb'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Install dotnet deb packaging for project'
+  inputs:
+    command: 'custom'
+    custom: 'deb'
+    arguments: 'install'
+
 - task: PublishPipelineArtifact@1
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   inputs:
