@@ -80,11 +80,17 @@ namespace Aporta.Core.DataAccess
         public async Task UpdateSchema()
         {
             int currentVersion = await CurrentVersion();
-            
+
             using var connection = CreateDbConnection();
+            
+            if (!Directory.Exists(Path.GetDirectoryName(BuildFilePath())))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(BuildFilePath()));
+            }
+
             connection.Open();
             using var transaction = connection.BeginTransaction();
-            
+
             for (int migrationIndex = currentVersion + 1; migrationIndex < _migrations.Length; migrationIndex++)
             {
                 await _migrations[migrationIndex].PerformUpdate(connection, transaction);
@@ -98,7 +104,7 @@ namespace Aporta.Core.DataAccess
                         timestamp = DateTime.UtcNow
                     }, transaction);
             }
-            
+
             transaction.Commit();
         }
     }
