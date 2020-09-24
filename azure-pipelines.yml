@@ -75,6 +75,22 @@ steps:
     custom: 'deb'
     arguments: 'install'
 
+- task: DotNetCoreCLI@2
+  displayName: 'Create Debian x64 package'
+  inputs:
+    command: 'custom'
+    custom: 'deb'
+    arguments: 'Aporta.csproj -r linux-x64 -c Release'
+    workingDirectory: 'src/Aporta/Aporta.csproj'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Create Debian ARM package'
+  inputs:
+    command: 'custom'
+    custom: 'deb'
+    arguments: 'Aporta.csproj -r linux-arm -c Release'
+    workingDirectory: 'src/Aporta/Aporta.csproj'
+
 - task: PublishPipelineArtifact@1
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   inputs:
