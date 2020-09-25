@@ -80,14 +80,18 @@ steps:
   inputs:
     command: 'custom'
     custom: 'deb'
-    arguments: 'src/Aporta/Aporta.csproj -r linux-x64 -c Release'
+    arguments: 'src/Aporta/Aporta.csproj -r linux-x64 -c Release -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
 
 - task: DotNetCoreCLI@2
   displayName: 'Create Debian ARM package'
   inputs:
     command: 'custom'
     custom: 'deb'
-    arguments: 'src/Aporta/Aporta.csproj -r linux-arm -c Release'
+    arguments: 'src/Aporta/Aporta.csproj -r linux-arm -c Release -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
 
 - task: PublishPipelineArtifact@1
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
