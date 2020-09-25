@@ -20,12 +20,12 @@ variables:
   AssemblyVersion: $(major).$(minor).$(patch)
 
 steps:
+
 - task: PowerShell@2
-    inputs:
-      targetType: 'filePath'
-      filePath: 'set-version.ps1'
-      arguments: "-newVersion '$(AssemblyVersion)'"
-  
+  inputs:
+    filePath: 'set-version.ps1'
+    arguments: '-newVersion $(AssemblyVersion)'
+
 - task: UseDotNet@2
   displayName: 'Install .NET Core SDK'
   inputs:
