@@ -20,6 +20,12 @@ variables:
   AssemblyVersion: $(major).$(minor).$(patch)
 
 steps:
+- task: PowerShell@2
+    inputs:
+      targetType: 'filePath'
+      filePath: 'set-version.ps1'
+      arguments: "-newVersion '$(AssemblyVersion)'"
+  
 - task: UseDotNet@2
   displayName: 'Install .NET Core SDK'
   inputs:
@@ -80,18 +86,14 @@ steps:
   inputs:
     command: 'custom'
     custom: 'deb'
-    arguments: 'src/Aporta/Aporta.csproj -r linux-x64 -c Release -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
-    versioningScheme: 'byEnvVar'
-    versionEnvVar: 'AssemblyVersion'
+    arguments: 'src/Aporta/Aporta.csproj -r linux-x64 -c $(buildConfiguration) -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
 
 - task: DotNetCoreCLI@2
   displayName: 'Create Debian ARM package'
   inputs:
     command: 'custom'
     custom: 'deb'
-    arguments: 'src/Aporta/Aporta.csproj -r linux-arm -c Release -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
-    versioningScheme: 'byEnvVar'
-    versionEnvVar: 'AssemblyVersion'
+    arguments: 'src/Aporta/Aporta.csproj -r linux-arm -c $(buildConfiguration) -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
 
 - task: PublishPipelineArtifact@1
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
