@@ -67,6 +67,19 @@ steps:
     configuration: 'Release'
     msbuildArgs: '/p:RunWixToolsOutOfProc=true /p:OutputPath=$(Build.ArtifactStagingDirectory)/Setup/Windows'
 
+- task: AzureKeyVault@1
+  inputs:
+    azureSubscription: 'Z-bit'
+    KeyVaultName: 'Z-bitVault'
+
+- powershell: |
+    $filePath = '$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi';
+    $base64 = '$(Z-bitVault)';
+    $buffer = [System.Convert]::FromBase64String($base64);
+    $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($buffer);
+    $timestampServer = 'http://timestamp.comodoca.com';
+    Set-AuthenticodeSignature -FilePath $filePath -Certificate $certificate -TimestampServer $timestampServer;
+
 - task: DotNetCoreCLI@2
   displayName: 'Install dotnet deb packaging tool'
   inputs:
