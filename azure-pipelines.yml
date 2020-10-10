@@ -74,7 +74,7 @@ steps:
 
 - powershell: |
     $filePath = '$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi';
-    $base64 = '$(Z-bitVault)';
+    $base64 = '$(CodeSigning)';
     $buffer = [System.Convert]::FromBase64String($base64);
     $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($buffer);
     $timestampServer = 'http://timestamp.comodoca.com';
