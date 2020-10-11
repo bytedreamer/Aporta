@@ -10,3 +10,46 @@ Aporta doesn't intend to recreate what is already available by existing physical
 - Modularity is built into the architecture of the software. There will be the ability to add custom plugins for enhanced capabilities. 
 - Open standards are embraced and built into the software.
 - Features are not to be restricted by licensing. All of the software's capabilities are available without being overburden with expensive and confusing license terms.
+
+## Release Plan ##
+
+The project is early in its development. After working on access control products for many years, my inclination is that there are a large number of features required for a viable access controller. The list below is a attempt to limit the feature targeted in the first release.
+
+- Easy installation (Done)
+    - Windows installer (Done)
+    - Debian packages (Done)
+- Self hosted web management
+    - SSL required by default
+    - A master password to gain access
+- OSDP Driver
+    - Install new devices with security channel encryption
+    - Process standard Wiegand card reads
+    - Detect if device is online
+    - Control output
+    - Notify when input is tripped
+ - Access Control
+    - Enroll new cardholder
+    - Basic access level assignment
+    - Read entire card data for card number
+    - Card number is a non-reversible hash
+    - Log access events
+
+## Installation ##
+
+Aporta has installers for both Windows and Linux Debian distributions. The should be minimal steps needed to get a fully functional access controller operating.
+
+For both platforms .NET Core 3.1 runtime must be installed first.
+
+[.NET Core 3.1 Runtime](https://dotnet.microsoft.com/download)
+
+### Windows ###
+
+There is a standard MSI file that will install Aporta as a service.
+
+[Aporta 64bit Windows Installer](https://www.z-bitco.com/downloads/Aporta.msi)
+
+### Linux ###
+
+DEB packages have been created both x64 and Arm processors. They have been compressed into a single compressed file.
+
+[Linux Debian Packages](https://www.z-bitco.com/downloads/Aporta.tar.gz)

@@ -52,7 +52,7 @@ namespace Aporta.Core.DataAccess.Repositories
             connection.Open();
 
             await connection.ExecuteAsync(SqlDelete,
-                new {id = id});
+                new {id});
         }
     }
 }

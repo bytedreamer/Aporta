@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 
 namespace Aporta.Extensions.Endpoint
