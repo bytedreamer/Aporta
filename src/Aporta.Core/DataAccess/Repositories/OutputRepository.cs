@@ -13,12 +13,12 @@ namespace Aporta.Core.DataAccess.Repositories
         
         protected override IDataAccess DataAccess { get; }
 
-        protected override string SqlSelect => @"select output.id, output.endpoint_id as endpointId, output.name, output.pulse_timer as pulseTimer
+        protected override string SqlSelect => @"select output.id, output.endpoint_id as endpointId, output.name 
                                                 from output";
 
         protected override string SqlInsert => @"insert into output
-                                                (endpoint_id, name, pulse_timer) values 
-                                                (@endpointId, @name, @pulseTimer)";
+                                                (endpoint_id, name) values 
+                                                (@endpointId, @name)";
 
         protected override string SqlDelete => @"delete from output where id = @id";
         
@@ -38,8 +38,7 @@ namespace Aporta.Core.DataAccess.Repositories
             return new
             {
                 endpointId = output.EndpointId,
-                name = output.Name,
-                pulseTimer = output.PulseTimer
+                name = output.Name
             };
         }
 

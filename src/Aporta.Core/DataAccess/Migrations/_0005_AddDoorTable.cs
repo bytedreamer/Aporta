@@ -38,8 +38,7 @@ namespace Aporta.Core.DataAccess.Migrations
 							constraint door_strike_endpoint_id_fk
 								references endpoint
 									on update cascade on delete cascade,
-					    name			text				not null,
-						strike_timer	integer	default 3 	not null	
+					    name			text				not null	
 					);
 
 				create unique index door_id_uindex

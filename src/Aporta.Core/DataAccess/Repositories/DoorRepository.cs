@@ -16,16 +16,16 @@ namespace Aporta.Core.DataAccess.Repositories
                                                     door.out_access_endpoint_id as outAccessEndpointId, 
                                                     door.door_contact_endpoint_id as doorContactEndpointId, 
                                                     door.request_to_exit_endpoint_id as requestToExitEndpointId, 
-                                                    door.door_strike_endpoint_id as doorStrikeEndpointId, 
-                                                    door.name, door.strike_timer as strikeTimer
+                                                    door.door_strike_endpoint_id as doorStrikeEndpointId,
+                                                    door.name
                                                     from door";
 
         protected override string SqlInsert => @"insert into door
                                                 (in_access_endpoint_id, out_access_endpoint_id, 
                                                  door_contact_endpoint_id, request_to_exit_endpoint_id, 
-                                                 door_strike_endpoint_id, name, strike_timer) values 
+                                                 door_strike_endpoint_id, name) values 
                                                 (@inAccessEndpointId, @outAccessEndpointId, @doorContactEndpointId, 
-                                                 @requestToExitEndpointId, @doorStrikeEndpointId, @name, @strikeTimer)";
+                                                 @requestToExitEndpointId, @doorStrikeEndpointId, @name)";
 
         protected override string SqlDelete => @"delete from door where id = @id";
 
@@ -38,8 +38,7 @@ namespace Aporta.Core.DataAccess.Repositories
                 doorContactEndpointId = door.DoorContactEndpointId,
                 requestToExitEndpointId = door.RequestToExitEndpointId,
                 doorStrikeEndpointId = door.DoorStrikeEndpointId,
-                name = door.Name,
-                strikeTimer = door.StrikeTimer
+                name = door.Name
             };
         }
 

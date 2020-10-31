@@ -1,7 +1,12 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Aporta.Core.Services;
+using Aporta.Utilities;
 using Aporta.Workers;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -28,9 +33,10 @@ namespace Aporta
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
+                    webBuilder.ConfigureServices(ConfigureServices);
                 });
 
-        public static IHostBuilder CreateWindowsHostBuilder(string[] args) =>
+        private static IHostBuilder CreateWindowsHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
                 .UseWindowsService()
                 .ConfigureServices((hostContext, services) =>
@@ -40,6 +46,30 @@ namespace Aporta
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
+                    webBuilder.ConfigureServices(ConfigureServices);
                 });
+        
+        private static void ConfigureServices(IServiceCollection services)
+        {
+            services.Configure<KestrelServerOptions>(options =>
+            {
+                options.ConfigureHttpsDefaults(async listenOptions =>
+                {
+                    var globalSettingService =
+                        ActivatorUtilities.CreateInstance<GlobalSettingService>(options.ApplicationServices);
+
+                    string password = await globalSettingService.GetSslCertificatePassword();
+                    if (!SslCertificateUtilities.IsThereAValidCertificate(password))
+                    {
+                        password = SslCertificateUtilities.GenerateSslPassword();
+                        await globalSettingService.SetSslCertificatePassword(password);
+                        SslCertificateUtilities.CreateAndSaveSelfSignedServerCertificate(password);
+                    }
+
+                    listenOptions.ServerCertificate =
+                        SslCertificateUtilities.LoadCertificate(await globalSettingService.GetSslCertificatePassword());
+                });
+            });
+        }
     }
 }

@@ -69,7 +69,7 @@ namespace Aporta.Core.Services
             }
 
             _logger.LogInformation($"Door {matchingDoor.Name} granted access.");
-            await OpenDoor(matchingDoorStrike, matchingDoor.StrikeTimer);
+            await OpenDoor(matchingDoorStrike, 3);
         }
 
         private bool EnrollMode()

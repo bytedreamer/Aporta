@@ -11,7 +11,5 @@ namespace Aporta.Shared.Models
         public int? DoorStrikeEndpointId { get; set; }
         
         public string Name { get; set; }
-
-        public int StrikeTimer { get; set; } = 3;
     }
 }

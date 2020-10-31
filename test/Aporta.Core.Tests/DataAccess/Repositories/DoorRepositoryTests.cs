@@ -79,7 +79,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Arrange
             var doors = new[]
             {
-                new Door {Name = "DoorTest1", InAccessEndpointId = _inAccessEndpointId, StrikeTimer = 6},
+                new Door {Name = "DoorTest1", InAccessEndpointId = _inAccessEndpointId},
                 new Door
                 {
                     Name = "DoorTest2", InAccessEndpointId = _inAccessEndpointId,
@@ -106,7 +106,6 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             Assert.AreEqual(_doorContactEndpointId, actualDoor.DoorContactEndpointId);
             Assert.AreEqual(_requestToExitEndpointId, actualDoor.RequestToExitEndpointId);
             Assert.AreEqual(_doorStrikeEndpointId, actualDoor.DoorStrikeEndpointId);
-            Assert.AreEqual(3, actualDoor.StrikeTimer);
         }
 
         [Test]

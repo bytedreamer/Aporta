@@ -22,8 +22,7 @@ namespace Aporta.Core.DataAccess.Migrations
 							constraint output_endpoint_id_fk
 								references endpoint
 									on update cascade on delete cascade,
-					    name		text				not null,
-						pulse_timer	integer	default 5 	not null	
+					    name		text				not null	
 					);
 
 				create unique index output_id_uindex

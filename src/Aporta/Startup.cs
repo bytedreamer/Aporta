@@ -3,10 +3,10 @@ using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
 using Aporta.Shared.Messaging;
+using Aporta.Utilities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.ResponseCompression;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -14,22 +14,19 @@ namespace Aporta
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
-
-        public IConfiguration Configuration { get; }
-
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddDataProtection();
+            services.AddSingleton<IDataEncryption, DataEncryptor>();
+
             services.AddSingleton<IDataAccess, SqLiteDataAccess>();
-            
+
             services.AddSingleton<AccessService, AccessService>();
             services.AddSingleton<DoorConfigurationService, DoorConfigurationService>();
             services.AddSingleton<ExtensionService, ExtensionService>();
+            services.AddSingleton<GlobalSettingService, GlobalSettingService>();
             services.AddSingleton<InputService, InputService>();
             services.AddSingleton<OutputService, OutputService>();
 
@@ -39,7 +36,7 @@ namespace Aporta
             services.AddResponseCompression(opts =>
             {
                 opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-                    new[] { "application/octet-stream" });
+                    new[] {"application/octet-stream"});
             });
         }
 
@@ -60,7 +57,7 @@ namespace Aporta
                 app.UseHsts();
             }
 
-            // app.UseHttpsRedirection();
+            app.UseHttpsRedirection();
             app.UseBlazorFrameworkFiles();
             app.UseStaticFiles();
 
