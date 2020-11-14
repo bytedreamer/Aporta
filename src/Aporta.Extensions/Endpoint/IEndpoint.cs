@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 
 namespace Aporta.Extensions.Endpoint
 {
@@ -6,6 +7,8 @@ namespace Aporta.Extensions.Endpoint
     {
         Guid ExtensionId { get; }
         
-        string Id { get; } 
+        string Id { get; }
+
+        Task<bool> GetOnlineStatus();
     }
 }

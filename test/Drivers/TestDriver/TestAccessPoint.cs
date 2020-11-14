@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 
 namespace Aporta.Drivers.TestDriver
@@ -10,5 +11,10 @@ namespace Aporta.Drivers.TestDriver
         public Guid ExtensionId { get; internal set; }
         
         public string Id { get; internal set;}
+        
+        public Task<bool> GetOnlineStatus()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

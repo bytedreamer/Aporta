@@ -65,7 +65,7 @@ namespace Aporta.Drivers.TestDriver
                     {
                         await monitorPoint.SetState(bool.Parse(stateData[1]));
                         OnStateChanged(new StateChangedEventArgs(monitorPoint,
-                            new MonitorPointState(bool.Parse(stateData[1]))));
+                            bool.Parse(stateData[1])));
                     }
                 }
             }, TaskCreationOptions.LongRunning);
@@ -107,6 +107,7 @@ namespace Aporta.Drivers.TestDriver
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
         
         public event EventHandler<StateChangedEventArgs> StateChanged;
+        public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
 
         protected virtual void OnUpdatedEndpoints()
         {

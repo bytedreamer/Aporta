@@ -34,5 +34,10 @@ namespace Aporta.Drivers.OSDP
             return (await _controlPanel.InputStatus(_connectionId, _device.Address)).InputStatuses.ToArray()[
                 _input.Number];
         }
+        
+        public Task<bool> GetOnlineStatus()
+        {
+            return Task.FromResult(true);
+        }
     }
 }

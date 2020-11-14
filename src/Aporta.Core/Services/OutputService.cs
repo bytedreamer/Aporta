@@ -33,16 +33,11 @@ namespace Aporta.Core.Services
 
         private async void ExtensionServiceOnOutputStateChanged(object sender, StateChangedEventArgs eventArgs)
         {
-            if (eventArgs.ControlPointState == null)
-            {
-                return;
-            }
-            
             try
             {
                 var output = await _outputRepository.GetForDriverId(eventArgs.Endpoint.Id);
 
-                await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, eventArgs.ControlPointState.NewState);
+                await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, eventArgs.State);
             }
             catch
             {

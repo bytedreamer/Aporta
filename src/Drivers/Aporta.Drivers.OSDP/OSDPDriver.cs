@@ -86,7 +86,13 @@ namespace Aporta.Drivers.OSDP
                 bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
             var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
 
-            if (!eventArgs.IsConnected || matchingDevice.CheckedCapabilities) return;
+            if (!eventArgs.IsConnected || matchingDevice.CheckedCapabilities)
+            {
+                matchingDevice.IsConnected = eventArgs.IsConnected;
+                
+                OnUpdatedEndpoints();
+                return;
+            }
             
             DeviceCapabilities capabilities;
             try
@@ -116,8 +122,7 @@ namespace Aporta.Drivers.OSDP
                         input));
                 }
             }
-            
-            
+
             foreach (var outputCapability in capabilities.Capabilities.Where(capability =>
                 capability.Function == CapabilityFunction.OutputControl))
             {
@@ -169,6 +174,7 @@ namespace Aporta.Drivers.OSDP
             }
 
             matchingDevice.CheckedCapabilities = true;
+            matchingDevice.IsConnected = eventArgs.IsConnected;
                 
             OnUpdatedEndpoints();
         }
@@ -194,9 +200,8 @@ namespace Aporta.Drivers.OSDP
             foreach (var monitorPoint in monitorPoints)
             {
                 StateChanged?.Invoke(this,
-                    new StateChangedEventArgs(monitorPoint, new MonitorPointState(
-                        eventArgs.InputStatus.InputStatuses.ToArray()[
-                            short.Parse(monitorPoint.Id.Split(":").Last().TrimStart('I'))])));
+                    new StateChangedEventArgs(monitorPoint, eventArgs.InputStatus.InputStatuses.ToArray()[
+                            short.Parse(monitorPoint.Id.Split(":").Last().TrimStart('I'))]));
             }
         }
 
@@ -209,9 +214,8 @@ namespace Aporta.Drivers.OSDP
             foreach (var controlPoint in controlPoints)
             {
                 StateChanged?.Invoke(this,
-                    new StateChangedEventArgs(controlPoint, new ControlPointState(
-                        eventArgs.OutputStatus.OutputStatuses.ToArray()[
-                            short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))])));
+                    new StateChangedEventArgs(controlPoint, eventArgs.OutputStatus.OutputStatuses.ToArray()[
+                            short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))]));
             }
         }
 
@@ -285,6 +289,7 @@ namespace Aporta.Drivers.OSDP
         public event EventHandler<EventArgs> UpdatedEndpoints;
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
         public event EventHandler<StateChangedEventArgs> StateChanged;
+        public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
 
         private string AddBus(string parameters)
         {

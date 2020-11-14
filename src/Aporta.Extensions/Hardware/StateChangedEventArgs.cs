@@ -5,60 +5,14 @@ namespace Aporta.Extensions.Hardware
 {
     public class StateChangedEventArgs : EventArgs
     {
-        public StateChangedEventArgs(IControlPoint controlPoint, ControlPointState controlPointState)
+        public StateChangedEventArgs(IEndpoint endpoint, bool state)
         {
-            Endpoint = controlPoint;
-            ControlPointState = controlPointState;
-        }
-        
-        public StateChangedEventArgs(IMonitorPoint monitorPoint, MonitorPointState monitorPointState)
-        {
-            Endpoint = monitorPoint;
-            MonitorPointState = monitorPointState;
+            Endpoint = endpoint;
+            State = state;
         }
         
         public IEndpoint Endpoint { get; }
         
-        public ControlPointState ControlPointState { get; }
-        
-        public MonitorPointState MonitorPointState { get; }
-        
-        public AccessPointState AccessPointState { get; }
-    }
-    
-    public class AccessPointState
-    {
-        public AccessPointState(bool newState, bool? oldState = null)
-        {
-            NewState = newState;
-            OldState = oldState;
-        }
-        
-        public bool NewState { get; }
-        public bool? OldState { get; }
-    }
-
-    public class ControlPointState
-    {
-        public ControlPointState(bool newState, bool? oldState = null)
-        {
-            NewState = newState;
-            OldState = oldState;
-        }
-        
-        public bool NewState { get; }
-        public bool? OldState { get; }
-    }
-    
-    public class MonitorPointState
-    {
-        public MonitorPointState(bool newState, bool? oldState = null)
-        {
-            NewState = newState;
-            OldState = oldState;
-        }
-        
-        public bool NewState { get; }
-        public bool? OldState { get; }
+        public bool State { get; }
     }
 }

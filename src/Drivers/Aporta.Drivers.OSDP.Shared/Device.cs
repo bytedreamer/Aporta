@@ -11,6 +11,8 @@ namespace Aporta.Drivers.OSDP.Shared
         public bool RequireSecurity { get; set; }
 
         public bool CheckedCapabilities { get; set; }
+        
+        public bool IsConnected { get; set; }
 
         public List<Input> Inputs { get; } = new List<Input>();
         public List<Output> Outputs { get; } = new List<Output>();

@@ -61,6 +61,7 @@
                         <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
                             <TableHeader>
                                 <TableRow>
+                                    <TableHeaderCell>Connected</TableHeaderCell>
                                     <TableHeaderCell>Name</TableHeaderCell>
                                     <TableHeaderCell>Address</TableHeaderCell>
                                     <TableHeaderCell></TableHeaderCell>
@@ -70,6 +71,9 @@
                                 @foreach (var device in bus.Devices.OrderBy(device => device.Address))
                                 {
                                     <TableRow>
+                                        <TableRowCell>
+                                            @device.IsConnected
+                                        </TableRowCell>
                                         <TableRowHeader>
                                             @device.Name
                                         </TableRowHeader>

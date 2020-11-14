@@ -47,5 +47,10 @@ namespace Aporta.Drivers.OSDP
                             : OutputControlCode.PermanentStateOffAbortTimedOperation, 0)
                 }));
         }
+        
+        public Task<bool> GetOnlineStatus()
+        {
+            return Task.FromResult(true);
+        }
     }
 }

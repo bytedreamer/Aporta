@@ -13,6 +13,10 @@ namespace Aporta.Drivers.TestDriver
         public Guid ExtensionId { get; internal set; }
         
         public string Id { get; internal set;}
+        public Task<bool> GetOnlineStatus()
+        {
+            throw new NotImplementedException();
+        }
 
         public Task<bool> GetState()
         {

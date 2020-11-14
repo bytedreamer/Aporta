@@ -15,11 +15,11 @@ Aporta doesn't intend to recreate what is already available by existing physical
 
 The project is early in its development. After working on access control products for many years, my inclination is that there are a large number of features required for a viable access controller. The list below is a attempt to limit the feature targeted in the first release.
 
-- Easy installation (Done)
-    - Windows installer (Done)
-    - Debian packages (Done)
+- Easy installation **(Done)**
+    - Windows installer **(Done)**
+    - Debian packages **(Done)**
 - Self hosted web management
-    - SSL required by default
+    - SSL required by default **(Done)**
     - A master password to gain access
 - OSDP Driver
     - Install new devices with security channel encryption

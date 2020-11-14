@@ -25,6 +25,10 @@ namespace Aporta.Drivers.AutomationpHAT
         public Guid ExtensionId { get; }
         
         public string Id => _pin.ToString();
+        public Task<bool> GetOnlineStatus()
+        {
+            return Task.FromResult(true);
+        }
 
         public Task<bool> GetState()
         {
