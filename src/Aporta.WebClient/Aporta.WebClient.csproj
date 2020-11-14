@@ -11,7 +11,7 @@
         <ApplicationURL>https://localhost:5001;http://localhost:5000</ApplicationURL>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Blazorise.Frolic" Version="0.9.2" />
+        <PackageReference Include="Blazorise.Bootstrap" Version="0.9.2" />
         <PackageReference Include="Blazorise.Icons.FontAwesome" Version="0.9.2" />
         <PackageReference Include="Blazorise.Snackbar" Version="0.9.2" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="3.2.1" />

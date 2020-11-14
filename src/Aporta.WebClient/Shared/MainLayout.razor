@@ -2,16 +2,18 @@
 @inherits LayoutComponentBase
 
 <Layout>
-    <LayoutHeader Fixed="true">
+    <LayoutHeader Fixed="false">
         <Bar Background="Background.Light"
-             ThemeContrast="ThemeContrast.Light">
+             ThemeContrast="ThemeContrast.Light"
+             Breakpoint="Breakpoint.Desktop">
             <BarBrand>
                 <BarItem>
                     <BarLink To="">
-                        <Heading Size="HeadingSize.Is3">Aporta</Heading>
+                        Aporta
                     </BarLink>
                 </BarItem>
             </BarBrand>
+            <BarToggler />
             <BarMenu>
                 <BarStart>
                     <BarItem>
@@ -21,27 +23,28 @@
                         </BarLink>
                     </BarItem>
                     <BarItem>
-                        <BarDropdown>
-                            <BarDropdownToggle>
-                                <BarIcon IconName="IconName.Wrench"/>
-                                Configuration
-                            </BarDropdownToggle>
-                            <BarDropdownMenu>
-                                <BarDropdownItem To="configuration/drivers">Drivers</BarDropdownItem>
-                                
-                                <BarDropdownItem To="configuration/doors">Doors</BarDropdownItem>
-                                <BarDropdownItem To="configuration/inputs">Inputs</BarDropdownItem>
-                                <BarDropdownItem To="configuration/outputs">Outputs</BarDropdownItem>
-                            </BarDropdownMenu>
-                        </BarDropdown>
-                    </BarItem>
-                    <BarItem>
                         <BarLink To="monitoring">
                             <BarIcon IconName="IconName.Video"/>
                             Monitoring
                         </BarLink>
                     </BarItem>
                 </BarStart>
+                <BarEnd>
+                    <BarItem>
+                        <BarDropdown>
+                            <BarDropdownToggle>
+                                <BarIcon IconName="IconName.Wrench"/>
+                                Configuration
+                            </BarDropdownToggle>
+                            <BarDropdownMenu>
+                                <BarDropdownItem To="configuration/drivers" Target="Target.None">Drivers</BarDropdownItem>
+                                <BarDropdownItem To="configuration/doors" Target="Target.None">Doors</BarDropdownItem>
+                                <BarDropdownItem To="configuration/inputs" Target="Target.None">Inputs</BarDropdownItem>
+                                <BarDropdownItem To="configuration/outputs" Target="Target.None">Outputs</BarDropdownItem>
+                            </BarDropdownMenu>
+                        </BarDropdown>
+                    </BarItem>
+                </BarEnd>
             </BarMenu>
         </Bar>
     </LayoutHeader>

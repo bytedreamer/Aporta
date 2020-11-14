@@ -24,7 +24,7 @@ The project is early in its development. After working on access control product
 - OSDP Driver
     - Install new devices with security channel encryption
     - Process standard Wiegand card reads
-    - Detect if device is online
+    - Detect if device is online **(Done)**
     - Control output
     - Notify when input is tripped
  - Access Control

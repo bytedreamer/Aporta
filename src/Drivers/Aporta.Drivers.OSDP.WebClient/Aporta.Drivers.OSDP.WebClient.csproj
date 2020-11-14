@@ -7,7 +7,7 @@
 
 
     <ItemGroup>
-        <PackageReference Include="Blazorise.Frolic" Version="0.9.2" />
+        <PackageReference Include="Blazorise.Bootstrap" Version="0.9.2" />
         <PackageReference Include="Blazorise.Icons.FontAwesome" Version="0.9.2" />
         <PackageReference Include="Blazorise.Snackbar" Version="0.9.2" />
         <PackageReference Include="Microsoft.AspNetCore.Components" Version="3.1.10" />

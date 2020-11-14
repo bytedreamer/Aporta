@@ -19,7 +19,7 @@
 }
 else
 {
-    <Table>
+    <Table Striped="true" Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
         <TableHeader>
             <TableRow>
                 <TableHeaderCell>Name</TableHeaderCell>
@@ -42,11 +42,11 @@ else
                 <TableRowCell>
                     @if (extension.Loaded)
                     {
-                        <Icon Name="IconName.ThumbsUp" Style="color: green"/>
+                        <Icon Name="IconName.CheckSquare" Style="color: green"/>
                     }
                     else
                     {
-                        <Icon Name="IconName.ThumbsDown" Style="color: red"/>
+                        <Icon Name="IconName.MinusSquare" Style="color: red"/>
                     }
                 </TableRowCell>
             </TableRow>

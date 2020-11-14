@@ -37,13 +37,13 @@
             <Column>
                 <Card Margin="Margin.Is4.OnY">
                     <CardTitle Margin="Margin.Is4.OnX">
-                        <Row>
-                            <Column ColumnSize="ColumnSize.IsAuto">
+                        <Row Margin="Margin.Is2.OnY">
+                            <Column ColumnSize="ColumnSize.IsHalf">
                                 <Heading Size="HeadingSize.Is5">
                                     Port @bus.PortName Devices
                                 </Heading>
                             </Column>
-                            <Column ColumnSize="ColumnSize.IsAuto">
+                            <Column ColumnSize="ColumnSize.IsHalf">
                                 <Button Style="float: right" Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">
                                     Remove
                                 </Button>
@@ -58,12 +58,12 @@
                         </Row>
                     </CardTitle>
                     <CardBody>
-                        <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <Table Striped="true" Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
                             <TableHeader>
                                 <TableRow>
-                                    <TableHeaderCell>Connected</TableHeaderCell>
                                     <TableHeaderCell>Name</TableHeaderCell>
                                     <TableHeaderCell>Address</TableHeaderCell>
+                                    <TableHeaderCell>Connected</TableHeaderCell>
                                     <TableHeaderCell></TableHeaderCell>
                                 </TableRow>
                             </TableHeader>
@@ -71,17 +71,26 @@
                                 @foreach (var device in bus.Devices.OrderBy(device => device.Address))
                                 {
                                     <TableRow>
-                                        <TableRowCell>
-                                            @device.IsConnected
-                                        </TableRowCell>
                                         <TableRowHeader>
                                             @device.Name
                                         </TableRowHeader>
                                         <TableRowCell>
                                             @device.Address
                                         </TableRowCell>
+                                        <TableRowCell>
+                                            @if (device.IsConnected)
+                                            {
+                                                <Icon Name="IconName.CheckSquare" Style="color: green" Margin="Margin.Is3.OnX"/>
+                                            } 
+                                            else
+                                            {
+                                                <Icon Name="IconName.MinusSquare" Style="color: red" Margin="Margin.Is3.OnX"/>
+                                            }
+                                        </TableRowCell>
                                         <TableRowCell TextAlignment="TextAlignment.Right">
-                                            <Button Color="Color.Danger" Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
+                                            <Button Color="Color.Danger" 
+                                                    Size="Size.Small"
+                                                    Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
                                                 Remove
                                             </Button>
                                         </TableRowCell>

@@ -2,7 +2,7 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Blazorise;
-using Blazorise.Frolic;
+using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,7 +20,7 @@ namespace Aporta.WebClient
                 {
                     options.ChangeTextOnKeyPress = true;
                 } )
-                .AddFrolicProviders()
+                .AddBootstrapProviders()
                 .AddFontAwesomeIcons();
 
             builder.Services.AddSingleton( new HttpClient
@@ -36,7 +36,7 @@ namespace Aporta.WebClient
             var host = builder.Build();
 
             host.Services
-                .UseFrolicProviders()
+                .UseBootstrapProviders()
                 .UseFontAwesomeIcons();
 
             await host.RunAsync();

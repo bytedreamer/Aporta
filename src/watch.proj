@@ -4,7 +4,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-  	<WebProjects Include="Drivers\OSDP.Drivers.WebClient\OSDP.Drivers.WebClient.csproj;Aporta.WebClient\Aporta.WebClient.csproj" />
+  	<WebProjects Include="Drivers\Aporta.Drivers.OSDP.WebClient\Aporta.Drivers.OSDP.WebClient.csproj;Aporta.WebClient\Aporta.WebClient.csproj" />
   	<Watch Include="**\*.razor" />
   </ItemGroup>
 
