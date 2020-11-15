@@ -30,7 +30,7 @@ steps:
   displayName: 'Install .NET Core SDK'
   inputs:
     packageType: 'sdk'
-    version: '5.x'
+    version: '3.x'
 
 - task: NuGetToolInstaller@1
   displayName: 'Install NuGet'
