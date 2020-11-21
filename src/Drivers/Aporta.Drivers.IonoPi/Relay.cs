@@ -3,7 +3,7 @@ using System.Device.Gpio;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 
-namespace Aporta.Drivers.AutomationpHAT
+namespace Aporta.Drivers.IonoPi
 {
     public class Relay : IControlPoint
     {
@@ -25,6 +25,7 @@ namespace Aporta.Drivers.AutomationpHAT
         public Guid ExtensionId { get; }
         
         public string Id => _pin.ToString();
+        
         public Task<bool> GetOnlineStatus()
         {
             return Task.FromResult(true);
@@ -40,7 +41,5 @@ namespace Aporta.Drivers.AutomationpHAT
             _controller.Write(_pin, state ? PinValue.High : PinValue.Low);
             return Task.CompletedTask;
         }
-
-        public event EventHandler<bool> ControlPointStateChanged;
     }
 }

@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Drivers", "Drivers", "{035F
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aporta.Drivers.OSDP", "Drivers\Aporta.Drivers.OSDP\Aporta.Drivers.OSDP.csproj", "{9935D7A9-E4DC-48CE-9934-BF0E379892CA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aporta.Drivers.AutomationpHAT", "Drivers\Aporta.Drivers.AutomationpHAT\Aporta.Drivers.AutomationpHAT.csproj", "{81A7B02D-8576-445F-95A5-5F6EA8E927F8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aporta.Drivers.IonoPi", "Drivers\Aporta.Drivers.IonoPi\Aporta.Drivers.IonoPi.csproj", "{81A7B02D-8576-445F-95A5-5F6EA8E927F8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{2DFBFA3A-B289-4723-A630-C5240C7ADE85}"
 EndProject
@@ -33,7 +33,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestDriver", "..\test\Drive
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "OSDP", "OSDP", "{EF0DDAAE-3A0C-4F0E-8EC8-914FD50B2737}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AutomationpHat", "AutomationpHat", "{3153878A-99CB-4DA2-96DF-7DB639F14A87}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IonoPi", "IonoPi", "{3153878A-99CB-4DA2-96DF-7DB639F14A87}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Settings", "Settings", "{3A37D965-DB8E-406E-B472-F58E661921FA}"
 	ProjectSection(SolutionItems) = preProject
