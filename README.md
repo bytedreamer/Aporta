@@ -23,9 +23,9 @@ The project is early in its development. After working on access control product
     - A master password to gain access
 - OSDP Driver
     - Install new devices with security channel encryption
-    - Process standard Wiegand card reads
+    - Process standard Wiegand card reads **(Done)**
     - Detect if device is online **(Done)**
-    - Control output
+    - Control output **(Done)**
     - Notify when input is tripped
  - Access Control
     - Enroll new cardholder
