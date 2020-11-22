@@ -1,14 +1,13 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Aporta.Core.Services;
 using Aporta.Utilities;
 using Aporta.Workers;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Aporta
 {
@@ -61,6 +60,13 @@ namespace Aporta
                     string password = await globalSettingService.GetSslCertificatePassword();
                     if (!SslCertificateUtilities.IsThereAValidCertificate(password))
                     {
+                        var loggerFactory = LoggerFactory.Create(builder =>
+                        {
+                            builder.AddConsole();
+                        });
+                        ILogger logger = loggerFactory.CreateLogger<Program>();
+                        logger.LogWarning("A valid SSL certificate not found. Auto creating a self-sign certificate.");
+                        
                         password = SslCertificateUtilities.GenerateSslPassword();
                         await globalSettingService.SetSslCertificatePassword(password);
                         SslCertificateUtilities.CreateAndSaveSelfSignedServerCertificate(password);

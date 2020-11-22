@@ -25,11 +25,18 @@ namespace Aporta.Utilities
             {
                 return false;
             }
-            
-            var certificate =
-                new X509Certificate2(BuildCertificateFileName(), password);
 
-            return certificate.HasPrivateKey;
+            try
+            {
+                var certificate =
+                    new X509Certificate2(BuildCertificateFileName(), password);
+
+                return certificate.HasPrivateKey;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static void CreateAndSaveSelfSignedServerCertificate(string password)

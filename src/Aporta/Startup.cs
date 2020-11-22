@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
@@ -62,7 +63,7 @@ namespace Aporta
             app.UseStaticFiles();
 
             app.UseRouting();
-
+            
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapRazorPages();
