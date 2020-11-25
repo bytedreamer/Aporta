@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
@@ -22,10 +23,11 @@ namespace Aporta.Drivers.OSDP
     {
         private readonly Dictionary<string, Guid> _portMapping = new Dictionary<string, Guid>();
         private readonly List<IEndpoint> _endpoints = new List<IEndpoint>();
-
+        
         private ControlPanel _panel;
         private ILogger<OSDPDriver> _logger;
         private Configuration _configuration = new Configuration {Buses = new List<Bus>()};
+        private Timer _offlineTimer;
 
         public Guid Id => Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5");
 
@@ -49,6 +51,24 @@ namespace Aporta.Drivers.OSDP
             AddEndpoints();
 
             AddDevices();
+            
+            _offlineTimer = new Timer(ResetOfflineDevices);
+            _offlineTimer.Change(TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(10));
+        }
+
+        private void ResetOfflineDevices(object state)
+        {
+            foreach (var bus in _configuration.Buses)
+            {
+                foreach (var offlineDevice in bus.Devices.Where(device =>
+                    !_panel.IsOnline(_portMapping[bus.PortName], device.Address)))
+                {
+                    _logger.LogInformation($"Attempting to reset offline device {offlineDevice.Name}");
+                    _panel.RemoveDevice(_portMapping[bus.PortName], offlineDevice.Address);
+                    _panel.AddDevice(_portMapping[bus.PortName], offlineDevice.Address, true,
+                        offlineDevice.RequireSecurity);
+                }
+            }
         }
 
         private void AddEndpoints()
@@ -260,6 +280,8 @@ namespace Aporta.Drivers.OSDP
 
         public void Unload()
         {
+            _offlineTimer.Dispose();
+            
             _panel.Shutdown();
             
             _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
@@ -334,9 +356,10 @@ namespace Aporta.Drivers.OSDP
             var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
 
             _configuration.Buses.First(bus => bus.PortName == deviceAction.PortName).Devices.Add(deviceAction.Device);
-            
-            _panel.AddDevice(_portMapping[deviceAction.PortName], deviceAction.Device.Address, true, false);
-            
+
+            _panel.AddDevice(_portMapping[deviceAction.PortName], deviceAction.Device.Address, true,
+                deviceAction.Device.RequireSecurity);
+
             return string.Empty;
         }
 
@@ -358,6 +381,11 @@ namespace Aporta.Drivers.OSDP
         protected virtual void OnUpdatedEndpoints()
         {
             UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs e)
+        {
+            OnlineStatusChanged?.Invoke(this, e);
         }
     }
 }
