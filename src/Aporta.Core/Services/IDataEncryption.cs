@@ -22,5 +22,13 @@ namespace Aporta.Core.Services
         /// <param name="value"></param>
         /// <returns></returns>
         string Hash(string value);
+
+        /// <summary>
+        /// Check that the value matches the hash
+        /// </summary>
+        /// <param name="hash"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        bool CheckMatch(string hash, string value);
     }
 }
