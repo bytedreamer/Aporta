@@ -41,11 +41,11 @@ else
                                     <TableRowCell>
                                         @if (_inputStates[input.Id].HasValue && _inputStates[input.Id].Value)
                                         {
-                                            <Icon Name="IconName.ExclamationCircle" Style="color: red"/>
+                                            <Icon Name="IconName.ArrowUp" Style="color: red"/>
                                         }
                                         else if (_inputStates[input.Id].HasValue && !_inputStates[input.Id].Value)
                                         {
-                                            <Icon Name="IconName.CheckCircle" Style="color: green"/>
+                                            <Icon Name="IconName.ArrowDown" Style="color: green"/>
                                         }
                                     </TableRowCell>
                                 </TableRow>
@@ -79,11 +79,11 @@ else
                                 <TableHeaderCell>
                                     @if (_outputStates[output.Id].HasValue && _outputStates[output.Id].Value)
                                     {
-                                        <Icon Name="IconName.ExclamationCircle" Style="color: red"/>
+                                        <Icon Name="IconName.ArrowUp" Style="color: red"/>
                                     }
                                     else if (_outputStates[output.Id].HasValue && !_outputStates[output.Id].Value)
                                     {
-                                        <Icon Name="IconName.CheckCircle" Style="color: green"/>
+                                        <Icon Name="IconName.ArrowDown" Style="color: green"/>
                                     }
                                 </TableHeaderCell>
                                 <TableRowCell>

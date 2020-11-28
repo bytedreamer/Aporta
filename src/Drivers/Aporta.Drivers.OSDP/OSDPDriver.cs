@@ -65,6 +65,7 @@ namespace Aporta.Drivers.OSDP
                 {
                     _logger.LogInformation($"Attempting to reset offline device {offlineDevice.Name}");
                     _panel.RemoveDevice(_portMapping[bus.PortName], offlineDevice.Address);
+                    Thread.Sleep(TimeSpan.FromSeconds(3));
                     _panel.AddDevice(_portMapping[bus.PortName], offlineDevice.Address, true,
                         offlineDevice.RequireSecurity);
                 }
