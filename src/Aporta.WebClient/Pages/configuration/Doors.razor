@@ -54,8 +54,9 @@ else
                                         @door.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.Right">
-                                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveDoor(door.Id))">
-                                            Remove
+                                        <Button Color="Color.None" 
+                                                Clicked="@(async () => await RemoveDoor(door.Id))">
+                                            <Icon Name="IconName.Delete" Style="color: red"/>
                                         </Button>
                                     </TableRowCell>
                                 </TableRow>

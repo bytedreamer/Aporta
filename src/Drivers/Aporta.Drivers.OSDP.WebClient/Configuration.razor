@@ -88,10 +88,10 @@
                                             }
                                         </TableRowCell>
                                         <TableRowCell TextAlignment="TextAlignment.Right">
-                                            <Button Color="Color.Danger" 
+                                            <Button Color="Color.None"
                                                     Size="Size.Small"
                                                     Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
-                                                Remove
+                                                <Icon Name="IconName.Delete" Style="color: red"/>
                                             </Button>
                                         </TableRowCell>
                                     </TableRow>

@@ -54,8 +54,9 @@ else
                                         @input.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.Right">
-                                        <Button Color="Color.Danger" Clicked="@(async () => await RemoveInput(input.Id))">
-                                            Remove
+                                        <Button Color="Color.None" 
+                                                Clicked="@(async () => await RemoveInput(input.Id))">
+                                            <Icon Name="IconName.Delete" Style="color: red"/>
                                         </Button>
                                     </TableRowCell>
                                 </TableRow>
