@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -13,15 +14,22 @@ namespace Aporta.Core.Services
     public class AccessService
     {
         private readonly ExtensionService _extensionService;
+        private readonly GlobalSettingService _globalSettingService;
         private readonly ILogger<AccessService> _logger;
         private readonly DoorRepository _doorRepository;
         private readonly EndpointRepository _endpointRepository;
+        private readonly CredentialRepository _credentialRepository;
+        private readonly IDataEncryption _dataEncryption;
 
-        public AccessService(IDataAccess dataAccess, ExtensionService extensionService, ILogger<AccessService> logger)
+        public AccessService(IDataAccess dataAccess, ExtensionService extensionService,
+            GlobalSettingService globalSettingService, IDataEncryption dataEncryption, ILogger<AccessService> logger)
         {
             _extensionService = extensionService;
+            _globalSettingService = globalSettingService;
             _logger = logger;
+            _dataEncryption = dataEncryption;
             _doorRepository = new DoorRepository(dataAccess);
+            _credentialRepository = new CredentialRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
         }
 
@@ -35,46 +43,79 @@ namespace Aporta.Core.Services
             _extensionService.AccessCredentialReceived -= ExtensionServiceOnAccessCredentialReceived;
         }
 
-        private async void ExtensionServiceOnAccessCredentialReceived(object sender,
+        private void ExtensionServiceOnAccessCredentialReceived(object sender,
             AccessCredentialReceivedEventArgs eventArgs)
         {
-            var endpoints = (await _endpointRepository.GetAll()).ToArray();
-            
-            var matchingDoor = await MatchingDoor(eventArgs.AccessPoint.Id, endpoints);
-
-            if (matchingDoor == null)
+            Task.Factory.StartNew(async () =>
             {
-                _logger.LogInformation($"Credential received from {eventArgs.AccessPoint.Name} was not assigned to a door.");
-                return;
-            }
+                try
+                {
+                    var endpoints = (await _endpointRepository.GetAll()).ToArray();
 
-            var matchingDoorStrike = MatchingDoorStrike(matchingDoor.DoorStrikeEndpointId, endpoints);
+                    var matchingDoor = await MatchingDoor(eventArgs.AccessPoint.Id, endpoints);
 
-            if (matchingDoorStrike == null)            
-            {
-                _logger.LogInformation($"Door {matchingDoor.Name} didn't have a strike assigned.");
-                return;
-            }
-            
-            if (EnrollMode())
-            {
-                _logger.LogInformation($"Door {matchingDoor.Name} enrolled badge.");
-                return;
-            }
+                    if (matchingDoor == null)
+                    {
+                        _logger.LogInformation(
+                            $"Credential received from {eventArgs.AccessPoint.Name} was not assigned to a door.");
+                        return;
+                    }
 
-            if (!AccessGranted())
-            {
-                _logger.LogInformation($"Door {matchingDoor.Name} denied access.");
-                return;
-            }
+                    var matchingDoorStrike = MatchingDoorStrike(matchingDoor.DoorStrikeEndpointId, endpoints);
 
-            _logger.LogInformation($"Door {matchingDoor.Name} granted access.");
-            await OpenDoor(matchingDoorStrike, 3);
+                    if (matchingDoorStrike == null)
+                    {
+                        _logger.LogInformation($"Door {matchingDoor.Name} didn't have a strike assigned.");
+                        return;
+                    }
+
+                    if (eventArgs.CardData.Count != eventArgs.BitCount)
+                    {
+                        _logger.LogInformation($"Door {matchingDoor.Name} card read doesn't match bit count.");
+                        return;
+                    }
+
+                    var builder = new StringBuilder();
+                    foreach (bool bit in eventArgs.CardData)
+                    {
+                        builder.Append(bit ? "1" : "0");
+                    }
+
+                    if (await RequiredEnrollment(builder.ToString()))
+                    {
+                        _logger.LogInformation($"Door {matchingDoor.Name} enrolled badge.");
+                        return;
+                    }
+
+                    if (!AccessGranted())
+                    {
+                        _logger.LogInformation($"Door {matchingDoor.Name} denied access.");
+                        return;
+                    }
+
+                    _logger.LogInformation($"Door {matchingDoor.Name} granted access.");
+                    await OpenDoor(matchingDoorStrike, 3);
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, "Unable to process access event.");
+                }
+            });
         }
 
-        private bool EnrollMode()
+        private async Task<bool> RequiredEnrollment(string cardNumber)
         {
-            return false;
+            string hashedCardNumber =
+                _dataEncryption.Hash(cardNumber, await _globalSettingService.GetCardNumberHashSalt());
+
+            if (await _credentialRepository.IsMatchingNumber(hashedCardNumber))
+            {
+                return false;
+            }
+
+            await _credentialRepository.Insert(new Credential
+                {Number = hashedCardNumber});
+            return true;
         }
 
         private async Task OpenDoor(Endpoint matchingDoorStrike, int strikeTimer)

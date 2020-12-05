@@ -82,23 +82,5 @@ namespace Aporta.Utilities
                 Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory,
                 CertificateFileName);
         }
-
-        public static string GenerateSslPassword()
-        {
-            const string lowerCase = "abcdefghijklmnopqursuvwxyz";
-            const string upperCaes = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            const string numbers = "123456789";
-            const string specials = @"!@£$%^&*()#€";
-            char[] password = new char[16];
-            string charSet = lowerCase + upperCaes + numbers + specials;
-            var random = new Random();
-            int counter;
-            for (counter = 0; counter < 16; counter++)
-            {
-                password[counter] = charSet[random.Next(charSet.Length - 1)];
-            }
-
-            return string.Join(null, password);
-        }
     }
 }

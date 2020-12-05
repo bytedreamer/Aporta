@@ -1,11 +1,14 @@
+using System;
+using System.IO;
 using System.Linq;
-using System.Text;
+using System.Reflection;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
 using Aporta.Shared.Messaging;
 using Aporta.Utilities;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +22,8 @@ namespace Aporta
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDataProtection();
+            services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(
+                Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, "Data")));
             services.AddSingleton<IDataEncryption, DataEncryptor>();
 
             services.AddSingleton<IDataAccess, SqLiteDataAccess>();

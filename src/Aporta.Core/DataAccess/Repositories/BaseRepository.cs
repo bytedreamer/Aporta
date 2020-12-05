@@ -13,16 +13,15 @@ namespace Aporta.Core.DataAccess.Repositories
         protected abstract string SqlInsert { get; }
         
         protected abstract string SqlDelete { get; }
-        
+
         public async Task<T> Get(int id)
         {
             using var connection = DataAccess.CreateDbConnection();
             connection.Open();
 
-            return await connection.QueryFirstOrDefaultAsync<T>(SqlSelect +
-                                                                     @" where id = @id", new {id});
+            return await connection.QuerySingleOrDefaultAsync<T>($@"{SqlSelect} where id = @id", new {id});
         }
-        
+
         public async Task<IEnumerable<T>> GetAll()
         {
             using var connection = DataAccess.CreateDbConnection();

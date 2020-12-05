@@ -25,42 +25,40 @@ namespace Aporta.Utilities
             return !string.IsNullOrEmpty(value) ? _protector.Unprotect(value) : value;
         }
 
-        public string Hash(string value)
+        public string Hash(string value, byte[] salt)
         {
-            var salt = GenerateSalt(16);
-
             var bytes = KeyDerivation.Pbkdf2(value, salt, KeyDerivationPrf.HMACSHA512, 10000, 16);
 
-            return $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(bytes)}";
+            return Convert.ToBase64String(bytes);
         }
 
-        public bool CheckMatch(string hash, string value)
+        public byte[] GenerateSalt()
         {
-            try
-            {
-                var parts = hash.Split(':');
-
-                var salt = Convert.FromBase64String(parts[0]);
-
-                var bytes = KeyDerivation.Pbkdf2(value, salt, KeyDerivationPrf.HMACSHA512, 10000, 16);
-
-                return parts[1].Equals(Convert.ToBase64String(bytes));
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static byte[] GenerateSalt(int length)
-        {
-            var salt = new byte[length];
+            var salt = new byte[16];
 
             using var random = RandomNumberGenerator.Create();
             
             random.GetBytes(salt);
 
             return salt;
+        }
+
+        public string GeneratePassword()
+        {
+            const string lowerCase = "abcdefghijklmnopqursuvwxyz";
+            const string upperCaes = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const string numbers = "123456789";
+            const string specials = @"!@£$%^&*()#€";
+            char[] password = new char[16];
+            string charSet = lowerCase + upperCaes + numbers + specials;
+            var random = new Random();
+            int counter;
+            for (counter = 0; counter < 16; counter++)
+            {
+                password[counter] = charSet[random.Next(charSet.Length - 1)];
+            }
+
+            return string.Join(null, password);
         }
     }
 }

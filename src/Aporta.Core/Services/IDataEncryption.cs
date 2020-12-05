@@ -20,15 +20,20 @@ namespace Aporta.Core.Services
         /// Create a one way hash of a value
         /// </summary>
         /// <param name="value"></param>
+        /// <param name="salt"></param>
         /// <returns></returns>
-        string Hash(string value);
+        string Hash(string value, byte[] salt);
 
         /// <summary>
-        /// Check that the value matches the hash
+        /// Generate salt used for hashing
         /// </summary>
-        /// <param name="hash"></param>
-        /// <param name="value"></param>
         /// <returns></returns>
-        bool CheckMatch(string hash, string value);
+        byte[] GenerateSalt();
+
+        /// <summary>
+        /// Generate a random password
+        /// </summary>
+        /// <returns></returns>
+        string GeneratePassword();
     }
 }

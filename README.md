@@ -30,8 +30,8 @@ The project is early in its development. After working on access control product
  - Access Control
     - Enroll new cardholder
     - Basic access level assignment
-    - Read entire card data for card number
-    - Card number is a non-reversible hash
+    - Read entire card data for card number **(Done)**
+    - Card number is a non-reversible hash **(Done)**
     - Log access events
 
 ## Installation ##

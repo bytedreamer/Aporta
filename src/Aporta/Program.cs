@@ -60,20 +60,14 @@ namespace Aporta
                     string password = await globalSettingService.GetSslCertificatePassword();
                     if (!SslCertificateUtilities.IsThereAValidCertificate(password))
                     {
-                        var loggerFactory = LoggerFactory.Create(builder =>
-                        {
-                            builder.AddConsole();
-                        });
+                        var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
                         ILogger logger = loggerFactory.CreateLogger<Program>();
                         logger.LogWarning("A valid SSL certificate not found. Auto creating a self-sign certificate.");
-                        
-                        password = SslCertificateUtilities.GenerateSslPassword();
-                        await globalSettingService.SetSslCertificatePassword(password);
+
                         SslCertificateUtilities.CreateAndSaveSelfSignedServerCertificate(password);
                     }
 
-                    listenOptions.ServerCertificate =
-                        SslCertificateUtilities.LoadCertificate(await globalSettingService.GetSslCertificatePassword());
+                    listenOptions.ServerCertificate = SslCertificateUtilities.LoadCertificate(password);
                 });
             });
         }
