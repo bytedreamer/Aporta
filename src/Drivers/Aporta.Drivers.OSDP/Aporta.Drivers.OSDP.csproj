@@ -2,18 +2,16 @@
 
     <PropertyGroup>
         <TargetFramework>netcoreapp3.1</TargetFramework>
+        
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\Drivers\OSDP</OutDir>
-        <RootNamespace>Aporta.Drivers.OSDP</RootNamespace>
-        <AssemblyName>Aporta.Drivers.OSDP</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-      <PackageReference Include="OSDP.Net" Version="1.0.4" />
-      <PackageReference Include="System.IO.Ports" Version="5.0.0" />
+      <PackageReference Include="OSDP.Net" Version="1.0.7" />
     </ItemGroup>
 
     <ItemGroup>
