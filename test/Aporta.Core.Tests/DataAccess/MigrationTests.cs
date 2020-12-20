@@ -8,7 +8,7 @@ namespace Aporta.Core.Tests.DataAccess
     [TestFixture]
     public class MigrationTests
     {
-        private const int CurrentVersion = 7;
+        private const int CurrentVersion = 8;
         private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
         private IDbConnection _persistConnection;
         

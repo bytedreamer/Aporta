@@ -22,6 +22,10 @@ namespace Aporta.Core.DataAccess.Repositories
                                                 (number, enroll_date) values 
                                                 (@number, @enrollDate)";
         
+        private string SqlAssignmentInsert => @"insert into credential_assignment
+                                                (person_id, credential_id, enabled) values 
+                                                (@personId, @credentialId, @enabled)";
+
         protected override string SqlDelete => @"delete from credential where id = @id";
         
         protected override object InsertParameters(Credential credential)
@@ -38,13 +42,48 @@ namespace Aporta.Core.DataAccess.Repositories
             credential.Id = id;
         }
 
-        public async Task<bool> IsMatchingNumber(string hashedCardNumber)
+        public async Task<AssignedCredential> AssignedCredential(string hashedCardNumber)
         {
             using var connection = DataAccess.CreateDbConnection();
             connection.Open();
 
-            return await connection.QuerySingleOrDefaultAsync<Credential>($@"{SqlSelect} where number = @number",
-                new {number = hashedCardNumber}) != null;
+            var credential = await connection.QuerySingleOrDefaultAsync<AssignedCredential>(
+                $@"{SqlSelect} where number = @number",
+                new {number = hashedCardNumber});
+
+            if (credential == null)
+            {
+                return null;
+            }
+
+            var personAssignment = await connection.QuerySingleOrDefaultAsync(
+                "select person_id as personId, enabled from credential_assignment where credential_id = @credentialId",
+                new {credentialId = credential.Id});
+
+            if (personAssignment == null)
+            {
+                return credential;
+            }
+
+            var personRepository = new PersonRepository(DataAccess);
+            credential.Person = await personRepository.Get((int)personAssignment.personId);
+            credential.Enabled = personAssignment.enabled > 0 && credential.Person.Enabled;
+
+            return credential;
+        }
+
+        public async Task AssignPerson(int personId, int credentialId)
+        {
+            using var connection = DataAccess.CreateDbConnection();
+            connection.Open();
+            
+            await connection.ExecuteAsync(SqlAssignmentInsert,
+                new
+                {
+                    personId, 
+                    credentialId,
+                    enabled = true
+                });
         }
     }
 }

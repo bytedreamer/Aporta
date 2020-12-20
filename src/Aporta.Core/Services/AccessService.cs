@@ -108,7 +108,7 @@ namespace Aporta.Core.Services
             string hashedCardNumber =
                 _dataEncryption.Hash(cardNumber, await _globalSettingService.GetCardNumberHashSalt());
 
-            if (await _credentialRepository.IsMatchingNumber(hashedCardNumber))
+            if (await _credentialRepository.AssignedCredential(hashedCardNumber) != null)
             {
                 return false;
             }

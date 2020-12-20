@@ -97,13 +97,13 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
         }
         
         [Test]
-        public async Task IsMatchingNumber()
+        public async Task AssignedCredential_NoAssignedPerson()
         {
             // Arrange
             var credentials = new[]
             {
                 new Credential {Number = "2345342"},
-                new Credential {Number = "5345234"},
+                new Credential {Number = "5345234"}
             };
             
             var credentialRepository = new CredentialRepository(_dataAccess);
@@ -113,10 +113,90 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             }
 
             // Act 
-            bool actual = await credentialRepository.IsMatchingNumber("5345234");
+            var actual = await credentialRepository.AssignedCredential("5345234");
 
             // Assert
-            Assert.IsTrue(actual);
+            Assert.AreEqual("5345234", actual.Number);
+            Assert.IsFalse(actual.Enabled);
+            Assert.IsNull(actual.Person);
+        }
+        
+        [Test]
+        public async Task AssignedCredential_ActivePerson()
+        {
+            // Arrange
+            var credentials = new[]
+            {
+                new Credential {Number = "2345342"},
+                new Credential {Number = "5345234"}
+            };
+            
+            var credentialRepository = new CredentialRepository(_dataAccess);
+            foreach (var credential in credentials)
+            {
+                await credentialRepository.Insert(credential);
+            }
+            
+            var people = new[]
+            {
+                new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
+                new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+            };
+
+            var personRepository = new PersonRepository(_dataAccess);
+            foreach (var person in people)
+            {
+                await personRepository.Insert(person);
+            }
+
+            await credentialRepository.AssignPerson(people[1].Id, credentials[1].Id);
+
+            // Act 
+            var actual = await credentialRepository.AssignedCredential("5345234");
+
+            // Assert
+            Assert.AreEqual("5345234", actual.Number);
+            Assert.IsTrue(actual.Enabled);
+            Assert.AreEqual(actual.Person.Id, people[1].Id);
+        }
+        
+        [Test]
+        public async Task AssignedCredential_InactivePerson()
+        {
+            // Arrange
+            var credentials = new[]
+            {
+                new Credential {Number = "2345342"},
+                new Credential {Number = "5345234"}
+            };
+            
+            var credentialRepository = new CredentialRepository(_dataAccess);
+            foreach (var credential in credentials)
+            {
+                await credentialRepository.Insert(credential);
+            }
+            
+            var people = new[]
+            {
+                new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
+                new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+            };
+
+            var personRepository = new PersonRepository(_dataAccess);
+            foreach (var person in people)
+            {
+                await personRepository.Insert(person);
+            }
+
+            await credentialRepository.AssignPerson(people[0].Id, credentials[1].Id);
+
+            // Act 
+            var actual = await credentialRepository.AssignedCredential("5345234");
+
+            // Assert
+            Assert.AreEqual("5345234", actual.Number);
+            Assert.IsFalse(actual.Enabled);
+            Assert.AreEqual(actual.Person.Id, people[0].Id);
         }
     }
 }
