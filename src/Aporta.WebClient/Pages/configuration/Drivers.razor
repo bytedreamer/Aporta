@@ -6,8 +6,8 @@
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
 
-@inject HttpClient Http
-@inject NavigationManager NavigationManager
+@inject HttpClient _http
+@inject NavigationManager _navigationManager
 
 @implements IDisposable
 
@@ -37,7 +37,7 @@ else
                     </a>
                 </TableRowHeader>
                 <TableRowCell>
-                    <Check TValue="bool" Checked="@extension.Enabled" CheckedChanged="async (bool checkedValue) => { await ExtensionEnabledChanged(extension.Id, checkedValue); }"/>
+                    <Check TValue="bool" Checked="@extension.Enabled" CheckedChanged="async checkedValue => { await ExtensionEnabledChanged(extension.Id, checkedValue); }"/>
                 </TableRowCell>
                 <TableRowCell>
                     @if (extension.Loaded)
@@ -74,30 +74,30 @@ else
     protected override async Task OnInitializedAsync()
     {
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
-        _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async extensionId =>
+        _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
         {
-            _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
+            _extensions = await _http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
             
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
         
-        _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
+        _extensions = await _http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
     }
     
     async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)
     {
         string url = $"{Paths.Extensions}/{extensionId}";
         url = QueryHelpers.AddQueryString(url, "enabled", checkedValue.ToString());
-        var response = await Http.PostAsync(url, new StringContent(string.Empty));
+        var response = await _http.PostAsync(url, new StringContent(string.Empty));
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to update driver";
             _snackbarColor = SnackbarColor.Danger;
-            _snackbar.Show();
+            await _snackbar.Show();
         }
     }
         

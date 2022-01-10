@@ -1,12 +1,8 @@
 ﻿using System;
-using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Services;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -19,12 +15,10 @@ namespace Aporta.Workers
         private readonly IDataAccess _dataAccess;
         private readonly ExtensionService _extensionService;
         private readonly AccessService _accessService;
-        private readonly GlobalSettingService _globalSettingService;
 
         public StartupWorker(IDataAccess dataAccess, 
             ExtensionService extensionService, 
-            AccessService accessService, 
-            GlobalSettingService globalSettingService,
+            AccessService accessService,
             ILogger<StartupWorker> logger, IHostApplicationLifetime applicationLifetime)
         {
             _dataAccess = dataAccess;
@@ -32,12 +26,11 @@ namespace Aporta.Workers
             _accessService = accessService;
             _logger = logger;
             _applicationLifetime = applicationLifetime;
-            _globalSettingService = globalSettingService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Application is starting up services.");
+            _logger.LogInformation("Application is starting up services");
             try
             {
                 await _dataAccess.UpdateSchema();
@@ -46,15 +39,15 @@ namespace Aporta.Workers
             }
             catch (Exception exception)
             {
-                _logger.LogCritical(exception, "An error occurred during startup.");
+                _logger.LogCritical(exception, "An error occurred during startup");
                 _applicationLifetime.StopApplication();
             }
             
-            _logger.LogInformation("Application completed startup routine.");
+            _logger.LogInformation("Application completed startup routine");
             
             stoppingToken.Register(() =>
             {
-                _logger.LogWarning("Application is shutting down.");
+                _logger.LogWarning("Application is shutting down");
                 _accessService.Shutdown();
                 _extensionService.Shutdown();
             });

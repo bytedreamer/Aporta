@@ -57,7 +57,7 @@ namespace Aporta.Core.Services
                     if (matchingDoor == null)
                     {
                         _logger.LogInformation(
-                            $"Credential received from {eventArgs.AccessPoint.Name} was not assigned to a door.");
+                            "Credential received from {Name} was not assigned to a door", eventArgs.AccessPoint.Name);
                         return;
                     }
 
@@ -65,13 +65,13 @@ namespace Aporta.Core.Services
 
                     if (matchingDoorStrike == null)
                     {
-                        _logger.LogInformation($"Door {matchingDoor.Name} didn't have a strike assigned.");
+                        _logger.LogInformation("Door {Name} didn't have a strike assigned", matchingDoor.Name);
                         return;
                     }
 
                     if (eventArgs.CardData.Count != eventArgs.BitCount)
                     {
-                        _logger.LogInformation($"Door {matchingDoor.Name} card read doesn't match bit count.");
+                        _logger.LogInformation("Door {Name} card read doesn't match bit count", matchingDoor.Name);
                         return;
                     }
 
@@ -83,22 +83,22 @@ namespace Aporta.Core.Services
 
                     if (await RequiredEnrollment(builder.ToString()))
                     {
-                        _logger.LogInformation($"Door {matchingDoor.Name} enrolled badge.");
+                        _logger.LogInformation("Door {Name} enrolled badge", matchingDoor.Name);
                         return;
                     }
 
                     if (!AccessGranted())
                     {
-                        _logger.LogInformation($"Door {matchingDoor.Name} denied access.");
+                        _logger.LogInformation("Door {Name} denied access", matchingDoor.Name);
                         return;
                     }
 
-                    _logger.LogInformation($"Door {matchingDoor.Name} granted access.");
+                    _logger.LogInformation("Door {Name} granted access", matchingDoor.Name);
                     await OpenDoor(matchingDoorStrike, 3);
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogError(exception, "Unable to process access event.");
+                    _logger.LogError(exception, "Unable to process access event");
                 }
             });
         }

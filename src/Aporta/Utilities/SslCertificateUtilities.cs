@@ -47,7 +47,7 @@ namespace Aporta.Utilities
             sanBuilder.AddDnsName("localhost");
             sanBuilder.AddDnsName(Environment.MachineName);
 
-            var distinguishedName = new X500DistinguishedName($"CN=Aporta");
+            var distinguishedName = new X500DistinguishedName("CN=Aporta");
 
             using var rsa = RSA.Create(2048);
             var request = new CertificateRequest(distinguishedName, rsa, HashAlgorithmName.SHA256,

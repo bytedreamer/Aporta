@@ -46,11 +46,11 @@ namespace Aporta.Controllers
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, $"Unable to update extension {extensionId}");
+                _logger.LogError(exception, "Unable to update extension {ExtensionId}", extensionId);
                 success = false;
             }
 
-            return success ? (ActionResult) NoContent() : Problem();
+            return success ? NoContent() : Problem();
         }
 
         [HttpPost("{extensionId:Guid}/action/{actionType}")]
@@ -65,11 +65,11 @@ namespace Aporta.Controllers
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, $"Unable to perform action {actionType} for extension {extensionId}");
+                _logger.LogError(exception, "Unable to perform action {ActionType} for extension {ExtensionId}", actionType, extensionId);
                 success = false;
             }
 
-            return success ? (ActionResult) Content(result) : Problem();
+            return success ? Content(result) : Problem();
         }
     }
 }

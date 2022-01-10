@@ -25,7 +25,7 @@ namespace Aporta
         public static IHostBuilder CreateSystemdHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
                 .UseSystemd()
-                .ConfigureServices((hostContext, services) =>
+                .ConfigureServices((_, services) =>
                 {
                     services.AddHostedService<StartupWorker>();
                 })
@@ -38,7 +38,7 @@ namespace Aporta
         private static IHostBuilder CreateWindowsHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
                 .UseWindowsService()
-                .ConfigureServices((hostContext, services) =>
+                .ConfigureServices((_, services) =>
                 {
                     services.AddHostedService<StartupWorker>();
                 })
@@ -52,6 +52,7 @@ namespace Aporta
         {
             services.Configure<KestrelServerOptions>(options =>
             {
+                // ReSharper disable once AsyncVoidLambda
                 options.ConfigureHttpsDefaults(async listenOptions =>
                 {
                     var globalSettingService =
@@ -62,7 +63,7 @@ namespace Aporta
                     {
                         var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
                         ILogger logger = loggerFactory.CreateLogger<Program>();
-                        logger.LogWarning("A valid SSL certificate not found. Auto creating a self-sign certificate.");
+                        logger.LogWarning("A valid SSL certificate not found, auto creating a self-sign certificate");
 
                         SslCertificateUtilities.CreateAndSaveSelfSignedServerCertificate(password);
                     }

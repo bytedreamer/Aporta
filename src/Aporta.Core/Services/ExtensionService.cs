@@ -36,7 +36,7 @@ namespace Aporta.Core.Services
         private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
         private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
-        private readonly object _extensionLock = new object();
+        private readonly object _extensionLock = new ();
 
         public ExtensionService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
             ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
@@ -48,7 +48,7 @@ namespace Aporta.Core.Services
             _extensionRepository = new ExtensionRepository(dataAccess);
         }
         
-        public string CurrentDirectory { get; set; }
+        public string CurrentDirectory { get; init; }
 
         public IEnumerable<ExtensionHost> Extensions => _extensions;
 
@@ -74,7 +74,7 @@ namespace Aporta.Core.Services
             {
                 var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
 
-                _logger.LogInformation($"{(enabled ? "Enabling" : "Disabling")} extension {matchingExtension.Name}");
+                _logger.LogInformation("{Enabled} extension {Name}", enabled ? "Enabling" : "Disabling", matchingExtension.Name);
 
                 matchingExtension.Enabled = enabled;
                 await _extensionRepository.Update(matchingExtension);
@@ -98,11 +98,11 @@ namespace Aporta.Core.Services
         {
             var matchingExtension = MatchingExtensionHost(extensionId);
 
-            _logger.LogInformation($"Performing {action} for extension {matchingExtension.Name}");
+            _logger.LogInformation("Performing {Action} for extension {Name}", action, matchingExtension.Name);
 
             string result = await matchingExtension.Driver.PerformAction(action, parameters);
 
-            _logger.LogInformation($"Saving configuration for extension {matchingExtension.Name}");
+            _logger.LogInformation("Saving configuration for extension {Name}", matchingExtension.Name);
 
             await SaveCurrentConfiguration(matchingExtension);
 
@@ -154,7 +154,7 @@ namespace Aporta.Core.Services
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogError(exception, $"Unable to discover assembly {assemblyPath}.");
+                    _logger.LogError(exception, "Unable to discover assembly {AssemblyPath}", assemblyPath);
                 }
             }
         }
@@ -194,7 +194,7 @@ namespace Aporta.Core.Services
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogError(exception, $"Unable to load extension {extension.Name}");
+                    _logger.LogError(exception, "Unable to load extension {Name}", extension.Name);
                 }
             }
         }
@@ -311,7 +311,7 @@ namespace Aporta.Core.Services
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogError(exception, $"Unable to unload extension {extension.Name}");
+                    _logger.LogError(exception, "Unable to unload extension {Name}", extension.Name);
                 }
             }
 

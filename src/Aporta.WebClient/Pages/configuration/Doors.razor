@@ -9,8 +9,8 @@
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 
-@inject HttpClient Http
-@inject NavigationManager NavigationManager
+@inject HttpClient _http
+@inject NavigationManager _navigationManager
 
 <Heading Size="HeadingSize.Is1">Doors</Heading>
 
@@ -53,7 +53,7 @@ else
                                     <TableRowHeader>
                                         @door.Name
                                     </TableRowHeader>
-                                    <TableRowCell TextAlignment="TextAlignment.Right">
+                                    <TableRowCell TextAlignment="TextAlignment.End">
                                         <Button Color="Color.None" 
                                                 Clicked="@(async () => await RemoveDoor(door.Id))">
                                             <Icon Name="IconName.Delete" Style="color: red"/>
@@ -179,17 +179,17 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _doors = await Http.GetFromJsonAsync<List<Door>>(Paths.Doors);
+        _doors = await _http.GetFromJsonAsync<List<Door>>(Paths.Doors);
 
         await InitializedAvailableEndpoints();
         
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
         _hubConnection.On<int>(Methods.DoorInserted, async doorId =>
         {
-            _doors.Add( await Http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
+            _doors.Add( await _http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
             
             await InitializedAvailableEndpoints();
             
@@ -211,44 +211,44 @@ else
 
     private async Task InitializedAvailableEndpoints()
     {
-        _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
-        _availableControlPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Outputs}/available");
+        _availableAccessPoints = await _http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
+        _availableControlPoints = await _http.GetFromJsonAsync<Endpoint[]>($"{Paths.Outputs}/available");
 
         _addDoor = new Door {InAccessEndpointId = -1, OutAccessEndpointId = -1, DoorStrikeEndpointId = -1};
     }
 
     private async Task AddDoor()
     {
-        if (!_addDoorValidations.ValidateAll())
+        if (!await _addDoorValidations.ValidateAll())
         {
             return;
         }
-        _addDoorModal.Hide();
+        await _addDoorModal.Hide();
 
         if (_addDoor.InAccessEndpointId == -1) _addDoor.InAccessEndpointId = null;
         if (_addDoor.OutAccessEndpointId == -1) _addDoor.OutAccessEndpointId = null;
         if (_addDoor.DoorStrikeEndpointId == -1) _addDoor.DoorStrikeEndpointId = null;
         
         string url = string.Format(Paths.Doors);
-        var response = await Http.PutAsync(url,
+        var response = await _http.PutAsync(url,
             new StringContent(JsonSerializer.Serialize(_addDoor), Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to add door";
             _snackbarColor = SnackbarColor.Danger;
-            _snackbar.Show();
+            await _snackbar.Show();
          }
     }
 
     private async Task RemoveDoor(int doorId)
     {
         string url = string.Format($"{Paths.Doors}/{doorId}");
-        var response = await Http.DeleteAsync(url);
+        var response = await _http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to remove door";
             _snackbarColor = SnackbarColor.Danger;
-            _snackbar.Show();
+            await _snackbar.Show();
         }
     }
 

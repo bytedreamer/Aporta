@@ -30,14 +30,10 @@ namespace Aporta.WebClient
             
             builder.RootComponents.Add<App>("app");
 
-            builder.Services.AddTransient(sp => new HttpClient
+            builder.Services.AddTransient(_ => new HttpClient
                 {BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)});
 
             var host = builder.Build();
-
-            host.Services
-                .UseBootstrapProviders()
-                .UseFontAwesomeIcons();
 
             await host.RunAsync();
         }

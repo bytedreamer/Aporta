@@ -9,8 +9,8 @@
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 
-@inject HttpClient Http
-@inject NavigationManager NavigationManager
+@inject HttpClient _http
+@inject NavigationManager _navigationManager
 
 <Heading Size="HeadingSize.Is1">Inputs</Heading>
 
@@ -53,7 +53,7 @@ else
                                     <TableRowHeader>
                                         @input.Name
                                     </TableRowHeader>
-                                    <TableRowCell TextAlignment="TextAlignment.Right">
+                                    <TableRowCell TextAlignment="TextAlignment.End">
                                         <Button Color="Color.None" 
                                                 Clicked="@(async () => await RemoveInput(input.Id))">
                                             <Icon Name="IconName.Delete" Style="color: red"/>
@@ -139,17 +139,17 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
+        _inputs = await _http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
 
         await InitializedAvailableInputs();
         
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
         _hubConnection.On<int>(Methods.InputInserted, async inputId =>
         {
-            _inputs.Add( await Http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
+            _inputs.Add( await _http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
             
             await InitializedAvailableInputs();
             
@@ -171,10 +171,10 @@ else
 
     private async Task InitializedAvailableInputs()
     {
-        _availableMonitorPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Inputs}/available");
+        _availableMonitorPoints = await _http.GetFromJsonAsync<Endpoint[]>($"{Paths.Inputs}/available");
 
         _addInput = new Input();
-        if (_availableMonitorPoints.Any())
+        if (_availableMonitorPoints != null && _availableMonitorPoints.Any())
         {
             _addInput.EndpointId = _availableMonitorPoints.First().Id;
         }
@@ -182,32 +182,32 @@ else
 
     private async Task AddInput()
     {
-        if (!_addInputValidations.ValidateAll())
+        if (! await _addInputValidations.ValidateAll())
         {
             return;
         }
-        _addInputModal.Hide();
+        await _addInputModal.Hide();
 
         string url = string.Format(Paths.Inputs);
-        var response = await Http.PutAsync(url,
+        var response = await _http.PutAsync(url,
             new StringContent(JsonSerializer.Serialize(_addInput), Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to add input";
             _snackbarColor = SnackbarColor.Danger;
-            _snackbar.Show();
+            await _snackbar.Show();
          }
     }
 
     private async Task RemoveInput(int inputId)
     {
         string url = string.Format($"{Paths.Inputs}/{inputId}");
-        var response = await Http.DeleteAsync(url);
+        var response = await _http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to remove input";
             _snackbarColor = SnackbarColor.Danger;
-            _snackbar.Show();
+            await _snackbar.Show();
         }
     }
 

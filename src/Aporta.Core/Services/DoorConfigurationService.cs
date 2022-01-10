@@ -49,7 +49,7 @@ namespace Aporta.Core.Services
 
         public async Task Insert(Door door)
         {
-            _logger.LogDebug($"Request to insert door {door.Name}");
+            _logger.LogDebug("Request to insert door {Name}", door.Name);
             
             await _doorRepository.Insert(door);
             
@@ -58,7 +58,7 @@ namespace Aporta.Core.Services
 
         public async Task Delete(int id)
         {
-            _logger.LogDebug($"Request to delete door with id of {id}");
+            _logger.LogDebug("Request to delete door with id of {Id}", id);
             
             await _doorRepository.Delete(id);
             

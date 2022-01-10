@@ -1,16 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
 
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\Drivers\IonoPi</OutDir>
+        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="System.Device.Gpio" Version="1.2.0" />
+      <PackageReference Include="System.Device.Gpio" Version="1.5.0" />
+      <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
     <ItemGroup>

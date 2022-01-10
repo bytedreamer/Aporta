@@ -44,7 +44,7 @@ namespace Aporta.Core.Extension
                 }
                 catch (Exception exception)
                 {
-                    logger.LogError(exception, $"Unable to load assembly {assemblyPath}");
+                    logger.LogError(exception, "Unable to load assembly {AssemblyPath}", assemblyPath);
                 }
             }
 

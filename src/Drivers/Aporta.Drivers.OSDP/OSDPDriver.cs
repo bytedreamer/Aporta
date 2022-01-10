@@ -71,8 +71,7 @@ namespace Aporta.Drivers.OSDP
 
                     foreach (var reader in device.Readers)
                     {
-                        _endpoints.Add(new OSDPAccessPoint(Id, _panel, _portMapping[bus.PortName], device,
-                            reader));
+                        _endpoints.Add(new OSDPAccessPoint(Id, device, reader));
                     }
                 }
             }
@@ -151,8 +150,7 @@ namespace Aporta.Drivers.OSDP
                     Number = readerNumber
                 };
                 matchingDevice.Readers.Add(reader);
-                _endpoints.Add(new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
-                    reader));
+                _endpoints.Add(new OSDPAccessPoint(Id,  matchingDevice, reader));
             }
             
             foreach (var readerCapability in capabilities.Capabilities.Where(capability =>
@@ -168,8 +166,7 @@ namespace Aporta.Drivers.OSDP
                         Number = readerNumber
                     };
                     matchingDevice.Readers.Add(reader);
-                    _endpoints.Add(new OSDPAccessPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
-                        reader));
+                    _endpoints.Add(new OSDPAccessPoint(Id,  matchingDevice, reader));
                 }
             }
 
@@ -250,11 +247,12 @@ namespace Aporta.Drivers.OSDP
                 }
                 catch (Exception exception)
                 {
-                    _logger?.LogWarning(exception, $"Unable to deserialize {configuration}");
+                    _logger?.LogWarning(exception, "Unable to deserialize {Configuration}", configuration);
                     _configuration = new Configuration {Buses = new List<Bus>()};
                 }
             }
 
+            if (_configuration == null) return;
             _configuration.AvailablePorts = SerialPort.GetPortNames();
         }
 
@@ -294,6 +292,7 @@ namespace Aporta.Drivers.OSDP
         private string AddBus(string parameters)
         {
             var busAction = JsonConvert.DeserializeObject<BusAction>(parameters);
+            if (busAction == null) return string.Empty;
 
             _configuration.Buses.Add(busAction.Bus);
 
@@ -309,6 +308,7 @@ namespace Aporta.Drivers.OSDP
         private string RemoveBus(string parameters)
         {
             var busAction = JsonConvert.DeserializeObject<BusAction>(parameters);
+            if (busAction == null) return string.Empty;
 
             foreach (var device in busAction.Bus.Devices)
             {
@@ -332,6 +332,7 @@ namespace Aporta.Drivers.OSDP
         private string AddUpdateDevice(string parameters)
         {
             var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
+            if (deviceAction == null) return string.Empty;
 
             _configuration.Buses.First(bus => bus.PortName == deviceAction.PortName).Devices.Add(deviceAction.Device);
 
@@ -344,8 +345,9 @@ namespace Aporta.Drivers.OSDP
         private string RemoveDevice(string parameters)
         {
             var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
+            if (deviceAction == null) return string.Empty;
 
-            _endpoints.RemoveAll(endpoint => endpoint.Id.Split(':').First() == deviceAction.Device.Address.ToString());
+                _endpoints.RemoveAll(endpoint => endpoint.Id.Split(':').First() == deviceAction.Device.Address.ToString());
             OnUpdatedEndpoints();
             
             _configuration.Buses.First(bus => bus.PortName == deviceAction.PortName).Devices

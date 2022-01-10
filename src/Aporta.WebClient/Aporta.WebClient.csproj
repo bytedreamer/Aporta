@@ -1,7 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.1</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <RazorLangVersion>3.0</RazorLangVersion>
     </PropertyGroup>
 
@@ -11,15 +11,15 @@
         <ApplicationURL>https://localhost:5001;http://localhost:5000</ApplicationURL>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Blazorise.Bootstrap" Version="0.9.2.4" />
-        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="0.9.2.4" />
-        <PackageReference Include="Blazorise.Snackbar" Version="0.9.2.4" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="3.2.1" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="3.2.1" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="3.2.1" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="3.1.10" />
+        <PackageReference Include="Blazorise.Bootstrap" Version="0.9.5.4" />
+        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="0.9.5.4" />
+        <PackageReference Include="Blazorise.Snackbar" Version="0.9.5.4" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.1" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="6.0.1" />
         <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0" />
-        <PackageReference Include="System.Net.Http.Json" Version="3.2.1" />
+        <PackageReference Include="System.Net.Http.Json" Version="6.0.0" />
+        <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
     <ItemGroup>
       <Content Update="Pages\Monitoring.razor">

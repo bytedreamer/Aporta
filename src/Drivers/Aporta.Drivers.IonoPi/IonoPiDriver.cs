@@ -26,7 +26,7 @@ namespace Aporta.Drivers.IonoPi
 
         public void Load(string configuration, ILoggerFactory loggerFactory)
         {
-            var logger = loggerFactory.CreateLogger<IonoPiDriver>();
+            //var logger = loggerFactory.CreateLogger<IonoPiDriver>();
             
             _controller = new GpioController();
 
