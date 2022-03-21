@@ -121,17 +121,23 @@ else
     protected override async Task OnInitializedAsync()
     {
         _inputs = await _http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
-        foreach (var input in _inputs)
+        if (_inputs != null)
         {
-            _inputStates[input.Id] = await GetInputState(input.Id);
+            foreach (var input in _inputs)
+            {
+                _inputStates[input.Id] = await GetInputState(input.Id);
+            }
         }
         
         _outputs = await _http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
-        foreach (var output in _outputs)
+        if (_outputs != null)
         {
-            _outputStates[output.Id] = await GetOutputState(output.Id);
+            foreach (var output in _outputs)
+            {
+                _outputStates[output.Id] = await GetOutputState(output.Id);
+            }
         }
-        
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()

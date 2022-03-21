@@ -18,8 +18,8 @@ namespace Aporta.Drivers.TestDriver
     {
         // ReSharper disable once InconsistentNaming
         private static readonly Guid ExtensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
-        private readonly List<IEndpoint> _endPoints = new List<IEndpoint>();
-        private readonly ConcurrentBag<NamedPipeServerStream> _serverPipes = new ConcurrentBag<NamedPipeServerStream>();
+        private readonly List<IEndpoint> _endPoints = new();
+        private readonly ConcurrentBag<NamedPipeServerStream> _serverPipes = new();
         private CancellationTokenSource _tokenSource;
         
         public string Name => "Test Driver";
@@ -107,6 +107,7 @@ namespace Aporta.Drivers.TestDriver
         public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
         
         public event EventHandler<StateChangedEventArgs> StateChanged;
+        
         public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
 
         protected virtual void OnUpdatedEndpoints()
@@ -123,6 +124,11 @@ namespace Aporta.Drivers.TestDriver
         protected virtual void OnStateChanged(StateChangedEventArgs e)
         {
             StateChanged?.Invoke(this, e);
+        }
+
+        protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs e)
+        {
+            OnlineStatusChanged?.Invoke(this, e);
         }
     }
 }
