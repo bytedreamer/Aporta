@@ -49,12 +49,12 @@ steps:
     projects: '**/*Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
     
-- task: ResharperCli@2
-  displayName: 'ReSharper Inspection'
-  inputs:
-    solutionOrProjectPath: 'src/Aporta.sln'
-    failBuildLevelSelector: 'Warning'
-    additionalArguments: '--build'
+#- task: ResharperCli@2
+#  displayName: 'ReSharper Inspection'
+#  inputs:
+#    solutionOrProjectPath: 'src/Aporta.sln'
+#    failBuildLevelSelector: 'Warning'
+#    additionalArguments: '--build'
     
 - task: VSBuild@1
   displayName: 'Build Windows Installer'
