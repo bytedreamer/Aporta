@@ -53,8 +53,8 @@ steps:
   displayName: 'ReSharper Inspection'
   inputs:
     solutionOrProjectPath: 'src/Aporta.sln'
-    failBuildLevelSelector: 'Error'
-    additionalArguments: '--no-swea'
+    failBuildLevelSelector: 'Warning'
+    additionalArguments: '--build'
     
 - task: VSBuild@1
   displayName: 'Build Windows Installer'
