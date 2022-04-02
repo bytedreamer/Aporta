@@ -13,7 +13,7 @@
     <Property Id="DOTNETCORE6">0</Property>
 
     <Binary Id="WixCA.dll" SourceFile="$(var.CustomActions.TargetDir)$(var.CustomActions.TargetName).CA.dll" />
-    <CustomAction Id="Check.NetCore" BinaryKey="WixCA.dll" DllEntry="CheckDotNetCoreInstalled" Execute="firstSequence"  />
+    <CustomAction Id="Check.NetCore" BinaryKey="WixCA.dll" DllEntry="CheckDotNetInstalled" Execute="firstSequence"  />
 
     <Condition Message="You must first install the .NET 6 Runtime">
       Installed OR DOTNETCORE6="1"
