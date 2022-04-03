@@ -11,13 +11,21 @@ pool:
   vmImage: 'windows-latest'
 
 variables:
-  solution: '**/*.sln'#
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
-  major: 0
-  minor: 1
-  patch: $[counter(variables['minor'], 1)]
-  AssemblyVersion: $(major).$(minor).$(patch)
+- group: CodeSigning
+- name: solution
+  value: '**/*.sln'
+- name: buildPlatform
+  value: 'Any CPU'
+- name: buildConfiguration
+  value: 'Release'
+- name: major
+  value: 0
+- name: minor
+  value: 1
+- name: patch
+  value: $[counter(variables['minor'], 1)]
+- name: AssemblyVersion
+  value: $(major).$(minor).$(patch)
 
 steps:
 
@@ -71,7 +79,7 @@ steps:
     custom: tool
     arguments: 'install --global AzureSignTool'
 
-- powershell: '& AzureSignTool sign -kvt "$(AZURE-KEY-VAULT-TENANT-ID-VAR)" -kvu "https://z-bitvault.vault.azure.net/" -kvi "$(AZURE-KEY-VAULT-CLIENT-ID-VAR)" -kvs "$(AZURE-KEY-VAULT-CLIENT-SECRET-VAR)" -kvc "CodeSigning" -tr "http://timestamp.comodoca.com" -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
+- powershell: '& AzureSignTool sign -kvt "$(AzureKeyVaultTenantId)" -kvu "https://z-bitvault.vault.azure.net/" -kvi "$(AzureKeyVaultClientId)" -kvs "$(AzureKeyVaultClientSecret)" -kvc "CodeSigning" -tr "http://timestamp.comodoca.com" -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
   displayName: 'Sign the package'
 
 - task: DotNetCoreCLI@2
