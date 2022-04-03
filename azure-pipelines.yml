@@ -64,18 +64,15 @@ steps:
     configuration: 'Release'
     msbuildArgs: '/p:RunWixToolsOutOfProc=true /p:OutputPath=$(Build.ArtifactStagingDirectory)/Setup/Windows'
 
-- task: AzureKeyVault@1
+- task: DotNetCoreCLI@2
+  displayName: 'Install Azure SignTool'
   inputs:
-    azureSubscription: 'Z-bit'
-    KeyVaultName: 'Z-bitVault'
+    command: custom
+    custom: tool
+    arguments: 'install --global AzureSignTool'
 
-- powershell: |
-    $filePath = '$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi';
-    $base64 = '$(CodeSigning)';
-    $buffer = [System.Convert]::FromBase64String($base64);
-    $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($buffer);
-    $timestampServer = 'http://timestamp.comodoca.com';
-    Set-AuthenticodeSignature -FilePath $filePath -Certificate $certificate -TimestampServer $timestampServer;
+- powershell: '& AzureSignTool sign -kvu $(AzureKeyVaultTenetId) -kvu $(AzureKeyVaultUrl) -kvi $(AzureKeyVaultClientId) -kvs $(AzureKeyVaultClientSecret) -kvc $(AzureKeyVaultName) -tr http://timestamp.comodoca.com -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
+  displayName: 'Sign the package'
 
 - task: DotNetCoreCLI@2
   displayName: 'Install dotnet deb packaging tool'
