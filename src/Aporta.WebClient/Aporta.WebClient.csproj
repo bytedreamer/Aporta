@@ -11,9 +11,9 @@
         <ApplicationURL>https://localhost:5001;http://localhost:5000</ApplicationURL>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Blazorise.Bootstrap" Version="1.0.1" />
-        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.0.1" />
-        <PackageReference Include="Blazorise.Snackbar" Version="1.0.1" />
+        <PackageReference Include="Blazorise.Bootstrap" Version="1.0.2" />
+        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.0.2" />
+        <PackageReference Include="Blazorise.Snackbar" Version="1.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.3" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.3" PrivateAssets="all" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="6.0.3" />

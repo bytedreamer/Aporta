@@ -9,6 +9,7 @@
     <OutputName>Aporta</OutputName>
     <OutputType>Package</OutputType>
     <CompilerAdditionalOptions>-arch x64</CompilerAdditionalOptions>
+	<DefineSolutionProperties>false</DefineSolutionProperties>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>

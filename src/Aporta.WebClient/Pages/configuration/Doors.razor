@@ -68,7 +68,6 @@ else
     </Row>
     
     <Modal @ref="_addDoorModal">
-        <ModalBackdrop/>
         <ModalContent Size="ModalSize.Default" Centered="true">
             <ModalHeader>
                 <ModalTitle>
@@ -98,17 +97,20 @@ else
                             <FieldLabel>Access Reader In</FieldLabel>
                             <FieldBody>
                                 <Select TValue="int?" @bind-SelectedValue="@_addDoor.InAccessEndpointId">
-                                    <SelectItem Value="-1">None</SelectItem>
-                                    @foreach (var accessPoint in _availableAccessPoints)
-                                    {
-                                        <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
-                                    }
+                                    <ChildContent>
+                                        <SelectItem Value="-1">None</SelectItem>
+                                        @foreach (var accessPoint in _availableAccessPoints)
+                                        {
+                                            <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                        }
+                                    </ChildContent>
+
+                                    <Feedback>
+                                        <ValidationError>
+                                            Validation error
+                                        </ValidationError>
+                                    </Feedback>
                                 </Select>
-                                <Feedback>
-                                    <ValidationError>
-                                        Validation error
-                                    </ValidationError>
-                                </Feedback>
                             </FieldBody>
                         </Field>
                     </Validation>
@@ -117,18 +119,21 @@ else
                             <FieldLabel>Access Reader Out</FieldLabel>
                             <FieldBody>
                                 <Select TValue="int?" @bind-SelectedValue="@_addDoor.OutAccessEndpointId">
-                                    <SelectItem Value="-1">None</SelectItem>
-                                    @foreach (var accessPoint in _availableAccessPoints)
-                                    {
-                                        <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
-                                    }
+                                    <ChildContent>
+                                        <SelectItem Value="-1">None</SelectItem>
+                                        @foreach (var accessPoint in _availableAccessPoints)
+                                        {
+                                            <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                        }
+                                    </ChildContent>
+
+                                    <Feedback>
+                                        <ValidationError>
+                                            Validation error
+                                        </ValidationError>
+                                    </Feedback>
                                 </Select>
                             </FieldBody>
-                            <Feedback>
-                                <ValidationError>
-                                    Validation error
-                                </ValidationError>
-                            </Feedback>
                         </Field>
                     </Validation>
                     <Field>
