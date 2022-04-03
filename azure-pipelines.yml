@@ -71,7 +71,7 @@ steps:
     custom: tool
     arguments: 'install --global AzureSignTool'
 
-- powershell: '& AzureSignTool sign -kvu $(AzureKeyVaultTenantId) -kvu $(AzureKeyVaultUrl) -kvi $(AzureKeyVaultClientId) -kvs $(AzureKeyVaultClientSecret) -kvc $(AzureKeyVaultCertificate) -tr http://timestamp.comodoca.com -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
+- powershell: '& AzureSignTool sign -kvu "$(AzureKeyVaultTenantId)" -kvu "https://z-bitvault.vault.azure.net/" -kvi "$(AzureKeyVaultClientId)" -kvs "$(AzureKeyVaultClientSecret)" -kvc "CodeSigning" -tr "http://timestamp.comodoca.com" -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
   displayName: 'Sign the package'
 
 - task: DotNetCoreCLI@2
