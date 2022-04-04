@@ -8,7 +8,6 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
-      <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
 </Project>

@@ -19,7 +19,6 @@
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="6.0.3" />
         <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0" />
         <PackageReference Include="System.Net.Http.Json" Version="6.0.0" />
-        <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
     <ItemGroup>
       <Content Update="Pages\Monitoring.razor">

@@ -13,8 +13,4 @@
       <ProjectReference Include="..\..\..\src\Aporta.Extensions\Aporta.Extensions.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <PackageReference Remove="Packaging.Targets" />
-    </ItemGroup>
-
 </Project>
