@@ -10,13 +10,13 @@
 		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 		<MediaTemplate EmbedCab="yes" />
 
-    <Property Id="DOTNETCORE31">0</Property>
+    <Property Id="DOTNETCORE6">0</Property>
 
     <Binary Id="WixCA.dll" SourceFile="$(var.CustomActions.TargetDir)$(var.CustomActions.TargetName).CA.dll" />
-    <CustomAction Id="Check.NetCore" BinaryKey="WixCA.dll" DllEntry="CheckDotNetCore31Installed" Execute="firstSequence"  />
+    <CustomAction Id="Check.NetCore" BinaryKey="WixCA.dll" DllEntry="CheckDotNetInstalled" Execute="firstSequence"  />
 
-    <Condition Message="You must first install the .NET Core 3.1 Runtime">
-      Installed OR DOTNETCORE31="1"
+    <Condition Message="You must first install the .NET 6 Runtime">
+      Installed OR DOTNETCORE6="1"
     </Condition>
 
     <InstallUISequence>

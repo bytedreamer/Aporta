@@ -9,15 +9,19 @@
     <OutputName>Aporta</OutputName>
     <OutputType>Package</OutputType>
     <CompilerAdditionalOptions>-arch x64</CompilerAdditionalOptions>
+    <DefineSolutionProperties>false</DefineSolutionProperties>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
     <DefineConstants>Debug</DefineConstants>
+    <SuppressIces>LGHT1076;ICE60</SuppressIces>
+    <SuppressValidation>False</SuppressValidation>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <SuppressIces>LGHT1076;ICE60</SuppressIces>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Aporta.wxs" />
@@ -44,12 +48,12 @@
     <Error Text="The WiX Toolset v3.11 (or newer) build tools must be installed to build this project. To download the WiX Toolset, see http://wixtoolset.org/releases/" />
   </Target>
   <Target Name="BeforeBuild">
-    <Exec Command="dotnet publish ..\..\..\src\Aporta.sln -c $(Configuration) -r win-x64" />
+    <Exec Command="dotnet publish ..\..\..\src\Aporta.sln -c $(Configuration) -r win-x64 --self-contained -p:PublishTrimmed=false" />
     <PropertyGroup>
-      <LinkerBaseInputPaths>..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish</LinkerBaseInputPaths>
-      <DefineConstants>BasePath=..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish</DefineConstants>
+      <LinkerBaseInputPaths>..\..\..\src\Aporta\bin\$(Configuration)\net6.0\win-x64\publish</LinkerBaseInputPaths>
+      <DefineConstants>BasePath=..\..\..\src\Aporta\bin\$(Configuration)\net6.0\win-x64\publish</DefineConstants>
     </PropertyGroup>
-    <HeatDirectory OutputFile="Aporta.wxs" DirectoryRefId="INSTALLFOLDER" ComponentGroupName="Aporta_Project" SuppressCom="true" Directory="..\..\..\src\Aporta\bin\$(Configuration)\netcoreapp3.1\win-x64\publish" SuppressFragments="true" SuppressRegistry="true" SuppressRootDirectory="true" AutoGenerateGuids="false" GenerateGuidsNow="true" ToolPath="$(WixToolPath)" PreprocessorVariable="var.BasePath" Transforms="RemovePdbs.xslt;RemoveExe.xslt" />
+    <HeatDirectory OutputFile="Aporta.wxs" DirectoryRefId="INSTALLFOLDER" ComponentGroupName="Aporta_Project" SuppressCom="true" Directory="..\..\..\src\Aporta\bin\$(Configuration)\net6.0\win-x64\publish" SuppressFragments="true" SuppressRegistry="true" SuppressRootDirectory="true" AutoGenerateGuids="false" GenerateGuidsNow="true" ToolPath="$(WixToolPath)" PreprocessorVariable="var.BasePath" Transforms="RemovePdbs.xslt;RemoveExe.xslt" RunAsSeparateProcess="true" />
   </Target>
   <!--
 	To modify your build process, add your task inside one of the targets below and uncomment it.

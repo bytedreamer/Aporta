@@ -6,6 +6,7 @@
         <IsPackable>false</IsPackable>
         <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
         <RuntimeIdentifiers>win-x64;linux-arm;linux-arm64;osx-x64;linux-x64</RuntimeIdentifiers>
+        <PlatformTarget>AnyCPU</PlatformTarget>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,7 +19,6 @@
       <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="6.0.3" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="6.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="6.0.0" />
-      <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
     <ItemGroup>

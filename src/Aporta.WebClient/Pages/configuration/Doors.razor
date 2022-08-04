@@ -97,11 +97,19 @@ else
                             <FieldLabel>Access Reader In</FieldLabel>
                             <FieldBody>
                                 <Select TValue="int?" @bind-SelectedValue="@_addDoor.InAccessEndpointId">
-                                    <SelectItem Value="-1">None</SelectItem>
-                                    @foreach (var accessPoint in _availableAccessPoints)
-                                    {
-                                        <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
-                                    }
+                                    <ChildContent>
+                                        <SelectItem Value="-1">None</SelectItem>
+                                        @foreach (var accessPoint in _availableAccessPoints)
+                                        {
+                                            <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                        }
+                                    </ChildContent>
+
+                                    <Feedback>
+                                        <ValidationError>
+                                            Validation error
+                                        </ValidationError>
+                                    </Feedback>
                                 </Select>
                             </FieldBody>
                         </Field>
@@ -111,11 +119,19 @@ else
                             <FieldLabel>Access Reader Out</FieldLabel>
                             <FieldBody>
                                 <Select TValue="int?" @bind-SelectedValue="@_addDoor.OutAccessEndpointId">
-                                    <SelectItem Value="-1">None</SelectItem>
-                                    @foreach (var accessPoint in _availableAccessPoints)
-                                    {
-                                        <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
-                                    }
+                                    <ChildContent>
+                                        <SelectItem Value="-1">None</SelectItem>
+                                        @foreach (var accessPoint in _availableAccessPoints)
+                                        {
+                                            <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                        }
+                                    </ChildContent>
+
+                                    <Feedback>
+                                        <ValidationError>
+                                            Validation error
+                                        </ValidationError>
+                                    </Feedback>
                                 </Select>
                             </FieldBody>
                         </Field>
