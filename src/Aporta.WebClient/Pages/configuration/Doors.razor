@@ -68,7 +68,6 @@ else
     </Row>
     
     <Modal @ref="_addDoorModal">
-        <ModalBackdrop/>
         <ModalContent Size="ModalSize.Default" Centered="true">
             <ModalHeader>
                 <ModalTitle>
@@ -104,11 +103,6 @@ else
                                         <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
                                     }
                                 </Select>
-                                <Feedback>
-                                    <ValidationError>
-                                        Validation error
-                                    </ValidationError>
-                                </Feedback>
                             </FieldBody>
                         </Field>
                     </Validation>
@@ -124,11 +118,6 @@ else
                                     }
                                 </Select>
                             </FieldBody>
-                            <Feedback>
-                                <ValidationError>
-                                    Validation error
-                                </ValidationError>
-                            </Feedback>
                         </Field>
                     </Validation>
                     <Field>
