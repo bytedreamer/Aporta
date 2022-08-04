@@ -38,9 +38,9 @@ The project is early in its development. After working on access control product
 
 Aporta has installers for both Windows and Linux Debian distributions. The should be minimal steps needed to get a fully functional access controller operating.
 
-For both platforms .NET Core 3.1 runtime must be installed first.
+For both platforms .NET Core 6.0 runtime must be installed first.
 
-[.NET Core 3.1 Runtime](https://dotnet.microsoft.com/download)
+[.NET 6.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
 
 ### Windows ###
 
@@ -53,3 +53,17 @@ There is a standard MSI file that will install Aporta as a service.
 DEB packages have been created both x64 and Arm processors. They have been compressed into a single compressed file.
 
 [Linux Debian Packages](https://www.z-bitco.com/downloads/Aporta.tar.gz)
+
+Steps to install and run from Linux DEB packages
+
+- Run commands from a shell terminal
+- Install files by running the following command using the correct version of the package file
+```shell
+ sudo dpkg -i Aporta.X.X.XX.linux-XXX.deb
+ ```
+- Change directory to ```\usr\share\Aporta```
+- The followng command will run the Aporta server
+```shell
+sudo ./Aport
+```
+- Browse to the local web url ```https://localhost:8443```
