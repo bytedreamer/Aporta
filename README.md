@@ -64,6 +64,6 @@ Steps to install and run from Linux DEB packages
 - Change directory to ```\usr\share\Aporta```
 - The followng command will run the Aporta server
 ```shell
-sudo ./Aport
+sudo ./Aporta
 ```
 - Browse to the local web url ```https://localhost:8443```
