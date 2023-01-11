@@ -65,6 +65,7 @@ steps:
 #    additionalArguments: '--build'
     
 - task: VSBuild@1
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   displayName: 'Build Windows Installer'
   inputs:
     solution: 'setup/Windows/SetupProject/SetupProject.wixproj'
@@ -73,6 +74,7 @@ steps:
     msbuildArgs: '/p:RunWixToolsOutOfProc=true /p:OutputPath=$(Build.ArtifactStagingDirectory)/Setup/Windows'
 
 - task: DotNetCoreCLI@2
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   displayName: 'Install Azure SignTool'
   inputs:
     command: custom
@@ -80,9 +82,11 @@ steps:
     arguments: 'install --global AzureSignTool'
 
 - powershell: '& AzureSignTool sign -kvt "$(AzureKeyVaultTenantId)" -kvu "https://z-bitvault.vault.azure.net/" -kvi "$(AzureKeyVaultClientId)" -kvs "$(AzureKeyVaultClientSecret)" -kvc "CodeSign" -tr "http://timestamp.comodoca.com" -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   displayName: 'Sign the package'
 
 - task: DotNetCoreCLI@2
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   displayName: 'Install dotnet deb packaging tool'
   inputs:
     command: 'custom'
@@ -90,6 +94,7 @@ steps:
     arguments: 'install --global dotnet-deb'
 
 - task: DotNetCoreCLI@2
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   displayName: 'Install dotnet deb packaging for project'
   inputs:
     command: 'custom'
@@ -97,6 +102,7 @@ steps:
     arguments: 'install'
 
 - task: DotNetCoreCLI@2
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   displayName: 'Create Debian x64 package'
   inputs:
     command: 'custom'
@@ -104,6 +110,7 @@ steps:
     arguments: 'src/Aporta/Aporta.csproj -r linux-x64 -c $(buildConfiguration) -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
 
 - task: DotNetCoreCLI@2
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   displayName: 'Create Debian ARM package'
   inputs:
     command: 'custom'
