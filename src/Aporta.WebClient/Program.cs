@@ -14,25 +14,20 @@ namespace Aporta.WebClient
         public static async Task Main(string[] args)
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
-            
+
             builder.Services
-                .AddBlazorise()
+                .AddBlazorise( options =>
+                {
+                    options.Immediate = true;
+                } )
                 .AddBootstrapProviders()
                 .AddFontAwesomeIcons();
 
-            builder.Services.AddSingleton( new HttpClient
-            {
-                BaseAddress = new Uri( builder.HostEnvironment.BaseAddress )
-            } );
-            
             builder.RootComponents.Add<App>("app");
+            builder.Services.AddScoped(_ => new HttpClient
+                { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-            builder.Services.AddTransient(_ => new HttpClient
-                {BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)});
-
-            var host = builder.Build();
-
-            await host.RunAsync();
+            await builder.Build().RunAsync();
         }
     }
 }

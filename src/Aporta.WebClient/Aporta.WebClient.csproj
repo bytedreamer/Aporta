@@ -2,7 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <RazorLangVersion>3.0</RazorLangVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(RunConfiguration)' == 'Aporta' ">
@@ -11,12 +10,12 @@
         <ApplicationURL>https://localhost:5001;http://localhost:5000</ApplicationURL>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Blazorise.Bootstrap" Version="1.0.2" />
-        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.0.2" />
-        <PackageReference Include="Blazorise.Snackbar" Version="1.0.2" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.3" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.3" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="6.0.3" />
+        <PackageReference Include="Blazorise.Bootstrap" Version="1.1.5" />
+        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.1.5" />
+        <PackageReference Include="Blazorise.Snackbar" Version="1.1.5" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.13" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.13" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="6.0.13" />
         <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0" />
         <PackageReference Include="System.Net.Http.Json" Version="6.0.0" />
     </ItemGroup>

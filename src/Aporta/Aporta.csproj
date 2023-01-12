@@ -16,7 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="6.0.3" />
+      <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="6.0.13" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="6.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="6.0.0" />
     </ItemGroup>
@@ -53,7 +53,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <DriverFiles Include="bin\$(Configuration)\Drivers\**" />
+        <IonoPiDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.IonoPi\bin\$(Configuration)\$(TargetFramework)\**\*" />
+        <OSDPDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.OSDP\bin\$(Configuration)\$(TargetFramework)\**\*" />
     </ItemGroup>
 
     <ItemGroup>
@@ -61,12 +62,16 @@
     </ItemGroup>
     
     <Target Name="CopyDrivers" AfterTargets="AfterBuild">
-        <Copy SourceFiles="@(DriverFiles)" DestinationFiles="@(DriverFiles->'$(OutDir)\Drivers\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <MakeDir Directories="$(OutDir)\Drivers" />
+        <Copy SourceFiles="@(IonoPiDriverFiles)" DestinationFiles="@(IonoPiDriverFiles->'$(OutDir)\Drivers\IonoPi\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
+        <Copy SourceFiles="@(OSDPDriverFiles)" DestinationFiles="@(OSDPDriverFiles->'$(OutDir)\Drivers\OSDP\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <MakeDir Directories="$(OutDir)\Data" />
     </Target>
 
     <Target Name="PublishDrivers" AfterTargets="AfterPublish">
-        <Copy SourceFiles="@(DriverFiles)" DestinationFiles="@(DriverFiles->'$(PublishDir)\Drivers\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <MakeDir Directories="$(PublishDir)\Drivers" />
+        <Copy SourceFiles="@(IonoPiDriverFiles)" DestinationFiles="@(IonoPiDriverFiles->'$(PublishDir)\Drivers\IonoPi\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
+        <Copy SourceFiles="@(OSDPDriverFiles)" DestinationFiles="@(OSDPDriverFiles->'$(PublishDir)\Drivers\OSDP\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <MakeDir Directories="$(PublishDir)\Data" />
     </Target>
 </Project>
