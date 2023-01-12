@@ -2,21 +2,20 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        
-        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
-        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-        <OutDir>$(SolutionDir)Aporta\bin\$(Configuration)\Drivers\OSDP</OutDir>
-        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-      <PackageReference Include="OSDP.Net" Version="2.1.6" />
+      <PackageReference Include="OSDP.Net" Version="4.0.1" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\Aporta.Extensions\Aporta.Extensions.csproj" />
+      <ProjectReference Include="..\..\Aporta.Extensions\Aporta.Extensions.csproj">
+          <Private>false</Private>
+          <ExcludeAssets>runtime</ExcludeAssets>
+      </ProjectReference>
       <ProjectReference Include="..\Aporta.Drivers.OSDP.Shared\Aporta.Drivers.OSDP.Shared.csproj" />
     </ItemGroup>
 </Project>
