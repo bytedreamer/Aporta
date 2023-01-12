@@ -23,7 +23,7 @@ variables:
 - name: minor
   value: 1
 - name: patch
-  value: $[counter(variables['minor'], 1)]
+  value: 100
 - name: AssemblyVersion
   value: $(major).$(minor).$(patch)
 
