@@ -63,7 +63,7 @@ steps:
   inputs:
     solutionOrProjectPath: 'src/Aporta.sln'
     failBuildLevelSelector: 'Warning'
-    #additionalArguments: '--build'
+    additionalArguments: '--build'
     
 - task: VSBuild@1
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))

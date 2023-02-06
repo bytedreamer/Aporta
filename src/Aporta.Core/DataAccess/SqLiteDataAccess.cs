@@ -88,7 +88,7 @@ namespace Aporta.Core.DataAccess
             
             if (!Directory.Exists(Path.GetDirectoryName(BuildFilePath())))
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(BuildFilePath()));
+                Directory.CreateDirectory(Path.GetDirectoryName(BuildFilePath())!);
             }
 
             connection.Open();
