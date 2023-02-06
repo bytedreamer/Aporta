@@ -6,8 +6,8 @@
 @using Aporta.Shared.Messaging
 @using Aporta.Shared.Models
 
-@inject HttpClient _http
-@inject NavigationManager _navigationManager
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 @implements IDisposable
 
@@ -38,15 +38,15 @@ else
     protected override async Task OnInitializedAsync()
     {
         string url = $"{Paths.Extensions}/{ExtensionId}";
-        _extension = await _http.GetFromJsonAsync<Extension>(url);
+        _extension = await Http.GetFromJsonAsync<Extension>(url);
         
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
         _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
         {
-            _extension = await _http.GetFromJsonAsync<Extension>(url);
+            _extension = await Http.GetFromJsonAsync<Extension>(url);
             
             StateHasChanged();
         });

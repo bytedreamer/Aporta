@@ -7,7 +7,7 @@
 @using Aporta.Drivers.OSDP.Shared
 @using Aporta.Drivers.OSDP.Shared.Actions
 
-@inject HttpClient _http
+@inject HttpClient Http
 
 @if (_configuration == null)
     {
@@ -325,7 +325,7 @@
     private async Task PerformAction(string actionType, string parameters)
     {
         string url = string.Format(Paths.ExtensionPerformAction, ExtensionId, actionType);
-        var response = await _http.PostAsync(url,
+        var response = await Http.PostAsync(url,
             new StringContent(parameters, Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {

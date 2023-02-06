@@ -9,8 +9,8 @@
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 
-@inject HttpClient _http
-@inject NavigationManager _navigationManager
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Doors</Heading>
 
@@ -183,17 +183,17 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _doors = await _http.GetFromJsonAsync<List<Door>>(Paths.Doors);
+        _doors = await Http.GetFromJsonAsync<List<Door>>(Paths.Doors);
 
         await InitializedAvailableEndpoints();
         
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
         _hubConnection.On<int>(Methods.DoorInserted, async doorId =>
         {
-            _doors.Add( await _http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
+            _doors.Add( await Http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
             
             await InitializedAvailableEndpoints();
             
@@ -215,8 +215,8 @@ else
 
     private async Task InitializedAvailableEndpoints()
     {
-        _availableAccessPoints = await _http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
-        _availableControlPoints = await _http.GetFromJsonAsync<Endpoint[]>($"{Paths.Outputs}/available");
+        _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
+        _availableControlPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Outputs}/available");
 
         _addDoor = new Door {InAccessEndpointId = -1, OutAccessEndpointId = -1, DoorStrikeEndpointId = -1};
     }
@@ -234,7 +234,7 @@ else
         if (_addDoor.DoorStrikeEndpointId == -1) _addDoor.DoorStrikeEndpointId = null;
         
         string url = string.Format(Paths.Doors);
-        var response = await _http.PutAsync(url,
+        var response = await Http.PutAsync(url,
             new StringContent(JsonSerializer.Serialize(_addDoor), Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {
@@ -247,7 +247,7 @@ else
     private async Task RemoveDoor(int doorId)
     {
         string url = string.Format($"{Paths.Doors}/{doorId}");
-        var response = await _http.DeleteAsync(url);
+        var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to remove door";

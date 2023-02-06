@@ -6,8 +6,8 @@
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 
-@inject HttpClient _http
-@inject NavigationManager _navigationManager
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Monitoring</Heading>
 
@@ -120,7 +120,7 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _inputs = await _http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
+        _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
         if (_inputs != null)
         {
             foreach (var input in _inputs)
@@ -129,7 +129,7 @@ else
             }
         }
         
-        _outputs = await _http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
+        _outputs = await Http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
         if (_outputs != null)
         {
             foreach (var output in _outputs)
@@ -139,12 +139,12 @@ else
         }
 
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
         _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
         {
-            _outputs.Add( await _http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
+            _outputs.Add( await Http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
             _outputStates[outputId] = await GetOutputState(outputId);
             
             StateHasChanged();
@@ -167,7 +167,7 @@ else
         });
         _hubConnection.On<int>(Methods.InputInserted, async inputId =>
         {
-            _inputs.Add( await _http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
+            _inputs.Add( await Http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
             _inputStates[inputId] = await GetInputState(inputId);
             
             StateHasChanged();
@@ -194,7 +194,7 @@ else
     private async Task<bool?> GetInputState(int inputId)
     {
         string url = $"{Paths.Inputs}/state/{inputId}";
-        var response = await _http.GetAsync(url);
+        var response = await Http.GetAsync(url);
         if (!response.IsSuccessStatusCode)
         {
             return null;
@@ -206,7 +206,7 @@ else
     private async Task<bool?> GetOutputState(int outputId)
     {
         string url = $"{Paths.Outputs}/set/{outputId}";
-        var response = await _http.GetAsync(url);
+        var response = await Http.GetAsync(url);
         if (!response.IsSuccessStatusCode)
         {
             return null;
@@ -219,7 +219,7 @@ else
     {
         string url = $"{Paths.Outputs}/set/{outputId}";
         url = QueryHelpers.AddQueryString(url, "state", checkedValue.ToString());
-        var response = await _http.PostAsync(url, new StringContent(string.Empty));
+        var response = await Http.PostAsync(url, new StringContent(string.Empty));
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to set output";
