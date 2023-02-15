@@ -5,6 +5,7 @@
 @using Aporta.Shared.Messaging
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
+@using System.Dynamic
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -95,7 +96,8 @@ else
         var response = await Http.PostAsync(url, new StringContent(string.Empty));
         if (!response.IsSuccessStatusCode)
         {
-            _snackbarMessage = "Unable to update driver";
+            dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
+            _snackbarMessage = content.detail.ToString();
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
         }

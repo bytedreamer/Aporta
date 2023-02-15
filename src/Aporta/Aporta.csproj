@@ -54,6 +54,7 @@
 
     <ItemGroup>
         <IonoPiDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.IonoPi\bin\$(Configuration)\$(TargetFramework)\*.*" />
+        <IonoPiMaxDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.IonoPiMax\bin\$(Configuration)\$(TargetFramework)\*.*" />
         <OSDPDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.OSDP\bin\$(Configuration)\$(TargetFramework)\*.*" />
         <OSDPDriverRuntimeFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.OSDP\bin\$(Configuration)\$(TargetFramework)\runtimes\**" />
     </ItemGroup>
@@ -65,6 +66,7 @@
     <Target Name="CopyDrivers" AfterTargets="AfterBuild">
         <MakeDir Directories="$(OutDir)\Drivers" />
         <Copy SourceFiles="@(IonoPiDriverFiles)" DestinationFiles="@(IonoPiDriverFiles->'$(OutDir)\Drivers\IonoPi\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
+        <Copy SourceFiles="@(IonoPiMaxDriverFiles)" DestinationFiles="@(IonoPiMaxDriverFiles->'$(OutDir)\Drivers\IonoPiMax\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <Copy SourceFiles="@(OSDPDriverFiles)" DestinationFiles="@(OSDPDriverFiles->'$(OutDir)\Drivers\OSDP\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <Copy SourceFiles="@(OSDPDriverRuntimeFiles)" DestinationFiles="@(OSDPDriverRuntimeFiles->'$(OutDir)\Drivers\OSDP\runtimes\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <MakeDir Directories="$(OutDir)\Data" />
@@ -73,6 +75,7 @@
     <Target Name="PublishDrivers" AfterTargets="AfterPublish">
         <MakeDir Directories="$(PublishDir)\Drivers" />
         <Copy SourceFiles="@(IonoPiDriverFiles)" DestinationFiles="@(IonoPiDriverFiles->'$(PublishDir)\Drivers\IonoPi\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
+        <Copy SourceFiles="@(IonoPiMaxDriverFiles)" DestinationFiles="@(IonoPiMaxDriverFiles->'$(PublishDir)\Drivers\IonoPiMax\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <Copy SourceFiles="@(OSDPDriverFiles)" DestinationFiles="@(OSDPDriverFiles->'$(PublishDir)\Drivers\OSDP\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <Copy SourceFiles="@(OSDPDriverRuntimeFiles)" DestinationFiles="@(OSDPDriverRuntimeFiles->'$(PublishDir)\Drivers\OSDP\runtimes\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <MakeDir Directories="$(PublishDir)\Data" />

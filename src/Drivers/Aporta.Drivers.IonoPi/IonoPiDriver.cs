@@ -27,8 +27,15 @@ namespace Aporta.Drivers.IonoPi
         public void Load(string configuration, ILoggerFactory loggerFactory)
         {
             //var logger = loggerFactory.CreateLogger<IonoPiDriver>();
-            
-            _controller = new GpioController();
+
+            try
+            {
+                _controller = new GpioController();
+            } 
+            catch(PlatformNotSupportedException)
+            {
+                throw new Exception("Driver can only run on a Raspberry Pi");
+            }
 
             for (var index = 0; index < _relayPins.Length; index++)
             {
