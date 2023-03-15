@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace Aporta.Drivers.IonoPiMax
 {
     /// <summary>
-    /// 
+    /// Driver implementation for the Iono Pi Max unit
     /// </summary>
     public class IonoPiMaxDriver : IHardwareDriver
     {
@@ -20,7 +20,6 @@ namespace Aporta.Drivers.IonoPiMax
 
         private readonly TimeSpan _debounceDelay = TimeSpan.FromMilliseconds(200);
         
-        // ReSharper disable once CollectionNeverUpdated.Local
         private readonly List<IEndpoint> _endpoints = new ();
         private readonly List<FileSystemWatcher> _watchingEndpoints = new();
         private ILogger<IonoPiMaxDriver>? _logger;
@@ -123,20 +122,10 @@ namespace Aporta.Drivers.IonoPiMax
             UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
         }
 
-        protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs e)
-        {
-            OnlineStatusChanged?.Invoke(this, e);
-        }
-
         protected virtual void OnStateChanged(IEndpoint endpoint, bool state)
         {
             _logger?.LogInformation("State changed for {EndpointName} to {State}", endpoint.Name, state);
             StateChanged?.Invoke(this, new StateChangedEventArgs(endpoint, state));
-        }
-
-        protected virtual void OnAccessCredentialReceived(AccessCredentialReceivedEventArgs e)
-        {
-            AccessCredentialReceived?.Invoke(this, e);
         }
     }
 }
