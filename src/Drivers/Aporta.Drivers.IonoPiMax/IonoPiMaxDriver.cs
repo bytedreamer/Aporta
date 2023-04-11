@@ -112,20 +112,37 @@ namespace Aporta.Drivers.IonoPiMax
             return await Task.FromResult(string.Empty);
         }
 
+        /// <inheritdoc />
         public event EventHandler<EventArgs>? UpdatedEndpoints;
-        public event EventHandler<AccessCredentialReceivedEventArgs>? AccessCredentialReceived;
-        public event EventHandler<StateChangedEventArgs>? StateChanged;
-        public event EventHandler<OnlineStatusChangedEventArgs>? OnlineStatusChanged;
-
+        
         protected virtual void OnUpdatedEndpoints()
         {
             UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <inheritdoc />
+        public event EventHandler<AccessCredentialReceivedEventArgs>? AccessCredentialReceived;
+        
+        protected virtual void OnAccessCredentialReceived(AccessCredentialReceivedEventArgs eventArgs)
+        {
+            AccessCredentialReceived?.Invoke(this, eventArgs);
+        }
+
+        /// <inheritdoc />
+        public event EventHandler<StateChangedEventArgs>? StateChanged;
+        
         protected virtual void OnStateChanged(IEndpoint endpoint, bool state)
         {
             _logger?.LogInformation("State changed for {EndpointName} to {State}", endpoint.Name, state);
             StateChanged?.Invoke(this, new StateChangedEventArgs(endpoint, state));
+        }
+
+        /// <inheritdoc />
+        public event EventHandler<OnlineStatusChangedEventArgs>? OnlineStatusChanged;
+        
+        protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs eventArgs)
+        {
+            OnlineStatusChanged?.Invoke(this, eventArgs);
         }
     }
 }
