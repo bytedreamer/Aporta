@@ -15,7 +15,6 @@
     }
     else
     {
-
         <Row>
             <Column ColumnSize="ColumnSize.Is6.OnDesktop">
                 @if (_unusedPorts.Any())
@@ -24,7 +23,7 @@
                 }
                 else
                 {
-                    <Alert Color="Color.Info">
+                    <Alert Color="Color.Warning" Visible="true">
                         <AlertMessage>Add RS-485 Port</AlertMessage>
                         <AlertDescription>None are available</AlertDescription>
                     </Alert>
@@ -258,6 +257,10 @@
         if (_unusedPorts.Any())
         {
             _addBus.PortName = _unusedPorts.First();
+        }
+        else
+        {
+            
         }
     }
 
