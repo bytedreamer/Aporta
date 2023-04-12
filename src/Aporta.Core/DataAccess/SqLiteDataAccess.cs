@@ -52,23 +52,18 @@ namespace Aporta.Core.DataAccess
 
         private static string BuildFilePath()
         {
-            string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, FileName);
+            string path = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory;
             
-            if (!Directory.Exists(filePath))
+            if (!Directory.Exists(path))
             {
-                Directory.CreateDirectory(filePath);
+                Directory.CreateDirectory(path);
             }
             
-            return filePath;
+            return Path.Combine(path, FileName);
         }
 
         public async Task<int> CurrentVersion()
         {
-            if (!_inMemory && !File.Exists(BuildFilePath()))
-            {
-                throw new Exception("Unable to obtain database version.");
-            }
-            
             using var connection = CreateDbConnection();
             connection.Open();
 
@@ -88,7 +83,15 @@ namespace Aporta.Core.DataAccess
 
         public async Task UpdateSchema()
         {
-            int currentVersion = await CurrentVersion();
+            int currentVersion;
+            if (!_inMemory && !File.Exists(BuildFilePath()))
+            {
+                currentVersion = -1;
+            }
+            else
+            {
+                currentVersion = await CurrentVersion(); 
+            }
 
             using var connection = CreateDbConnection();
 
