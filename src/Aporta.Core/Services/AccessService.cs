@@ -14,20 +14,15 @@ namespace Aporta.Core.Services
     public class AccessService
     {
         private readonly ExtensionService _extensionService;
-        private readonly GlobalSettingService _globalSettingService;
         private readonly ILogger<AccessService> _logger;
         private readonly DoorRepository _doorRepository;
         private readonly EndpointRepository _endpointRepository;
         private readonly CredentialRepository _credentialRepository;
-        private readonly IDataEncryption _dataEncryption;
 
-        public AccessService(IDataAccess dataAccess, ExtensionService extensionService,
-            GlobalSettingService globalSettingService, IDataEncryption dataEncryption, ILogger<AccessService> logger)
+        public AccessService(IDataAccess dataAccess, ExtensionService extensionService, ILogger<AccessService> logger)
         {
             _extensionService = extensionService;
-            _globalSettingService = globalSettingService;
             _logger = logger;
-            _dataEncryption = dataEncryption;
             _doorRepository = new DoorRepository(dataAccess);
             _credentialRepository = new CredentialRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
@@ -81,7 +76,8 @@ namespace Aporta.Core.Services
                         builder.Append(bit ? "1" : "0");
                     }
 
-                    if (await RequiredEnrollment(builder.ToString()))
+                    var assignedCredential = await _credentialRepository.AssignedCredential(builder.ToString());
+                    if (assignedCredential == null)
                     {
                         _logger.LogInformation("Door {Name} enrolled badge", matchingDoor.Name);
                         return;
@@ -101,21 +97,6 @@ namespace Aporta.Core.Services
                     _logger.LogError(exception, "Unable to process access event");
                 }
             });
-        }
-
-        private async Task<bool> RequiredEnrollment(string cardNumber)
-        {
-            string hashedCardNumber =
-                _dataEncryption.Hash(cardNumber, await _globalSettingService.GetCardNumberHashSalt());
-
-            if (await _credentialRepository.AssignedCredential(hashedCardNumber) != null)
-            {
-                return false;
-            }
-
-            await _credentialRepository.Insert(new Credential
-                {Number = hashedCardNumber});
-            return true;
         }
 
         private async Task OpenDoor(Endpoint matchingDoorStrike, int strikeTimer)

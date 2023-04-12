@@ -42,14 +42,14 @@ namespace Aporta.Core.DataAccess.Repositories
             credential.Id = id;
         }
 
-        public async Task<AssignedCredential> AssignedCredential(string hashedCardNumber)
+        public async Task<AssignedCredential> AssignedCredential(string cardNumber)
         {
             using var connection = DataAccess.CreateDbConnection();
             connection.Open();
 
             var credential = await connection.QuerySingleOrDefaultAsync<AssignedCredential>(
                 $@"{SqlSelect} where number = @number",
-                new {number = hashedCardNumber});
+                new {number = cardNumber});
 
             if (credential == null)
             {

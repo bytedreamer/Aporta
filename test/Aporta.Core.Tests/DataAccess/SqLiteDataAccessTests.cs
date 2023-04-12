@@ -8,16 +8,19 @@ namespace Aporta.Core.Tests.DataAccess
     public class SqLiteDataAccessTests
     {
         [Test]
-        public async Task NoFileFound()
+        public void NoFileFound()
         {
             // Arrange
             var dataAccess = new SqLiteDataAccess();
-            
+
             // Act
-            int currentVersion = await dataAccess.CurrentVersion();
+            async Task Act()
+            {
+                await dataAccess.CurrentVersion();
+            }
 
             // Assert
-            Assert.AreEqual(-1, currentVersion);
+            Assert.CatchAsync(async () => await Act());
         }
     }
 }
