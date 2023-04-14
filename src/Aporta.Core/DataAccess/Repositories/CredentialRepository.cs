@@ -68,7 +68,7 @@ namespace Aporta.Core.DataAccess.Repositories
             var personRepository = new PersonRepository(DataAccess);
             credential.Person = await personRepository.Get((int)personAssignment.personId);
             credential.Enabled = personAssignment.enabled > 0 && credential.Person.Enabled;
-
+            
             return credential;
         }
 

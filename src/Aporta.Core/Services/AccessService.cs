@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,11 +22,11 @@ namespace Aporta.Core.Services
 
         public AccessService(IDataAccess dataAccess, ExtensionService extensionService, ILogger<AccessService> logger)
         {
-            _extensionService = extensionService;
-            _logger = logger;
             _doorRepository = new DoorRepository(dataAccess);
             _credentialRepository = new CredentialRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
+            _extensionService = extensionService;
+            _logger = logger;
         }
 
         public void Startup()
@@ -63,33 +64,15 @@ namespace Aporta.Core.Services
                         _logger.LogInformation("Door {Name} didn't have a strike assigned", matchingDoor.Name);
                         return;
                     }
-
+                    
                     if (eventArgs.CardData.Count != eventArgs.BitCount)
                     {
                         _logger.LogInformation("Door {Name} card read doesn't match bit count", matchingDoor.Name);
                         return;
                     }
 
-                    var builder = new StringBuilder();
-                    foreach (bool bit in eventArgs.CardData)
-                    {
-                        builder.Append(bit ? "1" : "0");
-                    }
-
-                    var assignedCredential = await _credentialRepository.AssignedCredential(builder.ToString());
-                    if (assignedCredential == null)
-                    {
-                        _logger.LogInformation("Door {Name} enrolled badge", matchingDoor.Name);
-                        return;
-                    }
-
-                    if (!AccessGranted())
-                    {
-                        _logger.LogInformation("Door {Name} denied access", matchingDoor.Name);
-                        return;
-                    }
-
-                    _logger.LogInformation("Door {Name} granted access", matchingDoor.Name);
+                    if (await IsAccessGranted(eventArgs.CardData, matchingDoor)) return;
+                    
                     await OpenDoor(matchingDoorStrike, 3);
                 }
                 catch (Exception exception)
@@ -97,6 +80,31 @@ namespace Aporta.Core.Services
                     _logger.LogError(exception, "Unable to process access event");
                 }
             });
+        }
+
+        private async Task<bool> IsAccessGranted(BitArray cardData, Door matchingDoor)
+        {
+            var builder = new StringBuilder();
+            foreach (bool bit in cardData)
+            {
+                builder.Append(bit ? "1" : "0");
+            }
+
+            var assignedCredential = await _credentialRepository.AssignedCredential(builder.ToString());
+            if (assignedCredential == null)
+            {
+                _logger.LogInformation("Door {Name} badge requires enrollment", matchingDoor.Name);
+                return false;
+            }
+
+            if (!AccessGranted())
+            {
+                _logger.LogInformation("Door {Name} denied access", matchingDoor.Name);
+                return false;
+            }
+
+            _logger.LogInformation("Door {Name} granted access", matchingDoor.Name);
+            return true;
         }
 
         private async Task OpenDoor(Endpoint matchingDoorStrike, int strikeTimer)
