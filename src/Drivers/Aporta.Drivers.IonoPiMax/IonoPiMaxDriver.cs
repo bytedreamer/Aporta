@@ -1,5 +1,6 @@
 ﻿using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
+using DebounceThrottle;
 using Microsoft.Extensions.Logging;
 
 namespace Aporta.Drivers.IonoPiMax
@@ -18,7 +19,10 @@ namespace Aporta.Drivers.IonoPiMax
         private const string RelaysPath = "digital_out";
         private const int RelayCount = 4;
 
-        private readonly TimeSpan _debounceDelay = TimeSpan.FromMilliseconds(200);
+        private readonly DebounceDispatcher[] _relayDeBouncers =
+        {
+            new(200), new (200), new (200), new (200)
+        };
         
         private readonly List<IEndpoint> _endpoints = new ();
         private readonly List<FileSystemWatcher> _watchingEndpoints = new();
@@ -56,15 +60,20 @@ namespace Aporta.Drivers.IonoPiMax
             watcher.NotifyFilter = NotifyFilters.LastWrite;
             watcher.Changed += async (_, args) =>
             {
-                if (_endpoints.FirstOrDefault(endpoint => endpoint.Id == args.FullPath) is IControlPoint controlPoint)
+                if (args.Name is { Length: 2 })
                 {
-                    // debounce delay
-                    await Task.Delay(_debounceDelay);
-                    OnStateChanged(controlPoint, await controlPoint.GetState());
-                }
-                else
-                {
-                    _logger?.LogWarning("No endpoint found for {ArgsFullPath}", args.FullPath);
+                    await _relayDeBouncers[byte.Parse(args.Name.TrimStart('o')) - 1].DebounceAsync(async () =>
+                    {
+                        if (_endpoints.FirstOrDefault(endpoint => endpoint.Id == args.FullPath) is IControlPoint
+                            controlPoint)
+                        {
+                            OnStateChanged(controlPoint, await controlPoint.GetState());
+                        }
+                        else
+                        {
+                            _logger?.LogWarning("No endpoint found for {ArgsFullPath}", args.FullPath);
+                        }
+                    });
                 }
             };
             _watchingEndpoints.Add(watcher);

@@ -118,7 +118,7 @@ namespace Aporta.Core.Services
                 .SetState(false);
         }
 
-        private bool AccessGranted()
+        private static bool AccessGranted()
         {
             return true;
         }

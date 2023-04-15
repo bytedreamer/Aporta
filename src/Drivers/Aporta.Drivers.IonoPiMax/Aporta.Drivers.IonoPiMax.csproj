@@ -14,4 +14,8 @@
       </ProjectReference>
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="DebounceThrottle" Version="2.0.0" />
+    </ItemGroup>
+
 </Project>
