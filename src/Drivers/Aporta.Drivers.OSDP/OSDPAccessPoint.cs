@@ -2,6 +2,8 @@ using System;
 using System.Threading.Tasks;
 using Aporta.Extensions.Endpoint;
 using Aporta.Drivers.OSDP.Shared;
+using OSDP.Net;
+using OSDP.Net.Model.CommandData;
 
 namespace Aporta.Drivers.OSDP
 {
@@ -9,11 +11,15 @@ namespace Aporta.Drivers.OSDP
     {
         private readonly Device _device;
         private readonly Reader _reader;
+        private readonly ControlPanel _panel;
+        private readonly Guid _connectionId;
 
-        public OSDPAccessPoint(Guid extensionId, Device device, Reader reader)
+        public OSDPAccessPoint(Guid extensionId, Device device, Reader reader, ControlPanel panel, Guid connectionId)
         {
             _device = device;
             _reader = reader;
+            _panel = panel;
+            _connectionId = connectionId;
             ExtensionId = extensionId;
         }
 
@@ -21,10 +27,17 @@ namespace Aporta.Drivers.OSDP
 
         public Guid ExtensionId { get; }
         
-        public string Id => $"{_device.Address}:R{_reader.Number}";
+        public string Id => $"{_device.PortName}:{_device.Address}:R{_reader.Number}";
+        
         public Task<bool> GetOnlineStatus()
         {
-            return Task.FromResult(true);
+            return Task.FromResult(_panel.IsOnline(_connectionId, _device.Address));
+        }
+
+        public async Task Beep()
+        {
+            await _panel.ReaderBuzzerControl(_connectionId, _device.Address,
+                new ReaderBuzzerControl(_reader.Number, ToneCode.Default, 1, 1, 3));
         }
     }
 }

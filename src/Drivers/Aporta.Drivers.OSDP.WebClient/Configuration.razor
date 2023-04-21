@@ -303,10 +303,10 @@
         
         await _addDeviceModal.Hide();
 
+        _addDevice.PortName = _currentBus.PortName;
         await PerformAction(ActionType.AddUpdateDevice.ToString(),
             JsonConvert.SerializeObject(new DeviceAction
             {
-                PortName = _currentBus.PortName,
                 Device = _addDevice
             }));
     }
@@ -317,10 +317,10 @@
 
         var removingDevice = _currentBus.Devices.First(device => device.Address == address);
 
+        removingDevice.PortName = _currentBus.PortName;
         await PerformAction(ActionType.RemoveDevice.ToString(),
             JsonConvert.SerializeObject(new DeviceAction
             {
-                PortName = _currentBus.PortName,
                 Device = removingDevice
             }));
     }
