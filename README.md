@@ -1,6 +1,6 @@
 # Aporta #
 
-[![Build Status](https://dev.azure.com/jonathanhorvath/Aporta/_apis/build/status/bytedreamer.Aporta?branchName=main)](https://dev.azure.com/jonathanhorvath/Aporta/_build/latest?definitionId=2&branchName=main)
+[![Build Status](https://dev.azure.com/jonathanhorvath/Aporta/_apis/build/status/bytedreamer.Aporta?branchName=main)](https://dev.azure.com/jonathanhorvath/Aporta/_build/latest?definitionId=2&branchName=develop)
 
 Aporta is an open source physical access controller. The main purpose of the software is to secure doors from unauthorized access. This is accomplished by determining if a person is authorized to enter a door. The door is unlocked momentarily by the software when authorized credential are presented.
 
