@@ -9,8 +9,8 @@
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 
-@inject HttpClient _http
-@inject NavigationManager _navigationManager
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Outputs</Heading>
 
@@ -28,7 +28,7 @@ else
             }
             else
             {
-                <Alert Color="Color.Info">
+                <Alert Color="Color.Warning" Visible="true">
                     <AlertMessage>Add Output</AlertMessage>
                     <AlertDescription>None are available</AlertDescription>
                 </Alert>
@@ -137,17 +137,17 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _outputs = await _http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
+        _outputs = await Http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
 
         await InitializedAvailableOutputs();
         
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
         _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
         {
-            _outputs.Add( await _http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
+            _outputs.Add( await Http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
             
             await InitializedAvailableOutputs();
             
@@ -169,7 +169,7 @@ else
 
     private async Task InitializedAvailableOutputs()
     {
-        _availableControlPoints = await _http.GetFromJsonAsync<Endpoint[]>($"{Paths.Outputs}/available");
+        _availableControlPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Outputs}/available");
 
         _addOutput = new Output();
         if (_availableControlPoints != null && _availableControlPoints.Any())
@@ -187,7 +187,7 @@ else
         await _addOutputModal.Hide();
 
         string url = string.Format(Paths.Outputs);
-        var response = await _http.PutAsync(url,
+        var response = await Http.PutAsync(url,
             new StringContent(JsonSerializer.Serialize(_addOutput), Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {
@@ -200,7 +200,7 @@ else
     private async Task RemoveOutput(int outputId)
     {
         string url = string.Format($"{Paths.Outputs}/{outputId}");
-        var response = await _http.DeleteAsync(url);
+        var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to remove output";

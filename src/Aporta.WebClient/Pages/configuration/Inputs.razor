@@ -9,8 +9,8 @@
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 
-@inject HttpClient _http
-@inject NavigationManager _navigationManager
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Inputs</Heading>
 
@@ -28,7 +28,7 @@ else
             }
             else
             {
-                <Alert Color="Color.Info">
+                <Alert Color="Color.Warning" Visible="true">
                     <AlertMessage>Add Input</AlertMessage>
                     <AlertDescription>None are available</AlertDescription>
                 </Alert>
@@ -137,17 +137,17 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        _inputs = await _http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
+        _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
 
         await InitializedAvailableInputs();
         
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
         _hubConnection.On<int>(Methods.InputInserted, async inputId =>
         {
-            _inputs.Add( await _http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
+            _inputs.Add( await Http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
             
             await InitializedAvailableInputs();
             
@@ -169,7 +169,7 @@ else
 
     private async Task InitializedAvailableInputs()
     {
-        _availableMonitorPoints = await _http.GetFromJsonAsync<Endpoint[]>($"{Paths.Inputs}/available");
+        _availableMonitorPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Inputs}/available");
 
         _addInput = new Input();
         if (_availableMonitorPoints != null && _availableMonitorPoints.Any())
@@ -187,7 +187,7 @@ else
         await _addInputModal.Hide();
 
         string url = string.Format(Paths.Inputs);
-        var response = await _http.PutAsync(url,
+        var response = await Http.PutAsync(url,
             new StringContent(JsonSerializer.Serialize(_addInput), Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {
@@ -200,7 +200,7 @@ else
     private async Task RemoveInput(int inputId)
     {
         string url = string.Format($"{Paths.Inputs}/{inputId}");
-        var response = await _http.DeleteAsync(url);
+        var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
             _snackbarMessage = "Unable to remove input";

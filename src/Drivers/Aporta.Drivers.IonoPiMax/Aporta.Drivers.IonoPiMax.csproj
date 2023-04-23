@@ -2,20 +2,20 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
         <EnableDynamicLoading>true</EnableDynamicLoading>
     </PropertyGroup>
-
-    <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-      <PackageReference Include="OSDP.Net" Version="4.0.3" />
-    </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\..\Aporta.Extensions\Aporta.Extensions.csproj">
           <Private>false</Private>
           <ExcludeAssets>runtime</ExcludeAssets>
       </ProjectReference>
-      <ProjectReference Include="..\Aporta.Drivers.OSDP.Shared\Aporta.Drivers.OSDP.Shared.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="DebounceThrottle" Version="2.0.0" />
+    </ItemGroup>
+
 </Project>

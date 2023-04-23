@@ -5,9 +5,10 @@
 @using Aporta.Shared.Messaging
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
+@using System.Dynamic
 
-@inject HttpClient _http
-@inject NavigationManager _navigationManager
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 @implements IDisposable
 
@@ -74,28 +75,29 @@ else
     protected override async Task OnInitializedAsync()
     {
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(_navigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect()
             .Build();
         _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
         {
-            _extensions = await _http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
+            _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
             
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
         
-        _extensions = await _http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
+        _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
     }
     
     async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)
     {
         string url = $"{Paths.Extensions}/{extensionId}";
         url = QueryHelpers.AddQueryString(url, "enabled", checkedValue.ToString());
-        var response = await _http.PostAsync(url, new StringContent(string.Empty));
+        var response = await Http.PostAsync(url, new StringContent(string.Empty));
         if (!response.IsSuccessStatusCode)
         {
-            _snackbarMessage = "Unable to update driver";
+            dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
+            _snackbarMessage = content.detail.ToString();
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
         }

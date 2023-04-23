@@ -1,7 +1,7 @@
 using System;
 using System.Data;
 using System.IO;
-using System.Reflection;
+using System.Reflection; 
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess.Migrations;
 using Dapper;
@@ -52,17 +52,18 @@ namespace Aporta.Core.DataAccess
 
         private static string BuildFilePath()
         {
-            return Path.Combine(
-                Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, FileName);
+            string path = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory;
+            
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+            
+            return Path.Combine(path, FileName);
         }
 
         public async Task<int> CurrentVersion()
         {
-            if (!_inMemory && !File.Exists(BuildFilePath()))
-            {
-                return -1;
-            }
-            
             using var connection = CreateDbConnection();
             connection.Open();
 
@@ -82,14 +83,17 @@ namespace Aporta.Core.DataAccess
 
         public async Task UpdateSchema()
         {
-            int currentVersion = await CurrentVersion();
+            int currentVersion;
+            if (!_inMemory && !File.Exists(BuildFilePath()))
+            {
+                currentVersion = -1;
+            }
+            else
+            {
+                currentVersion = await CurrentVersion(); 
+            }
 
             using var connection = CreateDbConnection();
-            
-            if (!Directory.Exists(Path.GetDirectoryName(BuildFilePath())))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(BuildFilePath()));
-            }
 
             connection.Open();
             using var transaction = connection.BeginTransaction();

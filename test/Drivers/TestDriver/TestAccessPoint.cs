@@ -16,5 +16,10 @@ namespace Aporta.Drivers.TestDriver
         {
             throw new NotImplementedException();
         }
+
+        public Task Beep()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

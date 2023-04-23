@@ -39,7 +39,6 @@ namespace Aporta.Controllers
         [HttpPost("{extensionId:Guid}")]
         public async Task<ActionResult> SetEnabled(Guid extensionId, [FromQuery] bool enabled)
         {
-            bool success = true;
             try
             {
                 await _extensionService.EnableExtension(extensionId, enabled);
@@ -47,10 +46,10 @@ namespace Aporta.Controllers
             catch (Exception exception)
             {
                 _logger.LogError(exception, "Unable to update extension {ExtensionId}", extensionId);
-                success = false;
+                return Problem(exception.Message);
             }
 
-            return success ? NoContent() : Problem();
+            return NoContent();
         }
 
         [HttpPost("{extensionId:Guid}/action/{actionType}")]

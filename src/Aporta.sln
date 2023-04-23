@@ -55,6 +55,10 @@ ProjectSection(SolutionItems) = preProject
 	..\README.md = ..\README.md
 EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IonoPiMax", "IonoPiMax", "{072358EF-DD46-4015-AAF2-E5E53DF30343}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Drivers.IonoPiMax", "Drivers\Aporta.Drivers.IonoPiMax\Aporta.Drivers.IonoPiMax.csproj", "{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -163,6 +167,14 @@ Global
 		{B8DCC198-4635-40C1-B709-A84DC33BFA0F}.Release|Any CPU.ActiveCfg = Release|x86
 		{B8DCC198-4635-40C1-B709-A84DC33BFA0F}.Release|x86.ActiveCfg = Release|x86
 		{B8DCC198-4635-40C1-B709-A84DC33BFA0F}.Release|x86.Build.0 = Release|x86
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Debug|x86.Build.0 = Debug|Any CPU
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Release|x86.ActiveCfg = Release|Any CPU
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -180,6 +192,8 @@ Global
 		{07792752-09D4-45DD-8F8A-17769C59206A} = {D7930C1C-6407-4791-AF3F-3A0884F428CC}
 		{D7930C1C-6407-4791-AF3F-3A0884F428CC} = {7721B58D-7236-4F4D-87C8-70A7107E3F7F}
 		{B8DCC198-4635-40C1-B709-A84DC33BFA0F} = {D7930C1C-6407-4791-AF3F-3A0884F428CC}
+		{072358EF-DD46-4015-AAF2-E5E53DF30343} = {035F16E0-E30C-43CB-8BB7-C8322283208D}
+		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D} = {072358EF-DD46-4015-AAF2-E5E53DF30343}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65C2BC8A-D61C-4643-BD0F-2670F6AA9D01}
