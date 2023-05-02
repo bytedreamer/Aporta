@@ -6,6 +6,7 @@ using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Models;
 using Aporta.Shared.Models;
+using Microsoft.Data.Sqlite;
 using NUnit.Framework;
 
 namespace Aporta.Core.Tests.DataAccess.Repositories
@@ -46,7 +47,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
 
         [Test]
         public async Task Insert()
-        {
+        { 
             // Arrange
             DateTime currentTime = DateTime.UtcNow;
             var credentials = new[]
@@ -70,6 +71,26 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             Assert.LessOrEqual(currentTime, actualCredential.EnrollDate);
             Assert.GreaterOrEqual(DateTime.UtcNow, actualCredential.EnrollDate);
             Assert.AreEqual("5345234", actualCredential.Number);
+        }
+        
+        [Test]
+        public async Task Insert_DuplicateCardNumber()
+        {
+            // Arrange
+            var credential = new Credential {Number = "2345342"};
+
+            var credentialRepository = new CredentialRepository(_dataAccess);
+
+            await credentialRepository.Insert(credential);
+            
+            // Assert
+            async Task InsertCredential()
+            {
+                await credentialRepository.Insert(credential);
+            }
+
+            // Assert
+            Assert.ThrowsAsync<SqliteException>(InsertCredential);
         }
 
         [Test]
@@ -116,9 +137,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             var actual = await credentialRepository.AssignedCredential("5345234");
 
             // Assert
-            Assert.AreEqual("5345234", actual.Number);
-            Assert.IsFalse(actual.Enabled);
-            Assert.IsNull(actual.Person);
+            Assert.IsNull(actual);
         }
         
         [Test]
@@ -149,7 +168,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
                 await personRepository.Insert(person);
             }
 
-            await credentialRepository.AssignPerson(people[1].Id, credentials[1].Id);
+            await credentialRepository.AssignPerson(people[1].Id, credentials[1].Id, true);
 
             // Act 
             var actual = await credentialRepository.AssignedCredential("5345234");
@@ -188,7 +207,46 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
                 await personRepository.Insert(person);
             }
 
-            await credentialRepository.AssignPerson(people[0].Id, credentials[1].Id);
+            await credentialRepository.AssignPerson(people[0].Id, credentials[1].Id, true);
+
+            // Act 
+            var actual = await credentialRepository.AssignedCredential("5345234");
+
+            // Assert
+            Assert.AreEqual("5345234", actual.Number);
+            Assert.IsFalse(actual.Enabled);
+            Assert.AreEqual(actual.Person.Id, people[0].Id);
+        }
+        
+        [Test]
+        public async Task AssignedCredential_AssignmentNotEnabled()
+        {
+            // Arrange
+            var credentials = new[]
+            {
+                new Credential {Number = "2345342"},
+                new Credential {Number = "5345234"}
+            };
+            
+            var credentialRepository = new CredentialRepository(_dataAccess);
+            foreach (var credential in credentials)
+            {
+                await credentialRepository.Insert(credential);
+            }
+            
+            var people = new[]
+            {
+                new Person {FirstName = "First1", LastName = "Last1", Enabled = true},
+                new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+            };
+
+            var personRepository = new PersonRepository(_dataAccess);
+            foreach (var person in people)
+            {
+                await personRepository.Insert(person);
+            }
+
+            await credentialRepository.AssignPerson(people[0].Id, credentials[1].Id, false);
 
             // Act 
             var actual = await credentialRepository.AssignedCredential("5345234");

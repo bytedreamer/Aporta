@@ -62,7 +62,7 @@ namespace Aporta.Core.DataAccess.Repositories
 
             if (personAssignment == null)
             {
-                return credential;
+                return null;
             }
 
             var personRepository = new PersonRepository(DataAccess);
@@ -72,7 +72,7 @@ namespace Aporta.Core.DataAccess.Repositories
             return credential;
         }
 
-        public async Task AssignPerson(int personId, int credentialId)
+        public async Task AssignPerson(int personId, int credentialId, bool assignmentEnabled)
         {
             using var connection = DataAccess.CreateDbConnection();
             connection.Open();
@@ -82,7 +82,7 @@ namespace Aporta.Core.DataAccess.Repositories
                 {
                     personId, 
                     credentialId,
-                    enabled = true
+                    enabled = assignmentEnabled
                 });
         }
     }
