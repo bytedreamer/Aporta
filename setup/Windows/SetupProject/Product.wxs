@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util='http://schemas.microsoft.com/wix/UtilExtension'>
 	<Product Id="*" Name="Aporta" Language="1033" Version="!(bind.FileVersion.AportaService)" Manufacturer="Z-bit" UpgradeCode="3155e450-efaf-4294-a12b-097295667284">
 		<Package InstallerVersion="200" 
              Platform="x64"
@@ -9,6 +9,8 @@
 
 		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 		<MediaTemplate EmbedCab="yes" />
+
+    <PropertyRef Id="WIX_ACCOUNT_USERS" />
 
     <Property Id="DOTNETCORE6">0</Property>
 
@@ -26,7 +28,7 @@
       <Custom Action="Check.NetCore" Before="LaunchConditions">NOT Installed</Custom>
     </InstallExecuteSequence>
 
-		<Feature Id="ProductFeature" Title="Aporta" Level="1">
+    <Feature Id="ProductFeature" Title="Aporta" Level="1">
       <ComponentGroupRef Id="Aporta_Exe" />
       <ComponentGroupRef Id="Aporta_Project" />
     </Feature>
@@ -79,7 +81,7 @@
       
       <Component Id="Aporta_SetFolderPermissions" Directory="DATAFOLDER"  Guid="989FE60B-79C3-4FC9-8CC2-5D3101850576">
         <CreateFolder>
-          <Permission GenericAll="yes" User="Users"/>
+          <Permission GenericAll="yes" User="[WIX_ACCOUNT_USERS]"/>
         </CreateFolder>
       </Component>
     </ComponentGroup>
