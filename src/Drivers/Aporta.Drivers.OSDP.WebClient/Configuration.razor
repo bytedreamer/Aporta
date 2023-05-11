@@ -88,7 +88,7 @@
                                         </TableRowCell>
                                         <TableRowCell TextAlignment="TextAlignment.End">
                                             <Button Size="Size.Small"
-                                                    Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address))">
+                                                    Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address, device.Name))">
                                                 <Icon Name="IconName.Delete" Style="color: red"/>
                                             </Button>
                                         </TableRowCell>
@@ -199,7 +199,12 @@
     </SnackbarBody>
 </Snackbar>
 
+<MessageProvider />
+
 @code {
+    [Inject] 
+    IMessageService MessageService { get; set; }
+    
     private Bus _addBus;
     private Bus _currentBus;
     private Device _addDevice;
@@ -277,8 +282,17 @@
 
     private async Task RemoveBus(string busPortName)
     {
+        if (!await MessageService.Confirm($"Are you sure you want to delete bus '{busPortName}'?", "Delete Bus", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
         var matchingBus = _configuration.Buses.First(bus => bus.PortName == busPortName);
-        
+
         await PerformAction(ActionType.RemoveBus.ToString(),
             JsonConvert.SerializeObject(new BusAction
             {
@@ -311,8 +325,17 @@
             }));
     }
 
-    private async Task RemoveDevice(string portName, byte address)
+    private async Task RemoveDevice(string portName, byte address, string deviceName)
     {
+        if (!await MessageService.Confirm($"Are you sure you want to delete device '{deviceName}'?", "Delete Bus", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+        
         _currentBus = _configuration.Buses.First(bus => bus.PortName == portName);
 
         var removingDevice = _currentBus.Devices.First(device => device.Address == address);

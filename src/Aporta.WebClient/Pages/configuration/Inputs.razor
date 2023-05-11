@@ -54,7 +54,7 @@ else
                                         @input.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
-                                        <Button Clicked="@(async () => await RemoveInput(input.Id))">
+                                        <Button Clicked="@(async () => await RemoveInput(input.Id, input.Name))">
                                             <Icon Name="IconName.Delete" Style="color: red"/>
                                         </Button>
                                     </TableRowCell>
@@ -119,19 +119,21 @@ else
     </SnackbarBody>
 </Snackbar>
 
+<MessageProvider />
+
 @code {
+    [Inject] 
+    IMessageService MessageService { get; set; }
+    
     private List<Input> _inputs;
     private Endpoint[] _availableMonitorPoints;
     private Input _addInput;
     
     private HubConnection _hubConnection;
     
-#pragma warning disable 649
     private Modal _addInputModal;
     private Validations _addInputValidations;
-    
     private Snackbar _snackbar;
-#pragma warning restore 649
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
     
@@ -197,8 +199,17 @@ else
          }
     }
 
-    private async Task RemoveInput(int inputId)
+    private async Task RemoveInput(int inputId, string inputName)
     {
+        if (!await MessageService.Confirm($"Are you sure you want to delete input '{inputName}'?", "Delete Bus", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+        
         string url = string.Format($"{Paths.Inputs}/{inputId}");
         var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)

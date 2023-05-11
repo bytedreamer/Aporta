@@ -109,6 +109,7 @@ namespace Aporta.Core.Services
             if (assignedCredential == null)
             {
                 _logger.LogInformation("Door {Name} badge requires enrollment", matchingDoor.Name);
+                await _credentialRepository.Insert(new Credential { Number = builder.ToString() });
                 return false;
             }
 

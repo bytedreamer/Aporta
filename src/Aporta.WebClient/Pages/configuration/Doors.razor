@@ -54,7 +54,7 @@ else
                                         @door.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
-                                        <Button Clicked="@(async () => await RemoveDoor(door.Id))">
+                                        <Button Clicked="@(async () => await RemoveDoor(door.Id, door.Name))">
                                             <Icon Name="IconName.Delete" Style="color: red"/>
                                         </Button>
                                     </TableRowCell>
@@ -164,7 +164,12 @@ else
     </SnackbarBody>
 </Snackbar>
 
+<MessageProvider />
+
 @code {
+    [Inject] 
+    IMessageService MessageService { get; set; }
+    
     private List<Door> _doors;
     private Endpoint[] _availableAccessPoints;
     private Endpoint[] _availableControlPoints;
@@ -244,8 +249,17 @@ else
          }
     }
 
-    private async Task RemoveDoor(int doorId)
+    private async Task RemoveDoor(int doorId, string doorName)
     {
+        if (!await MessageService.Confirm($"Are you sure you want to delete door '{doorName}'?", "Delete Bus", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
         string url = string.Format($"{Paths.Doors}/{doorId}");
         var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
