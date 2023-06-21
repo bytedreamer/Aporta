@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util='http://schemas.microsoft.com/wix/UtilExtension'>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util='http://schemas.microsoft.com/wix/UtilExtension' xmlns:fire="http://schemas.microsoft.com/wix/FirewallExtension">
 	<Product Id="*" Name="Aporta" Language="1033" Version="!(bind.FileVersion.AportaService)" Manufacturer="Z-bit" UpgradeCode="3155e450-efaf-4294-a12b-097295667284">
 		<Package InstallerVersion="200" 
              Platform="x64"
@@ -57,6 +57,14 @@
           Part="last"
           Action="set"
           System="yes" />
+        <fire:FirewallException 
+            Id="FirewallException" 
+            Name="Aporta" 
+            Port="8443" 
+            Protocol="tcp" 
+            Scope="any" 
+            Program="$(var.BasePath)\Aporta.exe" 
+            IgnoreFailure="yes"/>
       </Component>
 
       <Component Id="Aporta_ServiceInstaller" Directory="INSTALLFOLDER" Guid="10C702B9-C283-421F-B166-771543D89A8B">
@@ -71,7 +79,7 @@
           Account="LocalSystem"
           ErrorControl="normal" />
         <ServiceControl
-          Id="ServiceInstaller"
+          Id="ServiceControl"
           Start="install"
           Stop="both"
           Remove="uninstall"
