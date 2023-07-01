@@ -34,6 +34,7 @@ namespace Aporta
             services.AddSingleton<GlobalSettingService, GlobalSettingService>();
             services.AddSingleton<InputService, InputService>();
             services.AddSingleton<OutputService, OutputService>();
+            services.AddSingleton<PeopleService, PeopleService>();
 
             services.AddSignalR();
             services.AddControllersWithViews();

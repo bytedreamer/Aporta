@@ -22,14 +22,14 @@
                             Home
                         </BarLink>
                     </BarItem>
+                    
                     <BarItem>
                         <BarLink To="monitoring">
                             <BarIcon IconName="IconName.Video"/>
                             Monitoring
                         </BarLink>
                     </BarItem>
-                </BarStart>
-                <BarEnd>
+               
                     <BarItem>
                         <BarDropdown>
                             <BarDropdownToggle>
@@ -37,14 +37,29 @@
                                 Configuration
                             </BarDropdownToggle>
                             <BarDropdownMenu>
-                                <BarDropdownItem To="configuration/drivers" Target="Target.Self">Drivers</BarDropdownItem>
-                                <BarDropdownItem To="configuration/doors" Target="Target.Self">Doors</BarDropdownItem>
-                                <BarDropdownItem To="configuration/inputs" Target="Target.Self">Inputs</BarDropdownItem>
-                                <BarDropdownItem To="configuration/outputs" Target="Target.Self">Outputs</BarDropdownItem>
+                                <BarDropdown>
+                                    <BarDropdownToggle>
+                                        Access
+                                    </BarDropdownToggle>
+                                    <BarDropdownMenu>
+                                        <BarDropdownItem To="configuration/people" Target="Target.Self">People</BarDropdownItem>   
+                                    </BarDropdownMenu>
+                                </BarDropdown>
+                                <BarDropdown>
+                                    <BarDropdownToggle>
+                                        Hardware
+                                    </BarDropdownToggle>
+                                    <BarDropdownMenu>
+                                        <BarDropdownItem To="configuration/drivers" Target="Target.Self">Drivers</BarDropdownItem>
+                                        <BarDropdownItem To="configuration/doors" Target="Target.Self">Doors</BarDropdownItem>
+                                        <BarDropdownItem To="configuration/inputs" Target="Target.Self">Inputs</BarDropdownItem>
+                                        <BarDropdownItem To="configuration/outputs" Target="Target.Self">Outputs</BarDropdownItem>
+                                    </BarDropdownMenu>
+                                </BarDropdown>
                             </BarDropdownMenu>
                         </BarDropdown>
                     </BarItem>
-                </BarEnd>
+                </BarStart>
             </BarMenu>
         </Bar>
     </LayoutHeader>

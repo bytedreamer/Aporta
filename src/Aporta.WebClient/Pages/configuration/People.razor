@@ -1,0 +1,223 @@
+@page "/configuration/people"
+
+@using Microsoft.AspNetCore.SignalR.Client
+
+@using Aporta.Shared.Calls
+@using Aporta.Shared.Messaging
+@using Aporta.Shared.Models
+@using System.Text.Json
+@using System.Text
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<Heading Size="HeadingSize.Is1">People</Heading>
+
+@if (_people == null)
+{
+    <div class="spinner"></div>
+}
+else
+{
+    <Row>
+        <Column ColumnSize="ColumnSize.Is6.OnDesktop">
+            <Button Color="Color.Primary" Clicked="_addPersonModal.Show">Add Person</Button>
+        </Column>
+    </Row>
+    <Row>
+        <Column>
+            <Card Margin="Margin.Is4.OnY">
+                <CardBody>
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Enabled</TableHeaderCell>
+                                <TableHeaderCell>First Name</TableHeaderCell>
+                                <TableHeaderCell>Last Name</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var person in _people.OrderBy(person => person.FirstName))
+                            {
+                                <TableRow>
+                                    <TableRowCell>
+                                        @if (person.Enabled)
+                                        {
+                                            <Icon Name="IconName.Check" Style="color: green"/>
+                                        }
+                                        else
+                                        {
+                                            <Icon Name="IconName.MinusCircle" Style="color: red"/>
+                                        }
+                                    </TableRowCell>
+                                    <TableRowHeader>
+                                        @person.FirstName
+                                    </TableRowHeader>
+                                    <TableRowHeader>
+                                        @person.LastName
+                                    </TableRowHeader>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Button Clicked="@(async () => await RemovePerson(person.Id, $"{person.FirstName} {person.LastName}"))">
+                                            <Icon Name="IconName.Delete" Style="color: red"/>
+                                        </Button>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+    
+        <Modal @ref="_addPersonModal">
+        <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    Add Door
+                </ModalTitle>
+                <CloseButton Clicked="@_addPersonModal.Hide"/>
+            </ModalHeader>
+            <ModalBody>
+                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addPersonValidations">
+                    <Validation Validator="@ValidationRule.IsNotEmpty" >
+                        <Field>
+                            <FieldLabel>First Name</FieldLabel>
+                            <FieldBody>
+                                <TextEdit @bind-Text="_addPerson.FirstName">
+                                    <Feedback>
+                                        <ValidationError>
+                                            Please enter the person's first name
+                                        </ValidationError>
+                                    </Feedback>
+                                </TextEdit>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+                    <Validation Validator="@ValidationRule.IsNotEmpty" >
+                        <Field>
+                            <FieldLabel>First Name</FieldLabel>
+                            <FieldBody>
+                                <TextEdit @bind-Text="_addPerson.LastName">
+                                    <Feedback>
+                                        <ValidationError>
+                                            Please enter the person's last name
+                                        </ValidationError>
+                                    </Feedback>
+                                </TextEdit>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+                    <Field>
+                        <FieldLabel>Enabled</FieldLabel>
+                        <FieldBody>
+                            <Check Checked="@_addPerson.Enabled" />
+                        </FieldBody>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@_addPersonModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await AddPerson())">Add</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
+    
+}
+
+<Snackbar @ref="_snackbar" Color="@_snackbarColor">
+    <SnackbarBody>
+        @_snackbarMessage
+    </SnackbarBody>
+</Snackbar>
+
+<MessageProvider />
+
+
+@code {
+    [Inject] 
+    IMessageService MessageService { get; set; }
+    
+    private List<Person> _people;
+    private Person _addPerson;
+    
+    private HubConnection _hubConnection;
+
+    private Modal _addPersonModal;
+    private Validations _addPersonValidations;
+    private Snackbar _snackbar;
+#pragma warning disable CS0649
+    private SnackbarColor _snackbarColor;
+#pragma warning restore CS0649
+    private string _snackbarMessage = string.Empty;
+
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _people = await Http.GetFromJsonAsync<List<Person>>(Paths.People);
+        
+        _addPerson = new Person{Enabled = true};
+        
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithAutomaticReconnect()
+            .Build();
+        _hubConnection.On<int>(Methods.PersonInserted, async personId =>
+        {
+            _people.Add( await Http.GetFromJsonAsync<Person>($"{Paths.People}/{personId}"));
+            
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.PersonDeleted, async doorId =>
+        {
+            var person = _people.FirstOrDefault(o => o.Id == doorId);
+            if (person == null) return;
+
+            _people.Remove(person);
+
+            StateHasChanged();
+        });
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task AddPerson()
+    {
+        if (!await _addPersonValidations.ValidateAll())
+        {
+            return;
+        }
+        await _addPersonModal.Hide();
+
+        string url = string.Format(Paths.People);
+        var response = await Http.PutAsync(url,
+            new StringContent(JsonSerializer.Serialize(_addPerson), Encoding.UTF8, "application/json"));
+        if (!response.IsSuccessStatusCode)
+        {
+            _snackbarMessage = "Unable to add person";
+            _snackbarColor = SnackbarColor.Danger;
+            await _snackbar.Show();
+        }
+    }
+
+    private async Task RemovePerson(int personId, string name)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete person '{name}'?", "Delete Person", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        string url = string.Format($"{Paths.People}/{personId}");
+        var response = await Http.DeleteAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            _snackbarMessage = "Unable to remove person";
+            _snackbarColor = SnackbarColor.Danger;
+            await _snackbar.Show();
+        }
+    }
+}

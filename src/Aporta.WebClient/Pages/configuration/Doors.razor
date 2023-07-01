@@ -177,10 +177,9 @@ else
     
     private HubConnection _hubConnection;
     
-#pragma warning disable 649
     private Modal _addDoorModal;
     private Validations _addDoorValidations;
-    
+#pragma warning disable 649
     private Snackbar _snackbar;
 #pragma warning restore 649
     private SnackbarColor _snackbarColor;
@@ -251,7 +250,7 @@ else
 
     private async Task RemoveDoor(int doorId, string doorName)
     {
-        if (!await MessageService.Confirm($"Are you sure you want to delete door '{doorName}'?", "Delete Bus", options =>
+        if (!await MessageService.Confirm($"Are you sure you want to delete door '{doorName}'?", "Delete Door", options =>
         {
             options.ShowMessageIcon = false;
             options.ConfirmButtonColor = Color.Danger;

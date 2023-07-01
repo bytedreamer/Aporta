@@ -7,5 +7,6 @@ namespace Aporta.Shared.Calls
         public const string Doors = "api/Doors";
         public const string Outputs = "api/Outputs";
         public const string Inputs = "api/Inputs";
+        public const string People = "/api/People";
     }
 }

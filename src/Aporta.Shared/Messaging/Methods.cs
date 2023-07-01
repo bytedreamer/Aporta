@@ -12,5 +12,7 @@ namespace Aporta.Shared.Messaging
         public const string OutputInserted = "OutputInserted";
         public const string OutputDeleted = "OutputDeleted";
         public const string OutputStateChanged = "OutputStateChanged";
+        public const string PersonInserted = "PersonInserted";
+        public const string PersonDeleted= "PersonDeleted";
     }
 }
