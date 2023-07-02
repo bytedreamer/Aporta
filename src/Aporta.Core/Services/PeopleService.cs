@@ -6,7 +6,6 @@ using Aporta.Core.Hubs;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services;
 
@@ -14,13 +13,10 @@ public class PeopleService
 {
     private readonly PersonRepository _personRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
-    private readonly ILogger<PeopleService> _logger;
 
-    public PeopleService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
-        ILogger<PeopleService> logger)
+    public PeopleService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext)
     {
         _hubContext = hubContext;
-        _logger = logger;
         _personRepository = new PersonRepository(dataAccess);
     }
     

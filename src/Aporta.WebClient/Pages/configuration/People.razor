@@ -169,9 +169,9 @@ else
             
             StateHasChanged();
         });
-        _hubConnection.On<int>(Methods.PersonDeleted, async doorId =>
+        _hubConnection.On<int>(Methods.PersonDeleted, personId =>
         {
-            var person = _people.FirstOrDefault(o => o.Id == doorId);
+            var person = _people.FirstOrDefault(o => o.Id == personId);
             if (person == null) return;
 
             _people.Remove(person);
