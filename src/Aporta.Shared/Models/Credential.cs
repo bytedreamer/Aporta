@@ -8,6 +8,6 @@ namespace Aporta.Shared.Models
         
         public string Number { get; set; }
         
-        public DateTime EnrollDate { get; set; } = DateTime.UtcNow;
+        public int LastEvent { get; set; }
     }
 }

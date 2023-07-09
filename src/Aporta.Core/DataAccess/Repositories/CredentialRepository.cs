@@ -15,12 +15,12 @@ namespace Aporta.Core.DataAccess.Repositories
         
         protected override string SqlSelect => @"select credential.id, 
                                                     credential.number, 
-                                                    credential.enroll_date as enrollDate
+                                                    credential.last_event lastEvent
                                                     from credential";
         
         protected override string SqlInsert => @"insert into credential
-                                                (number, enroll_date) values 
-                                                (@number, @enrollDate)";
+                                                (number, last_event) values 
+                                                (@number, @lastEvent)";
         
         private string SqlAssignmentInsert => @"insert into credential_assignment
                                                 (person_id, credential_id, enabled) values 
@@ -33,7 +33,7 @@ namespace Aporta.Core.DataAccess.Repositories
             return new
             {
                 number = credential.Number,
-                enrollDate = credential.EnrollDate
+                lastEvent = credential.LastEvent
             };
         }
 
@@ -60,15 +60,17 @@ namespace Aporta.Core.DataAccess.Repositories
                 "select person_id as personId, enabled from credential_assignment where credential_id = @credentialId",
                 new {credentialId = credential.Id});
 
-            if (personAssignment == null)
+            if (personAssignment != null)
             {
-                return null;
+                var personRepository = new PersonRepository(DataAccess);
+                credential.Person = await personRepository.Get((int)personAssignment.personId);
+                credential.Enabled = personAssignment.enabled > 0 && credential.Person.Enabled;
             }
-
-            var personRepository = new PersonRepository(DataAccess);
-            credential.Person = await personRepository.Get((int)personAssignment.personId);
-            credential.Enabled = personAssignment.enabled > 0 && credential.Person.Enabled;
-            
+            else
+            {
+                credential.Enabled = false;
+            }
+           
             return credential;
         }
 
@@ -83,6 +85,20 @@ namespace Aporta.Core.DataAccess.Repositories
                     personId, 
                     credentialId,
                     enabled = assignmentEnabled
+                });
+        }
+
+        public async Task UpdateLastEvent(int credentialId, int lastEventId)
+        {
+            using var connection = DataAccess.CreateDbConnection();
+            connection.Open();
+
+            await connection.ExecuteAsync(@"update credential
+                                                set last_event = @lastEventId
+                                                where id = @credentialId",
+                new
+                {
+                    credentialId, lastEventId
                 });
         }
     }

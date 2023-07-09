@@ -92,10 +92,17 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Arrange
             var events = new[]
             {
-                new Event {EndpointId = _accessEndpoint1Id, Timestamp = new DateTime(2022, 1, 1), Type = EventType.AccessDenied},
-                new Event {EndpointId = _accessEndpoint2Id, Timestamp = new DateTime(2024, 4, 4), Type = EventType.AccessGranted, Data = "{}"},
+                new Event
+                {
+                    EndpointId = _accessEndpoint1Id, Timestamp = new DateTime(2022, 1, 1), Type = EventType.AccessDenied
+                },
+                new Event
+                {
+                    EndpointId = _accessEndpoint2Id, Timestamp = new DateTime(2024, 4, 4),
+                    Type = EventType.AccessGranted, Data = "{}"
+                },
             };
-            
+
             var eventRepository = new EventRepository(_dataAccess);
             foreach (var @event in events)
             {

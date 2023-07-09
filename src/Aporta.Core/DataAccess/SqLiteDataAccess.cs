@@ -26,7 +26,8 @@ namespace Aporta.Core.DataAccess
             new _0006_AddGlobalSettingTable(),
             new _0007_AddCredentialTable(), 
             new _0008_AddPersonTable(),
-            new _0009_AddEventTable()
+            new _0009_AddEventTable(),
+            new _0010_AddLastEventToCredentialTable()
         };
 
         /// <summary>

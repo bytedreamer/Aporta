@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -21,6 +22,7 @@ namespace Aporta.Core.Services
         private readonly DoorRepository _doorRepository;
         private readonly EndpointRepository _endpointRepository;
         private readonly CredentialRepository _credentialRepository;
+        private readonly EventRepository _eventRepository;
         private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
 
         public AccessService(IDataAccess dataAccess, ExtensionService extensionService, ILogger<AccessService> logger)
@@ -28,6 +30,7 @@ namespace Aporta.Core.Services
             _doorRepository = new DoorRepository(dataAccess);
             _credentialRepository = new CredentialRepository(dataAccess);
             _endpointRepository = new EndpointRepository(dataAccess);
+            _eventRepository = new EventRepository(dataAccess);
             _extensionService = extensionService;
             _logger = logger;
         }
@@ -47,10 +50,9 @@ namespace Aporta.Core.Services
         private void ExtensionServiceOnAccessCredentialReceived(object sender,
             AccessCredentialReceivedEventArgs eventArgs)
         {
-            var existingTask = _processAccessCredential.GetOrAdd(eventArgs.AccessPoint.Id,
-                Task.Run(() => ProcessAccessRequest(eventArgs)));
+            bool foundTask = _processAccessCredential.TryGetValue(eventArgs.AccessPoint.Id, out var existingTask);
 
-            if (existingTask is { Status: TaskStatus.WaitingForActivation })
+            if (foundTask && existingTask is { Status: TaskStatus.WaitingForActivation })
             {
                 return;
             }
@@ -69,25 +71,27 @@ namespace Aporta.Core.Services
                 if (matchingDoor == null)
                 {
                     _logger.LogInformation(
-                        "Credential received from {Name} was not assigned to a door", eventArgs.AccessPoint.Name);
+                        "Credential received from '{Name}' was not assigned to a door", eventArgs.AccessPoint.Name);
                     return;
                 }
+
+                var accessPoint = endpoints.First(endpoint => endpoint.DriverEndpointId == eventArgs.AccessPoint.Id);
 
                 var matchingDoorStrike = MatchingDoorStrike(matchingDoor.DoorStrikeEndpointId, endpoints);
 
                 if (matchingDoorStrike == null)
                 {
-                    _logger.LogInformation("Door {Name} didn't have a strike assigned", matchingDoor.Name);
+                    _logger.LogInformation("Door '{Name}' didn't have a strike assigned", matchingDoor.Name);
                     return;
                 }
 
                 if (eventArgs.CardData.Count != eventArgs.BitCount)
                 {
-                    _logger.LogInformation("Door {Name} card read doesn't match bit count", matchingDoor.Name);
+                    _logger.LogInformation("Door '{Name}' card read doesn't match bit count", matchingDoor.Name);
                     return;
                 }
 
-                if (await IsAccessGranted(eventArgs.CardData, matchingDoor)) return;
+                if (await IsAccessGranted(eventArgs.CardData, matchingDoor, accessPoint)) return;
 
                 await OpenDoor(eventArgs.AccessPoint, matchingDoorStrike, 3);
             }
@@ -97,29 +101,50 @@ namespace Aporta.Core.Services
             }
         }
 
-        private async Task<bool> IsAccessGranted(BitArray cardData, Door matchingDoor)
+        private async Task<bool> IsAccessGranted(BitArray cardData, Door matchingDoor, Endpoint accessPoint)
         {
-            var builder = new StringBuilder();
+            var cardNumberBuilder = new StringBuilder();
             foreach (bool bit in cardData)
             {
-                builder.Append(bit ? "1" : "0");
+                cardNumberBuilder.Append(bit ? "1" : "0");
             }
 
-            var assignedCredential = await _credentialRepository.AssignedCredential(builder.ToString());
-            if (assignedCredential == null)
+            var assignedCredential = await _credentialRepository.AssignedCredential(cardNumberBuilder.ToString());
+            if (assignedCredential?.Person == null)
             {
-                _logger.LogInformation("Door {Name} badge requires enrollment", matchingDoor.Name);
-                await _credentialRepository.Insert(new Credential { Number = builder.ToString() });
+                _logger.LogInformation("Door '{Name}' badge requires enrollment", matchingDoor.Name);
+
+                int eventId = await _eventRepository.Insert(new Event
+                {
+                    EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
+                    Data = JsonSerializer.Serialize(new EventData
+                    {
+                        Door = matchingDoor,
+                        Endpoint = accessPoint,
+                        EventReason = EventReason.CredentialNotEnrolled
+                    })
+                });
+
+                if (assignedCredential == null)
+                {
+                    await _credentialRepository.Insert(new Credential
+                        { Number = cardNumberBuilder.ToString(), LastEvent = eventId });
+                }
+                else
+                {
+                    await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+                }
+
                 return false;
             }
 
             if (!AccessGranted())
             {
-                _logger.LogInformation("Door {Name} denied access", matchingDoor.Name);
+                _logger.LogInformation("Door '{Name}' denied access", matchingDoor.Name);
                 return false;
             }
 
-            _logger.LogInformation("Door {Name} granted access", matchingDoor.Name);
+            _logger.LogInformation("Door '{Name}' granted access", matchingDoor.Name);
             return true;
         }
 

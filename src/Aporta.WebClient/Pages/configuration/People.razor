@@ -31,7 +31,7 @@ else
                     <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
                         <TableHeader>
                             <TableRow>
-                                <TableHeaderCell>Enabled</TableHeaderCell>
+                                <TableHeaderCell>Status</TableHeaderCell>
                                 <TableHeaderCell>First Name</TableHeaderCell>
                                 <TableHeaderCell>Last Name</TableHeaderCell>
                                 <TableHeaderCell></TableHeaderCell>
@@ -58,9 +58,16 @@ else
                                         @person.LastName
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
-                                        <Button Clicked="@(async () => await RemovePerson(person.Id, $"{person.FirstName} {person.LastName}"))">
-                                            <Icon Name="IconName.Delete" Style="color: red"/>
-                                        </Button>
+                                        <Dropdown>
+                                            <DropdownToggle Color="Color.Primary">
+                                                Action
+                                            </DropdownToggle>
+                                            <DropdownMenu>
+                                                <DropdownItem Clicked="@(async () => await RemovePerson(person.Id, $"{person.FirstName} {person.LastName}"))">Delete</DropdownItem>
+                                                <DropdownDivider />
+                                                <DropdownItem Clicked="_enrollModal.Show">Enroll</DropdownItem>
+                                            </DropdownMenu>
+                                        </Dropdown>
                                     </TableRowCell>
                                 </TableRow>
                             }
@@ -71,7 +78,7 @@ else
         </Column>
     </Row>
     
-        <Modal @ref="_addPersonModal">
+    <Modal @ref="_addPersonModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
             <ModalHeader>
                 <ModalTitle>
@@ -124,6 +131,23 @@ else
         </ModalContent>
     </Modal>
     
+    <Modal @ref="_enrollModal">
+        <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    Enroll credential
+                </ModalTitle>
+                <CloseButton Clicked="@_enrollModal.Hide"/>
+            </ModalHeader>
+            <ModalBody>
+                
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@_enrollModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await Enroll())">Enroll</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
 }
 
 <Snackbar @ref="_snackbar" Color="@_snackbarColor">
@@ -146,12 +170,14 @@ else
 
     private Modal _addPersonModal;
     private Validations _addPersonValidations;
+    
+    private Modal _enrollModal;
+    
     private Snackbar _snackbar;
 #pragma warning disable CS0649
     private SnackbarColor _snackbarColor;
 #pragma warning restore CS0649
     private string _snackbarMessage = string.Empty;
-
     
     protected override async Task OnInitializedAsync()
     {
@@ -220,4 +246,10 @@ else
             await _snackbar.Show();
         }
     }
+
+    private async Task Enroll()
+    {
+        throw new NotImplementedException();
+    }
+
 }

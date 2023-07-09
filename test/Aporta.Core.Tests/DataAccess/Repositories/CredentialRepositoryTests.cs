@@ -49,11 +49,10 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
         public async Task Insert()
         { 
             // Arrange
-            DateTime currentTime = DateTime.UtcNow;
             var credentials = new[]
             {
-                new Credential {Number = "2345342"},
-                new Credential {Number = "5345234"},
+                new Credential {Number = "2345342", LastEvent = 4},
+                new Credential {Number = "5345234", LastEvent = 5},
             };
 
             var credentialRepository = new CredentialRepository(_dataAccess);
@@ -68,8 +67,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Assert
             Assert.AreEqual(2, credentials[1].Id);
             Assert.AreEqual(2, actualCredential.Id);
-            Assert.LessOrEqual(currentTime, actualCredential.EnrollDate);
-            Assert.GreaterOrEqual(DateTime.UtcNow, actualCredential.EnrollDate);
+            Assert.AreEqual(5, actualCredential.LastEvent);
             Assert.AreEqual("5345234", actualCredential.Number);
         }
         
@@ -136,8 +134,8 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             // Act 
             var actual = await credentialRepository.AssignedCredential("5345234");
 
-            // Assert
-            Assert.IsNull(actual);
+            // Assert - Null person
+            Assert.IsNull(actual.Person);
         }
         
         [Test]
@@ -255,6 +253,22 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             Assert.AreEqual("5345234", actual.Number);
             Assert.IsFalse(actual.Enabled);
             Assert.AreEqual(actual.Person.Id, people[0].Id);
+        }
+        
+        [Test]
+        public async Task UpdateLastEvent()
+        {
+            // Arrange
+            var credential = new Credential { Number = "2345342", LastEvent = 4 };
+            var credentialRepository = new CredentialRepository(_dataAccess);
+            int credentialId = await credentialRepository.Insert(credential);
+
+            // Act 
+            await credentialRepository.UpdateLastEvent(credentialId, 5);
+
+            // Assert
+            var actualCredential = await credentialRepository.Get(credentialId);
+            Assert.AreEqual(5, actualCredential.LastEvent);
         }
     }
 }

@@ -31,7 +31,6 @@ namespace Aporta.Core.DataAccess.Migrations
 
 					create unique index credential_number_uindex
 						on credential (number);
-
 					",
 				transaction: transaction);
 		}

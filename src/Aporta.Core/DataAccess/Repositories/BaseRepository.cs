@@ -30,7 +30,7 @@ namespace Aporta.Core.DataAccess.Repositories
             return await connection.QueryAsync<T>(SqlSelect);
         }
 
-        public async Task Insert(T record)
+        public async Task<int> Insert(T record)
         {
             using var connection = DataAccess.CreateDbConnection();
             connection.Open();
@@ -39,6 +39,8 @@ namespace Aporta.Core.DataAccess.Repositories
                 InsertParameters(record));
 
             InsertId(record, id);
+
+            return id;
         }
 
         protected abstract object InsertParameters(T record);
