@@ -44,6 +44,70 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
             _persistConnection?.Close();
             _persistConnection?.Dispose();
         }
+        
+        [Test]
+        public async Task Get_AssignedCredential()
+        {
+            // Arrange
+            var credentials = new[]
+            {
+                new Credential {Number = "2345342"},
+                new Credential {Number = "5345234"}
+            };
+            
+            var credentialRepository = new CredentialRepository(_dataAccess);
+            foreach (var credential in credentials)
+            {
+                await credentialRepository.Insert(credential);
+            }
+            
+            var people = new[]
+            {
+                new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
+                new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+            };
+
+            var personRepository = new PersonRepository(_dataAccess);
+            foreach (var person in people)
+            {
+                await personRepository.Insert(person);
+            }
+
+            await credentialRepository.AssignPerson(people[1].Id, credentials[1].Id, true);
+
+            // Act 
+            var actual = await credentialRepository.Get(credentials[1].Id);
+
+            // Assert
+            Assert.AreEqual("5345234", actual.Number);
+            Assert.AreEqual( people[1].Id, actual.AssignedPersonId);
+            Assert.IsTrue(actual.Enabled);
+        }
+        
+        [Test]
+        public async Task Get_UnassignedCredential()
+        {
+            // Arrange
+            var credentials = new[]
+            {
+                new Credential {Number = "2345342"},
+                new Credential {Number = "5345234"}
+            };
+            
+            var credentialRepository = new CredentialRepository(_dataAccess);
+            foreach (var credential in credentials)
+            {
+                await credentialRepository.Insert(credential);
+            }
+
+            // Act 
+            var actual = await credentialRepository.Get(credentials[1].Id);
+
+            // Assert
+            Assert.AreEqual("5345234", actual.Number);
+            Assert.IsNull(actual.AssignedPersonId);
+            Assert.IsNull(actual.Enabled);
+        }
 
         [Test]
         public async Task Insert()

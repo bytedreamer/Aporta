@@ -1,5 +1,3 @@
-using System;
-
 namespace Aporta.Shared.Models
 {
     public class Credential
@@ -9,5 +7,9 @@ namespace Aporta.Shared.Models
         public string Number { get; set; }
         
         public int LastEvent { get; set; }
+        
+        public int? AssignedPersonId { get; set; }
+        
+        public bool? Enabled { get; set; }
     }
 }

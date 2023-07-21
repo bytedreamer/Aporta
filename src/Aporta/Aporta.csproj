@@ -57,10 +57,11 @@
         <IonoPiMaxDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.IonoPiMax\bin\$(Configuration)\$(TargetFramework)\*.*" />
         <OSDPDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.OSDP\bin\$(Configuration)\$(TargetFramework)\*.*" />
         <OSDPDriverRuntimeFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.OSDP\bin\$(Configuration)\$(TargetFramework)\runtimes\**" />
+        <IonoPiDriverFiles Remove="..\Drivers\Aporta.Drivers.IonoPi\bin\Release\net6.0\**" />
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Remove="bin\**" />
+      <EmbeddedResource Remove="bin\**\*" />
     </ItemGroup>
     
     <Target Name="CopyDrivers" AfterTargets="AfterBuild">

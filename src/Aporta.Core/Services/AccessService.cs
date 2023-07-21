@@ -110,11 +110,12 @@ namespace Aporta.Core.Services
             }
 
             var assignedCredential = await _credentialRepository.AssignedCredential(cardNumberBuilder.ToString());
+            int eventId;
             if (assignedCredential?.Person == null)
             {
                 _logger.LogInformation("Door '{Name}' badge requires enrollment", matchingDoor.Name);
 
-                int eventId = await _eventRepository.Insert(new Event
+                eventId = await _eventRepository.Insert(new Event
                 {
                     EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
                     Data = JsonSerializer.Serialize(new EventData
@@ -141,10 +142,36 @@ namespace Aporta.Core.Services
             if (!AccessGranted())
             {
                 _logger.LogInformation("Door '{Name}' denied access", matchingDoor.Name);
+                
+                eventId = await _eventRepository.Insert(new Event
+                {
+                    EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
+                    Data = JsonSerializer.Serialize(new EventData
+                    {
+                        Door = matchingDoor,
+                        Endpoint = accessPoint,
+                        Person = assignedCredential.Person
+                    })
+                });
+                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+                
                 return false;
             }
 
             _logger.LogInformation("Door '{Name}' granted access", matchingDoor.Name);
+            
+            eventId = await _eventRepository.Insert(new Event
+            {
+                EndpointId = accessPoint.Id, Type = EventType.AccessGranted,
+                Data = JsonSerializer.Serialize(new EventData
+                {
+                    Door = matchingDoor,
+                    Endpoint = accessPoint,
+                    Person = assignedCredential.Person
+                })
+            });
+            await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+            
             return true;
         }
 

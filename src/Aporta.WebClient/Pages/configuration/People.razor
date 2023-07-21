@@ -59,13 +59,13 @@ else
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
                                         <Dropdown>
-                                            <DropdownToggle Color="Color.Primary">
+                                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
                                                 Action
                                             </DropdownToggle>
                                             <DropdownMenu>
-                                                <DropdownItem Clicked="@(async () => await RemovePerson(person.Id, $"{person.FirstName} {person.LastName}"))">Delete</DropdownItem>
+                                                <DropdownItem Clicked="@(async () => await RemovePerson(person))">Delete</DropdownItem>
                                                 <DropdownDivider />
-                                                <DropdownItem Clicked="_enrollModal.Show">Enroll</DropdownItem>
+                                                <DropdownItem Clicked="@(async () => await ShowEnroll(person))">Enroll</DropdownItem>
                                             </DropdownMenu>
                                         </Dropdown>
                                     </TableRowCell>
@@ -141,10 +141,35 @@ else
             </ModalHeader>
             <ModalBody>
                 
+                <Heading Size="HeadingSize.Is1">Available</Heading>
+                <Row>
+                    <Column>
+                        <Card Margin="Margin.Is4.OnY">
+                            <CardBody>
+                                <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHeaderCell>Last Event</TableHeaderCell>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        @foreach (var person in _people.OrderBy(person => person.FirstName))
+                                        {
+                                            <TableRow>
+                                                <TableRowCell>
+                                                </TableRowCell>
+                                            </TableRow>
+                                        }
+                                    </TableBody>
+                                </Table>
+                            </CardBody>
+                        </Card>
+                    </Column>
+                </Row>
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary" Clicked="@_enrollModal.Hide">Cancel</Button>
-                <Button Color="Color.Primary" Clicked="@(async () => await Enroll())">Enroll</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await EnrollPerson())">Enroll</Button>
             </ModalFooter>
         </ModalContent>
     </Modal>
@@ -165,6 +190,8 @@ else
     
     private List<Person> _people;
     private Person _addPerson;
+    
+    private List<Credential> _availableCredentials;
     
     private HubConnection _hubConnection;
 
@@ -226,9 +253,9 @@ else
         }
     }
 
-    private async Task RemovePerson(int personId, string name)
+    private async Task RemovePerson(Person person)
     {
-        if (!await MessageService.Confirm($"Are you sure you want to delete person '{name}'?", "Delete Person", options =>
+        if (!await MessageService.Confirm($"Are you sure you want to delete person '{person.FirstName} {person.LastName}'?", "Delete Person", options =>
         {
             options.ShowMessageIcon = false;
             options.ConfirmButtonColor = Color.Danger;
@@ -237,7 +264,7 @@ else
             return;
         }
 
-        string url = string.Format($"{Paths.People}/{personId}");
+        string url = string.Format($"{Paths.People}/{person.Id}");
         var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
@@ -246,10 +273,20 @@ else
             await _snackbar.Show();
         }
     }
-
-    private async Task Enroll()
+    
+    private async Task ShowEnroll(Person person)
     {
-        throw new NotImplementedException();
-    }
+        _availableCredentials = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Credentials}/unassigned");
 
+        foreach (var credential in _availableCredentials)
+        {
+            var events = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Events}/{credential.LastEvent}");
+        }
+    }
+    
+    private async Task EnrollPerson()
+    {
+        // Todo
+        await Task.CompletedTask;
+    }
 }

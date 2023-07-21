@@ -3,7 +3,9 @@ namespace Aporta.Shared.Messaging
     public static class Methods
     {
         public const string ExtensionDataChanged = "ExtensionDataChanged";
-        
+
+        public const string CredentialDeleted = "CredentialDeleted";
+        public const string CredentialInserted = "CredentialInserted";
         public const string DoorInserted = "DoorInserted";
         public const string DoorDeleted= "DoorDeleted";
         public const string InputInserted = "InputInserted";

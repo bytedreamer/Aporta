@@ -29,7 +29,9 @@ namespace Aporta
             services.AddSingleton<IDataAccess, SqLiteDataAccess>();
 
             services.AddSingleton<AccessService, AccessService>();
+            services.AddSingleton<CredentialService, CredentialService>();
             services.AddSingleton<DoorConfigurationService, DoorConfigurationService>();
+            services.AddSingleton<EventService, EventService>();
             services.AddSingleton<ExtensionService, ExtensionService>();
             services.AddSingleton<GlobalSettingService, GlobalSettingService>();
             services.AddSingleton<InputService, InputService>();
