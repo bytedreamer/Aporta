@@ -91,7 +91,7 @@ namespace Aporta.Core.DataAccess.Repositories
 
             return await connection.QueryAsync<Credential>(
                 $@"{SqlSelect} where credential_assignment.person_id = @personId",
-                new { personId = personId });
+                new { personId });
         }
 
         public async Task<IEnumerable<Credential>> UnassignedCredentials()

@@ -153,11 +153,12 @@ else
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        @foreach (var person in _people.OrderBy(person => person.FirstName))
+                                        @foreach (var availableCredential in _availableCredentials.OrderByDescending(credential => _lastEventMappings[credential.Id].Timestamp))
                                         {
                                             <TableRow>
-                                                <TableRowCell>
-                                                </TableRowCell>
+                                                <TableRowHeader>
+                                                    @_lastEventMappings[availableCredential.Id].Timestamp.ToShortDateString() @_lastEventMappings[availableCredential.Id].Timestamp.ToShortTimeString()
+                                                </TableRowHeader>
                                             </TableRow>
                                         }
                                     </TableBody>
@@ -192,7 +193,8 @@ else
     private Person _addPerson;
     
     private List<Credential> _availableCredentials;
-    
+    private Dictionary<int, Event> _lastEventMappings = new();
+
     private HubConnection _hubConnection;
 
     private Modal _addPersonModal;
@@ -274,14 +276,18 @@ else
         }
     }
     
+    // ReSharper disable once UnusedParameter.Local
     private async Task ShowEnroll(Person person)
     {
+        _lastEventMappings.Clear();
         _availableCredentials = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Credentials}/unassigned");
-
+        
         foreach (var credential in _availableCredentials)
         {
-            var events = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Events}/{credential.LastEvent}");
+            _lastEventMappings.Add(credential.Id, await Http.GetFromJsonAsync<Event>($"{Paths.Events}/{credential.LastEvent}"));
         }
+
+        await _enrollModal.Show();
     }
     
     private async Task EnrollPerson()
