@@ -59,6 +59,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IonoPiMax", "IonoPiMax", "{
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Drivers.IonoPiMax", "Drivers\Aporta.Drivers.IonoPiMax\Aporta.Drivers.IonoPiMax.csproj", "{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Virtual", "Virtual", "{41EDA034-80AD-438B-8DE2-B60F9BFA3555}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Drivers.Virtual", "Drivers\Aporta.Drivers.Virtual\Aporta.Drivers.Virtual.csproj", "{077E6508-BD59-482E-BA46-41DC33BA7179}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -175,6 +179,14 @@ Global
 		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Release|x86.ActiveCfg = Release|Any CPU
 		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D}.Release|x86.Build.0 = Release|Any CPU
+		{077E6508-BD59-482E-BA46-41DC33BA7179}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{077E6508-BD59-482E-BA46-41DC33BA7179}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{077E6508-BD59-482E-BA46-41DC33BA7179}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{077E6508-BD59-482E-BA46-41DC33BA7179}.Debug|x86.Build.0 = Debug|Any CPU
+		{077E6508-BD59-482E-BA46-41DC33BA7179}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{077E6508-BD59-482E-BA46-41DC33BA7179}.Release|Any CPU.Build.0 = Release|Any CPU
+		{077E6508-BD59-482E-BA46-41DC33BA7179}.Release|x86.ActiveCfg = Release|Any CPU
+		{077E6508-BD59-482E-BA46-41DC33BA7179}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -194,6 +206,8 @@ Global
 		{B8DCC198-4635-40C1-B709-A84DC33BFA0F} = {D7930C1C-6407-4791-AF3F-3A0884F428CC}
 		{072358EF-DD46-4015-AAF2-E5E53DF30343} = {035F16E0-E30C-43CB-8BB7-C8322283208D}
 		{82B9A5C8-6A86-42C6-96BF-E516A3A1759D} = {072358EF-DD46-4015-AAF2-E5E53DF30343}
+		{41EDA034-80AD-438B-8DE2-B60F9BFA3555} = {035F16E0-E30C-43CB-8BB7-C8322283208D}
+		{077E6508-BD59-482E-BA46-41DC33BA7179} = {41EDA034-80AD-438B-8DE2-B60F9BFA3555}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65C2BC8A-D61C-4643-BD0F-2670F6AA9D01}
