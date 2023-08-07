@@ -53,12 +53,16 @@
     </ItemGroup>
 
     <ItemGroup>
+        <DriverFiles Remove="..\Drivers\**" />
+        
         <VirtualDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.Virtual\bin\$(Configuration)\$(TargetFramework)\*.*" />
+        
         <IonoPiDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.IonoPi\bin\$(Configuration)\$(TargetFramework)\*.*" />
+
         <IonoPiMaxDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.IonoPiMax\bin\$(Configuration)\$(TargetFramework)\*.*" />
+        
         <OSDPDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.OSDP\bin\$(Configuration)\$(TargetFramework)\*.*" />
         <OSDPDriverRuntimeFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.OSDP\bin\$(Configuration)\$(TargetFramework)\runtimes\**" />
-        <IonoPiDriverFiles Remove="..\Drivers\Aporta.Drivers.IonoPi\bin\Release\net6.0\**" />
     </ItemGroup>
 
     <ItemGroup>

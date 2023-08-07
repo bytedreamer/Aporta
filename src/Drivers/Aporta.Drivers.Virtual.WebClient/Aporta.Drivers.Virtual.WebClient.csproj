@@ -2,10 +2,11 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <RazorLangVersion>3.0</RazorLangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
         <LangVersion>default</LangVersion>
     </PropertyGroup>
-    
+
     <ItemGroup>
         <PackageReference Include="Blazorise.Bootstrap" Version="1.2.4" />
         <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.2.4" />
@@ -15,9 +16,6 @@
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     </ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\..\Aporta.Shared\Aporta.Shared.csproj" />
-      <ProjectReference Include="..\Aporta.Drivers.OSDP.Shared\Aporta.Drivers.OSDP.Shared.csproj" />
-    </ItemGroup>
+
 
 </Project>

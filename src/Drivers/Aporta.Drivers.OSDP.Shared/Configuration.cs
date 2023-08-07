@@ -6,6 +6,6 @@ namespace Aporta.Drivers.OSDP.Shared
     {
         public string[] AvailablePorts { get; set; }
         
-        public List<Bus> Buses { get; set; } = new List<Bus>();
+        public List<Bus> Buses { get; set; } = new();
     }
 }

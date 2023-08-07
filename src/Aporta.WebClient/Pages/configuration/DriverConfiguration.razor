@@ -22,6 +22,10 @@ else
     {
         <Aporta.Drivers.OSDP.WebClient.Configuration @bind-ExtensionId="_extension.Id" @bind-RawConfiguration="_extension.Configuration"/>
     }
+    @if (_extension.Id == Guid.Parse("6667E442-53B2-4240-A10D-25F5E4400D83"))
+    {
+        <Aporta.Drivers.Virtual.WebClient.Configuration @bind-ExtensionId="_extension.Id" @bind-RawConfiguration="_extension.Configuration"/>
+    }
     else
     {
         <Heading Size="HeadingSize.Is3">No configuration page for this driver</Heading>

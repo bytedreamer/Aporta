@@ -13,6 +13,7 @@
       <PackageReference Update="Packaging.Targets">
         <Version>0.1.220</Version>
       </PackageReference>
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     </ItemGroup>
 
     <ItemGroup>
