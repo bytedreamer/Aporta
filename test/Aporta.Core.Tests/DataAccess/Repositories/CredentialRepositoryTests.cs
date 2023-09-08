@@ -73,7 +73,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
                 await personRepository.Insert(person);
             }
 
-            await credentialRepository.AssignPerson(people[1].Id, credentials[1].Id, true);
+            await credentialRepository.AssignPerson(credentials[1].Id, people[1].Id, true);
 
             // Act 
             var actual = await credentialRepository.Get(credentials[1].Id);
@@ -230,7 +230,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
                 await personRepository.Insert(person);
             }
 
-            await credentialRepository.AssignPerson(people[1].Id, credentials[1].Id, true);
+            await credentialRepository.AssignPerson(credentials[1].Id, people[1].Id, true);
 
             // Act 
             var actual = await credentialRepository.AssignedCredential("5345234");
@@ -269,7 +269,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
                 await personRepository.Insert(person);
             }
 
-            await credentialRepository.AssignPerson(people[0].Id, credentials[1].Id, true);
+            await credentialRepository.AssignPerson(credentials[1].Id, people[0].Id, true);
 
             // Act 
             var actual = await credentialRepository.AssignedCredential("5345234");
@@ -308,7 +308,7 @@ namespace Aporta.Core.Tests.DataAccess.Repositories
                 await personRepository.Insert(person);
             }
 
-            await credentialRepository.AssignPerson(people[0].Id, credentials[1].Id, false);
+            await credentialRepository.AssignPerson(credentials[1].Id, people[0].Id, false);
 
             // Act 
             var actual = await credentialRepository.AssignedCredential("5345234");

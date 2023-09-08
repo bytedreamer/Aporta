@@ -42,9 +42,21 @@ public class CredentialsController
         await _credentialService.Delete(credentialId);
     }
     
+    [HttpGet("assigned")]
+    public async Task<IEnumerable<Credential>> GetAssigned()
+    {
+        return await _credentialService.GetAssigned();
+    }
+    
     [HttpGet("unassigned")]
     public async Task<IEnumerable<Credential>> GetUnassigned()
     {
         return await _credentialService.GetUnassigned();
+    }
+    
+    [HttpPost("{credentialId:int}/enroll/{personId:int}")]
+    public async Task Enroll(int credentialId, int personId)
+    {
+        await _credentialService.Enroll(credentialId, personId);
     }
 }

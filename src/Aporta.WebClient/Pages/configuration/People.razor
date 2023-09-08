@@ -141,32 +141,18 @@ else
             </ModalHeader>
             <ModalBody>
                 
-                <Heading Size="HeadingSize.Is1">Available</Heading>
-                <Row>
-                    <Column>
-                        <Card Margin="Margin.Is4.OnY">
-                            <CardBody>
-                                <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHeaderCell>Last Event</TableHeaderCell>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        @foreach (var availableCredential in _availableCredentials.OrderByDescending(credential => _lastEventMappings[credential.Id].Timestamp))
-                                        {
-                                            <TableRow>
-                                                <TableRowHeader>
-                                                    @_lastEventMappings[availableCredential.Id].Timestamp.ToShortDateString() @_lastEventMappings[availableCredential.Id].Timestamp.ToShortTimeString()
-                                                </TableRowHeader>
-                                            </TableRow>
-                                        }
-                                    </TableBody>
-                                </Table>
-                            </CardBody>
-                        </Card>
-                    </Column>
-                </Row>
+                <Field>
+                    <FieldLabel>Select an badge event to enroll</FieldLabel>
+                    <FieldBody>
+                        <Select TValue="int" @bind-SelectedValue="@_enrollCredentialId">
+                            @foreach (var availableCredential in _unassignedCredentials)
+                            {
+                                <SelectItem Value="availableCredential.Item1.Id">@availableCredential.Item2.Timestamp at @availableCredential.Item3.Door.Name</SelectItem>
+                            }
+                        </Select>
+                    </FieldBody>
+                </Field>
+
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary" Clicked="@_enrollModal.Hide">Cancel</Button>
@@ -191,10 +177,11 @@ else
     
     private List<Person> _people;
     private Person _addPerson;
-    
-    private List<Credential> _availableCredentials;
-    private Dictionary<int, Event> _lastEventMappings = new();
+    private Person _enrollPerson;
+    private int _enrollCredentialId;
 
+    private readonly List<Tuple<Credential, Event, EventData>> _unassignedCredentials = new();
+    
     private HubConnection _hubConnection;
 
     private Modal _addPersonModal;
@@ -276,18 +263,22 @@ else
         }
     }
     
-    // ReSharper disable once UnusedParameter.Local
     private async Task ShowEnroll(Person person)
     {
-        _lastEventMappings.Clear();
-        _availableCredentials = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Credentials}/unassigned");
-        
-        foreach (var credential in _availableCredentials)
+        static int CompareLastEventDescending(Tuple<Credential, Event, EventData> x, Tuple<Credential, Event, EventData> y)
         {
-            _lastEventMappings.Add(credential.Id, await Http.GetFromJsonAsync<Event>($"{Paths.Events}/{credential.LastEvent}"));
+            return y.Item1.LastEvent.CompareTo(x.Item1.LastEvent);
         }
+        
+        _enrollPerson = person;
+        _unassignedCredentials.Clear();
+            
+        var unassignedCredentials = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Credentials}/unassigned");
 
-        await _enrollModal.Show();
+        foreach (var credential in unassignedCredentials)
+        {
+            var events = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Events}/{credential.LastEvent}");
+        }
     }
     
     private async Task EnrollPerson()

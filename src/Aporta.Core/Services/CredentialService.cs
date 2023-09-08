@@ -46,6 +46,18 @@ public class CredentialService
 
     public async Task<IEnumerable<Credential>> GetUnassigned()
     {
-        return await _credentialRepository.UnassignedCredentials();
+        return await _credentialRepository.Unassigned();
+    }
+
+    public async Task Enroll(int credentialId, int personId)
+    {
+        await _credentialRepository.AssignPerson(credentialId, personId);
+        
+        await _hubContext.Clients.All.SendAsync(Methods.PersonUpdated, personId);
+    }
+
+    public async Task<IEnumerable<Credential>> GetAssigned()
+    {
+        return await _credentialRepository.Assigned();
     }
 }
