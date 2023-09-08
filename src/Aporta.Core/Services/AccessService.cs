@@ -91,9 +91,10 @@ namespace Aporta.Core.Services
                     return;
                 }
 
-                if (await IsAccessGranted(eventArgs.CardData, matchingDoor, accessPoint)) return;
-
-                await OpenDoor(eventArgs.AccessPoint, matchingDoorStrike, 3);
+                if (await IsAccessGranted(eventArgs.CardData, matchingDoor, accessPoint))
+                {
+                    await OpenDoor(eventArgs.AccessPoint, matchingDoorStrike, 3);
+                }
             }
             catch (Exception exception)
             {
