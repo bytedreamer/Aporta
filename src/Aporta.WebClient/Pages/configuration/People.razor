@@ -44,11 +44,21 @@ else
                                     <TableRowCell>
                                         @if (person.Enabled)
                                         {
-                                            <Icon Name="IconName.Check" Style="color: green"/>
+                                            <Tooltip Text="Enabled" Inline="true">
+                                                <Icon Name="IconName.Check" Style="color: green"/>
+                                            </Tooltip>
                                         }
                                         else
                                         {
-                                            <Icon Name="IconName.MinusCircle" Style="color: red"/>
+                                            <Tooltip Text="Disabled" I`nline="true">
+                                                <Icon Name="IconName.MinusCircle" Style="color: red"/>
+                                            </Tooltip>
+                                        }
+                                        @if (PersonIsEnrolled(person.Id))
+                                        {
+                                            <Tooltip Text="Enabled" Inline="true">
+                                                <Icon Name="IconName.CreditCard" Margin="Margin.Is2.FromStart"/>
+                                            </Tooltip>
                                         }
                                     </TableRowCell>
                                     <TableRowHeader>
@@ -63,9 +73,13 @@ else
                                                 Action
                                             </DropdownToggle>
                                             <DropdownMenu>
+                                                @if (!PersonIsEnrolled(person.Id))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await ShowEnroll(person))">Enroll</DropdownItem>
+                                                    <DropdownDivider/>
+                                                }
+                                                
                                                 <DropdownItem Clicked="@(async () => await RemovePerson(person))">Delete</DropdownItem>
-                                                <DropdownDivider />
-                                                <DropdownItem Clicked="@(async () => await ShowEnroll(person))">Enroll</DropdownItem>
                                             </DropdownMenu>
                                         </Dropdown>
                                     </TableRowCell>
@@ -145,7 +159,7 @@ else
                     <FieldLabel>Select an badge event to enroll</FieldLabel>
                     <FieldBody>
                         <Select TValue="int" @bind-SelectedValue="@_enrollCredentialId">
-                            @foreach (var availableCredential in _unassignedCredentials)
+                            @foreach (var availableCredential in _availableCredentialsForEnrollment)
                             {
                                 <SelectItem Value="availableCredential.Item1.Id">@availableCredential.Item2.Timestamp at @availableCredential.Item3.Door.Name</SelectItem>
                             }
@@ -176,11 +190,12 @@ else
     IMessageService MessageService { get; set; }
     
     private List<Person> _people;
+    private List<Credential> _assigned;
     private Person _addPerson;
     private Person _enrollPerson;
     private int _enrollCredentialId;
 
-    private readonly List<Tuple<Credential, Event, EventData>> _unassignedCredentials = new();
+    private readonly List<Tuple<Credential, Event, EventData>> _availableCredentialsForEnrollment = new();
     
     private HubConnection _hubConnection;
 
@@ -190,14 +205,13 @@ else
     private Modal _enrollModal;
     
     private Snackbar _snackbar;
-#pragma warning disable CS0649
     private SnackbarColor _snackbarColor;
-#pragma warning restore CS0649
     private string _snackbarMessage = string.Empty;
     
     protected override async Task OnInitializedAsync()
     {
         _people = await Http.GetFromJsonAsync<List<Person>>(Paths.People);
+        _assigned = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Credentials}/assigned");
         
         _addPerson = new Person{Enabled = true};
         
@@ -211,6 +225,19 @@ else
             
             StateHasChanged();
         });
+        _hubConnection.On<int>(Methods.PersonUpdated, async personId =>
+        {
+            var person = await Http.GetFromJsonAsync<Person>($"{Paths.People}/{personId}");
+
+            int indexToReplace = _people.FindIndex(matchedPerson => matchedPerson.Id == personId);
+
+            if (indexToReplace >= 0) _people[indexToReplace] = person;
+            else _people.Add(person);
+            
+            _assigned = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Credentials}/assigned");
+
+            StateHasChanged();
+        });
         _hubConnection.On<int>(Methods.PersonDeleted, personId =>
         {
             var person = _people.FirstOrDefault(o => o.Id == personId);
@@ -220,6 +247,7 @@ else
 
             StateHasChanged();
         });
+
         await _hubConnection.StartAsync();
     }
 
@@ -231,14 +259,18 @@ else
         }
         await _addPersonModal.Hide();
 
-        string url = string.Format(Paths.People);
+        const string url = Paths.People;
         var response = await Http.PutAsync(url,
             new StringContent(JsonSerializer.Serialize(_addPerson), Encoding.UTF8, "application/json"));
-        if (!response.IsSuccessStatusCode)
+        if (response.IsSuccessStatusCode)
+        {
+            _snackbarMessage = "Successfully added person";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        else
         {
             _snackbarMessage = "Unable to add person";
             _snackbarColor = SnackbarColor.Danger;
-            await _snackbar.Show();
         }
     }
 
@@ -253,37 +285,80 @@ else
             return;
         }
 
-        string url = string.Format($"{Paths.People}/{person.Id}");
+        string url = $"{Paths.People}/{person.Id}";
         var response = await Http.DeleteAsync(url);
-        if (!response.IsSuccessStatusCode)
+
+        if (response.IsSuccessStatusCode)
+        {
+            _snackbarMessage = "Successfully removed person";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        else
         {
             _snackbarMessage = "Unable to remove person";
             _snackbarColor = SnackbarColor.Danger;
-            await _snackbar.Show();
         }
+        await _snackbar.Show();
     }
-    
+
     private async Task ShowEnroll(Person person)
     {
+        _enrollPerson = person;
+        _availableCredentialsForEnrollment.Clear();
+
+        string url = $"{Paths.Credentials}/unassigned";
+        var unassignedCredentials = await Http.GetFromJsonAsync<List<Credential>>(url);
+        if (unassignedCredentials.Count == 0)
+        {
+            _snackbarMessage = "No unassigned credentials are available. Swipe an unassigned card at a reader.";
+            _snackbarColor = SnackbarColor.Warning;
+            await _snackbar.Show();
+            return;
+        }
+
+        foreach (var credential in unassignedCredentials)
+        {
+            url = $"{Paths.Events}/{credential.LastEvent}";
+            var lastEvent = await Http.GetFromJsonAsync<Event>(url);
+            var eventData = JsonSerializer.Deserialize<EventData>(lastEvent.Data);
+            _availableCredentialsForEnrollment.Add(new Tuple<Credential, Event, EventData>(credential, lastEvent, eventData));
+        }
+
+        _availableCredentialsForEnrollment.Sort(CompareLastEventDescending);
+
+        _enrollCredentialId = _availableCredentialsForEnrollment.First().Item1.Id;
+
+        await _enrollModal.Show();
+        return;
+
         static int CompareLastEventDescending(Tuple<Credential, Event, EventData> x, Tuple<Credential, Event, EventData> y)
         {
             return y.Item1.LastEvent.CompareTo(x.Item1.LastEvent);
         }
-        
-        _enrollPerson = person;
-        _unassignedCredentials.Clear();
-            
-        var unassignedCredentials = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Credentials}/unassigned");
-
-        foreach (var credential in unassignedCredentials)
-        {
-            var events = await Http.GetFromJsonAsync<List<Credential>>($"{Paths.Events}/{credential.LastEvent}");
-        }
     }
-    
+
     private async Task EnrollPerson()
     {
-        // Todo
-        await Task.CompletedTask;
+        await _enrollModal.Hide();
+        
+        string url = $"{Paths.Credentials}/{_enrollCredentialId}/enroll/{_enrollPerson.Id}";
+        var response = await Http.PostAsync(url, new StringContent(string.Empty));
+
+        if (response.IsSuccessStatusCode)
+        {
+            _snackbarMessage = "Successfully enrolled person";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        else
+        {
+            _snackbarMessage = "Unable to enroll person";
+            _snackbarColor = SnackbarColor.Danger;
+        }
+        await _snackbar.Show();
+    }
+
+    private bool PersonIsEnrolled(int personId)
+    {
+        return _assigned.Any(credential => credential.AssignedPersonId == personId);
     }
 }

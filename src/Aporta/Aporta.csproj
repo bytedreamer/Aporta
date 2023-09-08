@@ -53,8 +53,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <DriverFiles Remove="..\Drivers\**" />
-        
         <VirtualDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.Virtual\bin\$(Configuration)\$(TargetFramework)\*.*" />
         
         <IonoPiDriverFiles Include="$(ProjectDir)\..\Drivers\Aporta.Drivers.IonoPi\bin\$(Configuration)\$(TargetFramework)\*.*" />

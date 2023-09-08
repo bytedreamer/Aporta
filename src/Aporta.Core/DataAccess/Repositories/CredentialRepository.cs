@@ -34,6 +34,7 @@ namespace Aporta.Core.DataAccess.Repositories
                                                set last_event = @lastEventId
                                                where id = @credentialId";
 
+        private string SqlAssignedCredentials => SqlSelect + @" where credential.id IN (SELECT credential_id FROM credential_assignment)";
         private string SqlUnassignedCredentials => SqlSelect + @" where credential.id NOT IN (SELECT credential_id FROM credential_assignment)";
 
         protected override string SqlDelete => @"delete from credential where id = @id";
@@ -94,7 +95,15 @@ namespace Aporta.Core.DataAccess.Repositories
                 new { personId });
         }
 
-        public async Task<IEnumerable<Credential>> UnassignedCredentials()
+        public async Task<IEnumerable<Credential>> Assigned()
+        {
+            using var connection = DataAccess.CreateDbConnection();
+            connection.Open();
+
+            return await connection.QueryAsync<Credential>(SqlAssignedCredentials);
+        }
+        
+        public async Task<IEnumerable<Credential>> Unassigned()
         {
             using var connection = DataAccess.CreateDbConnection();
             connection.Open();
@@ -102,7 +111,7 @@ namespace Aporta.Core.DataAccess.Repositories
             return await connection.QueryAsync<Credential>(SqlUnassignedCredentials);
         }
         
-        public async Task AssignPerson(int personId, int credentialId, bool assignmentEnabled)
+        public async Task AssignPerson(int credentialId, int personId, bool enabled = true)
         {
             using var connection = DataAccess.CreateDbConnection();
             connection.Open();
@@ -110,9 +119,9 @@ namespace Aporta.Core.DataAccess.Repositories
             await connection.ExecuteAsync(SqlAssignmentInsert,
                 new
                 {
-                    personId, 
                     credentialId,
-                    enabled = assignmentEnabled
+                    personId, 
+                    enabled
                 });
         }
         
