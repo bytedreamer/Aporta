@@ -13,76 +13,75 @@ using Moq;
 using NUnit.Framework;
 using SignalR_UnitTestingSupportCommon.IHubContextSupport;
 
-namespace Aporta.Core.Tests.Services
+namespace Aporta.Core.Tests.Services;
+
+[TestFixture]
+public class ExtensionServiceTests
 {
-    [TestFixture]
-    public class ExtensionServiceTests
+    private readonly Guid _extensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
+    private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
+    private readonly ILoggerFactory _loggerFactory = new NullLoggerFactory();
+    private IDbConnection _persistConnection;
+        
+    [SetUp]
+    public async Task Setup()
     {
-        private readonly Guid _extensionId = Guid.Parse("225B748E-FB15-4428-92F7-218BB4CC2813");
-        private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
-        private readonly ILoggerFactory _loggerFactory = new NullLoggerFactory();
-        private IDbConnection _persistConnection;
+        _persistConnection = _dataAccess.CreateDbConnection();
+        _persistConnection.Open();
+
+        await _dataAccess.UpdateSchema();
+    }
         
-        [SetUp]
-        public async Task Setup()
-        {
-            _persistConnection = _dataAccess.CreateDbConnection();
-            _persistConnection.Open();
+    [TearDown]
+    public void TearDown()
+    {
+        _persistConnection?.Close();
+        _persistConnection?.Dispose();
+    }
 
-            await _dataAccess.UpdateSchema();
-        }
-        
-        [TearDown]
-        public void TearDown()
-        {
-            _persistConnection?.Close();
-            _persistConnection?.Dispose();
-        }
+    [Test]
+    public async Task Startup()
+    {
+        // Arrange
+        var extensionService = new ExtensionService(_dataAccess,
+                new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
+                _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
+            {CurrentDirectory = Environment.CurrentDirectory};
 
-        [Test]
-        public async Task Startup()
-        {
-            // Arrange
-            var extensionService = new ExtensionService(_dataAccess,
-                    new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
-                    _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
-                {CurrentDirectory = Environment.CurrentDirectory};
+        // Act
+        await extensionService.Startup();
 
-            // Act
-            await extensionService.Startup();
-
-            // Assert
-            Assert.AreEqual(1, extensionService.Extensions.Count());
-            Assert.IsFalse(extensionService.Extensions.First().Loaded);
+        // Assert
+        Assert.AreEqual(1, extensionService.Extensions.Count());
+        Assert.IsFalse(extensionService.Extensions.First().Loaded);
             
-            extensionService.Shutdown();
-        }
+        extensionService.Shutdown();
+    }
 
-        [Test]
-        public async Task Enable()
-        {
-            // Arrange
-            var hubContextSupport = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
-            var extensionService = new ExtensionService(_dataAccess, hubContextSupport.IHubContextMock.Object,
-                    _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
-                {CurrentDirectory = Environment.CurrentDirectory};
-            await extensionService.Startup();
+    [Test]
+    public async Task Enable()
+    {
+        // Arrange
+        var hubContextSupport = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
+        var extensionService = new ExtensionService(_dataAccess, hubContextSupport.IHubContextMock.Object,
+                _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
+            {CurrentDirectory = Environment.CurrentDirectory};
+        await extensionService.Startup();
 
-            // Act
-            await extensionService.EnableExtension(_extensionId, true);
+        // Act
+        await extensionService.EnableExtension(_extensionId, true);
 
-            // Assert
-            Assert.That(() => extensionService.Extensions.First().Loaded,
-                Is.True.After(1000, 100));
-            hubContextSupport.ClientsAllMock
-                .Verify(
-                    x => x.SendCoreAsync(
-                        Methods.ExtensionDataChanged, 
-                        new object[] {_extensionId}, 
-                        It.IsAny<CancellationToken>())
-                );
+        // Assert
+        Assert.That(() => extensionService.Extensions.First().Loaded,
+            Is.True.After(1000, 100));
+        hubContextSupport.ClientsAllMock
+            .Verify(
+                x => x.SendCoreAsync(
+                    Methods.ExtensionDataChanged, 
+                    new object[] {_extensionId}, 
+                    It.IsAny<CancellationToken>())
+            );
             
-            extensionService.Shutdown();
-        }
+        extensionService.Shutdown();
     }
 }

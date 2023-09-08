@@ -3,51 +3,50 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using NUnit.Framework;
 
-namespace Aporta.Core.Tests.DataAccess
+namespace Aporta.Core.Tests.DataAccess;
+
+[TestFixture]
+public class MigrationTests
 {
-    [TestFixture]
-    public class MigrationTests
+    private const int CurrentVersion = 10;
+    private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
+    private IDbConnection _persistConnection;
+        
+    [SetUp]
+    public void Setup()
     {
-        private const int CurrentVersion = 9;
-        private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
-        private IDbConnection _persistConnection;
+        _persistConnection = _dataAccess.CreateDbConnection();
+        _persistConnection.Open();
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        _persistConnection?.Close();
+        _persistConnection?.Dispose();
+    }
+
+    [Test]
+    public async Task UpdateSchema_CreateFromMissingDatabase()
+    {
+        // Arrange
+        // Act 
+        await _dataAccess.UpdateSchema();
+
+        // Assert
+        Assert.AreEqual(CurrentVersion, await _dataAccess.CurrentVersion());
+    }
         
-        [SetUp]
-        public void Setup()
-        {
-            _persistConnection = _dataAccess.CreateDbConnection();
-            _persistConnection.Open();
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            _persistConnection?.Close();
-            _persistConnection?.Dispose();
-        }
-
-        [Test]
-        public async Task UpdateSchema_CreateFromMissingDatabase()
-        {
-            // Arrange
-            // Act 
-            await _dataAccess.UpdateSchema();
-
-            // Assert
-            Assert.AreEqual(CurrentVersion, await _dataAccess.CurrentVersion());
-        }
-        
-        [Test]
-        public async Task UpdateSchema_RunMultipleTimes()
-        {
-            // Arrange
-            await _dataAccess.UpdateSchema();
+    [Test]
+    public async Task UpdateSchema_RunMultipleTimes()
+    {
+        // Arrange
+        await _dataAccess.UpdateSchema();
             
-            // Act 
-            await _dataAccess.UpdateSchema();
+        // Act 
+        await _dataAccess.UpdateSchema();
 
-            // Assert
-            Assert.AreEqual(CurrentVersion, await _dataAccess.CurrentVersion());
-        }
+        // Assert
+        Assert.AreEqual(CurrentVersion, await _dataAccess.CurrentVersion());
     }
 }

@@ -4,53 +4,52 @@ using Aporta.Core.Services;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Aporta.Controllers
+namespace Aporta.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class InputsController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class InputsController : ControllerBase
+    private readonly InputService _inputService;
+
+    public InputsController(InputService inputService)
     {
-        private readonly InputService _inputService;
+        _inputService = inputService;
+    }
+        
+    [HttpGet]
+    public async Task<IEnumerable<Input>> Get()
+    {
+        return await _inputService.GetAll();
+    }
+        
+    [HttpGet("{inputId}")]
+    public async Task<Input> Get(int inputId)
+    {
+        return await _inputService.Get(inputId);
+    }
 
-        public InputsController(InputService inputService)
-        {
-            _inputService = inputService;
-        }
+    [HttpPut]
+    public async Task Put([FromBody]Input input)
+    {
+        await _inputService.Insert(input);
+    }
         
-        [HttpGet]
-        public async Task<IEnumerable<Input>> Get()
-        {
-            return await _inputService.GetAll();
-        }
+    [HttpDelete("{inputId:int}")]
+    public async Task Delete(int inputId)
+    {
+        await _inputService.Delete(inputId);
+    }
         
-        [HttpGet("{inputId}")]
-        public async Task<Input> Get(int inputId)
-        {
-            return await _inputService.Get(inputId);
-        }
-
-        [HttpPut]
-        public async Task Put([FromBody]Input input)
-        {
-            await _inputService.Insert(input);
-        }
+    [HttpGet("available")]
+    public async Task<IEnumerable<Endpoint>> Available()
+    {
+        return await _inputService.AvailableMonitorPoints();
+    }
         
-        [HttpDelete("{inputId:int}")]
-        public async Task Delete(int inputId)
-        {
-            await _inputService.Delete(inputId);
-        }
-        
-        [HttpGet("available")]
-        public async Task<IEnumerable<Endpoint>> Available()
-        {
-            return await _inputService.AvailableMonitorPoints();
-        }
-        
-        [HttpGet("state/{inputId:int}")]
-        public async Task<bool?> GetState(int inputId)
-        {
-            return await _inputService.GetState(inputId);
-        }
+    [HttpGet("state/{inputId:int}")]
+    public async Task<bool?> GetState(int inputId)
+    {
+        return await _inputService.GetState(inputId);
     }
 }

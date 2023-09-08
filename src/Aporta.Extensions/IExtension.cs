@@ -1,7 +1,6 @@
-namespace Aporta.Extensions
+namespace Aporta.Extensions;
+
+public interface IExtension
 {
-    public interface IExtension
-    {
-        string Name { get; }
-    }
+    string Name { get; }
 }

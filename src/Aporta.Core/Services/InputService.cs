@@ -9,84 +9,83 @@ using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
 
-namespace Aporta.Core.Services
+namespace Aporta.Core.Services;
+
+public class InputService
 {
-    public class InputService
+    private readonly InputRepository _inputRepository;
+    private readonly DoorRepository _doorRepository;
+    private readonly EndpointRepository _endpointRepository;
+    private readonly IHubContext<DataChangeNotificationHub> _hubContext;
+    private readonly ExtensionService _extensionService;
+
+    public InputService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
+        ExtensionService extensionService)
     {
-        private readonly InputRepository _inputRepository;
-        private readonly DoorRepository _doorRepository;
-        private readonly EndpointRepository _endpointRepository;
-        private readonly IHubContext<DataChangeNotificationHub> _hubContext;
-        private readonly ExtensionService _extensionService;
+        _hubContext = hubContext;
+        _extensionService = extensionService;
+        _doorRepository = new DoorRepository(dataAccess);
+        _inputRepository = new InputRepository(dataAccess);
+        _endpointRepository = new EndpointRepository(dataAccess);
 
-        public InputService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
-            ExtensionService extensionService)
+        _extensionService.StateChanged += ExtensionServiceOnStateChanged;
+    }
+
+    private async void ExtensionServiceOnStateChanged(object sender, StateChangedEventArgs eventArgs)
+    {
+        try
         {
-            _hubContext = hubContext;
-            _extensionService = extensionService;
-            _doorRepository = new DoorRepository(dataAccess);
-            _inputRepository = new InputRepository(dataAccess);
-            _endpointRepository = new EndpointRepository(dataAccess);
+            var input = await _inputRepository.GetForDriverId(eventArgs.Endpoint.Id);
 
-            _extensionService.StateChanged += ExtensionServiceOnStateChanged;
+            await _hubContext.Clients.All.SendAsync(Methods.InputStateChanged, input.Id,
+                eventArgs.State);
         }
-
-        private async void ExtensionServiceOnStateChanged(object sender, StateChangedEventArgs eventArgs)
+        catch
         {
-            try
-            {
-                var input = await _inputRepository.GetForDriverId(eventArgs.Endpoint.Id);
-
-                await _hubContext.Clients.All.SendAsync(Methods.InputStateChanged, input.Id,
-                    eventArgs.State);
-            }
-            catch
-            {
-                // ignored
-            }
+            // ignored
         }
+    }
 
-        public async Task<IEnumerable<Input>> GetAll()
-        {
-            return await _inputRepository.GetAll();
-        }
+    public async Task<IEnumerable<Input>> GetAll()
+    {
+        return await _inputRepository.GetAll();
+    }
         
-        public async Task<Input> Get(int inputId)
-        {
-            return await _inputRepository.Get(inputId);
-        }
+    public async Task<Input> Get(int inputId)
+    {
+        return await _inputRepository.Get(inputId);
+    }
 
-        public async Task Insert(Input input)
-        {
-            await _inputRepository.Insert(input);
+    public async Task Insert(Input input)
+    {
+        await _inputRepository.Insert(input);
             
-            await _hubContext.Clients.All.SendAsync(Methods.InputInserted, input.Id);
-        }
+        await _hubContext.Clients.All.SendAsync(Methods.InputInserted, input.Id);
+    }
 
-        public async Task Delete(int id)
-        {
-            await _inputRepository.Delete(id);
+    public async Task Delete(int id)
+    {
+        await _inputRepository.Delete(id);
             
-            await _hubContext.Clients.All.SendAsync(Methods.InputDeleted, id);
-        }
+        await _hubContext.Clients.All.SendAsync(Methods.InputDeleted, id);
+    }
 
-        public async Task<IEnumerable<Endpoint>> AvailableMonitorPoints()
-        {
-            var endpoints = await _endpointRepository.GetAll();
-            var inputs = await _inputRepository.GetAll();
-            var doors = (await _doorRepository.GetAll()).ToArray();
-            return endpoints.Where(endpoint =>
-                endpoint.Type == EndpointType.Input &&
-                !inputs.Select(input => input.EndpointId).Contains(endpoint.Id) && 
-                !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id) &&
-                !doors.Select(door => door.RequestToExitEndpointId).Contains(endpoint.Id));
-        }
+    public async Task<IEnumerable<Endpoint>> AvailableMonitorPoints()
+    {
+        var endpoints = await _endpointRepository.GetAll();
+        var inputs = await _inputRepository.GetAll();
+        var doors = (await _doorRepository.GetAll()).ToArray();
+        return endpoints.Where(endpoint =>
+            endpoint.Type == EndpointType.Input &&
+            !inputs.Select(input => input.EndpointId).Contains(endpoint.Id) && 
+            !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id) &&
+            !doors.Select(door => door.RequestToExitEndpointId).Contains(endpoint.Id));
+    }
 
-        public async Task<bool?> GetState(int inputId)
-        {
-            var input = await _inputRepository.Get(inputId);
-            var endpoint = await _endpointRepository.Get(input.EndpointId);
-            return await _extensionService.GetMonitorPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).GetState();
-        }
+    public async Task<bool?> GetState(int inputId)
+    {
+        var input = await _inputRepository.Get(inputId);
+        var endpoint = await _endpointRepository.Get(input.EndpointId);
+        return await _extensionService.GetMonitorPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).GetState();
     }
 }

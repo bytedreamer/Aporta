@@ -5,39 +5,38 @@ using Aporta.Drivers.OSDP.Shared;
 using OSDP.Net;
 using OSDP.Net.Model.CommandData;
 
-namespace Aporta.Drivers.OSDP
+namespace Aporta.Drivers.OSDP;
+
+public class OSDPAccessPoint : IAccessPoint
 {
-    public class OSDPAccessPoint : IAccessPoint
+    private readonly Device _device;
+    private readonly Reader _reader;
+    private readonly ControlPanel _panel;
+    private readonly Guid _connectionId;
+
+    public OSDPAccessPoint(Guid extensionId, Device device, Reader reader, ControlPanel panel, Guid connectionId)
     {
-        private readonly Device _device;
-        private readonly Reader _reader;
-        private readonly ControlPanel _panel;
-        private readonly Guid _connectionId;
+        _device = device;
+        _reader = reader;
+        _panel = panel;
+        _connectionId = connectionId;
+        ExtensionId = extensionId;
+    }
 
-        public OSDPAccessPoint(Guid extensionId, Device device, Reader reader, ControlPanel panel, Guid connectionId)
-        {
-            _device = device;
-            _reader = reader;
-            _panel = panel;
-            _connectionId = connectionId;
-            ExtensionId = extensionId;
-        }
+    public string Name => _reader.Name;
 
-        public string Name => _reader.Name;
-
-        public Guid ExtensionId { get; }
+    public Guid ExtensionId { get; }
         
-        public string Id => $"{_device.PortName}:{_device.Address}:R{_reader.Number}";
+    public string Id => $"{_device.PortName}:{_device.Address}:R{_reader.Number}";
         
-        public Task<bool> GetOnlineStatus()
-        {
-            return Task.FromResult(_panel.IsOnline(_connectionId, _device.Address));
-        }
+    public Task<bool> GetOnlineStatus()
+    {
+        return Task.FromResult(_panel.IsOnline(_connectionId, _device.Address));
+    }
 
-        public async Task Beep()
-        {
-            await _panel.ReaderBuzzerControl(_connectionId, _device.Address,
-                new ReaderBuzzerControl(_reader.Number, ToneCode.Default, 1, 1, 3));
-        }
+    public async Task Beep()
+    {
+        await _panel.ReaderBuzzerControl(_connectionId, _device.Address,
+            new ReaderBuzzerControl(_reader.Number, ToneCode.Default, 1, 1, 3));
     }
 }

@@ -1,14 +1,13 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Aporta.Extensions.Endpoint
-{
-    public interface IEndpoint : IExtension
-    {
-        Guid ExtensionId { get; }
-        
-        string Id { get; }
+namespace Aporta.Extensions.Endpoint;
 
-        Task<bool> GetOnlineStatus();
-    }
+public interface IEndpoint : IExtension
+{
+    Guid ExtensionId { get; }
+        
+    string Id { get; }
+
+    Task<bool> GetOnlineStatus();
 }

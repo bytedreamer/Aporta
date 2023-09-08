@@ -62,8 +62,7 @@
             Name="Aporta" 
             Port="8443" 
             Protocol="tcp" 
-            Scope="any" 
-            Program="$(var.BasePath)\Aporta.exe" 
+            Scope="any"
             IgnoreFailure="yes"/>
       </Component>
 

@@ -17,6 +17,9 @@ public class Event
 
 public enum EventType
 {
+    [Description("Access Granted")]
     AccessGranted,
+    
+    [Description("Access Denied")]
     AccessDenied
 }

@@ -14,69 +14,71 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Aporta
+namespace Aporta;
+
+public class Startup
 {
-    public class Startup
+    // This method gets called by the runtime. Use this method to add services to the container.
+    // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
+    public void ConfigureServices(IServiceCollection services)
     {
-        // This method gets called by the runtime. Use this method to add services to the container.
-        // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
-        public void ConfigureServices(IServiceCollection services)
+        services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(
+            Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, "Data")));
+        services.AddSingleton<IDataEncryption, DataEncryptor>();
+
+        services.AddSingleton<IDataAccess, SqLiteDataAccess>();
+
+        services.AddSingleton<AccessService, AccessService>();
+        services.AddSingleton<CredentialService, CredentialService>();
+        services.AddSingleton<DoorConfigurationService, DoorConfigurationService>();
+        services.AddSingleton<EventService, EventService>();
+        services.AddSingleton<ExtensionService, ExtensionService>();
+        services.AddSingleton<GlobalSettingService, GlobalSettingService>();
+        services.AddSingleton<InputService, InputService>();
+        services.AddSingleton<OutputService, OutputService>();
+        services.AddSingleton<PeopleService, PeopleService>();
+
+        services.AddSignalR();
+        services.AddControllersWithViews();
+        services.AddRazorPages();
+        services.AddResponseCompression(opts =>
         {
-            services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(
-                Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, "Data")));
-            services.AddSingleton<IDataEncryption, DataEncryptor>();
+            opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+                new[] {"application/octet-stream"});
+        });
+    }
 
-            services.AddSingleton<IDataAccess, SqLiteDataAccess>();
-
-            services.AddSingleton<AccessService, AccessService>();
-            services.AddSingleton<DoorConfigurationService, DoorConfigurationService>();
-            services.AddSingleton<ExtensionService, ExtensionService>();
-            services.AddSingleton<GlobalSettingService, GlobalSettingService>();
-            services.AddSingleton<InputService, InputService>();
-            services.AddSingleton<OutputService, OutputService>();
-
-            services.AddSignalR();
-            services.AddControllersWithViews();
-            services.AddRazorPages();
-            services.AddResponseCompression(opts =>
-            {
-                opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-                    new[] {"application/octet-stream"});
-            });
+    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        app.UseResponseCompression();
+            
+        if (env.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+            app.UseWebAssemblyDebugging();
+        }
+        else
+        {
+            app.UseExceptionHandler("/Error");
+            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+            app.UseHsts();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        app.UseHttpsRedirection();
+        app.UseBlazorFrameworkFiles();
+        app.UseStaticFiles();
+
+        app.UseRouting();
+            
+        app.UseEndpoints(endpoints =>
         {
-            app.UseResponseCompression();
-            
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-                app.UseWebAssemblyDebugging();
-            }
-            else
-            {
-                app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
-            }
-
-            app.UseHttpsRedirection();
-            app.UseBlazorFrameworkFiles();
-            app.UseStaticFiles();
-
-            app.UseRouting();
-            
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapRazorPages();
-                endpoints.MapControllers();
+            endpoints.MapRazorPages();
+            endpoints.MapControllers();
                 
-                endpoints.MapFallbackToFile("index.html");
+            endpoints.MapFallbackToFile("index.html");
                 
-                endpoints.MapHub<DataChangeNotificationHub>(Locations.DataChangeNotification);
-            });
-        }
+            endpoints.MapHub<DataChangeNotificationHub>(Locations.DataChangeNotification);
+        });
     }
 }

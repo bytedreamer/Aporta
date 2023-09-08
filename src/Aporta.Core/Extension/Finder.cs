@@ -6,57 +6,56 @@ using System.Reflection;
 using Aporta.Extensions;
 using Microsoft.Extensions.Logging;
 
-namespace Aporta.Core.Extension
+namespace Aporta.Core.Extension;
+
+public class Finder<TExtension> where TExtension : IExtension
 {
-    public class Finder<TExtension> where TExtension : IExtension
-    {
-        private const string AssemblySearchPattern = "Aporta.*.dll";
+    private const string AssemblySearchPattern = "Aporta.*.dll";
         
-        public IEnumerable<string> FindAssembliesWithPlugins(string path, ILogger<Finder<TExtension>> logger)
-        {
-            return FindExtensionsInAssemblies(AssemblyPaths(path).Where(assemblyPath =>
-                !assemblyPath.EndsWith($"{AportaAssemblyLoadContext.ExtensionsName}.dll")), logger);
-        }
+    public IEnumerable<string> FindAssembliesWithPlugins(string path, ILogger<Finder<TExtension>> logger)
+    {
+        return FindExtensionsInAssemblies(AssemblyPaths(path).Where(assemblyPath =>
+            !assemblyPath.EndsWith($"{AportaAssemblyLoadContext.ExtensionsName}.dll")), logger);
+    }
 
-        private static IEnumerable<string> AssemblyPaths(string path)
-        {
-            return Directory.GetFiles(path, AssemblySearchPattern,
-                new EnumerationOptions {RecurseSubdirectories = true});
-        }
+    private static IEnumerable<string> AssemblyPaths(string path)
+    {
+        return Directory.GetFiles(path, AssemblySearchPattern,
+            new EnumerationOptions {RecurseSubdirectories = true});
+    }
 
-        private static IEnumerable<string> FindExtensionsInAssemblies(IEnumerable<string> assemblyPaths, ILogger<Finder<TExtension>> logger)
-        {
-            var extensionAssemblyLocations = new List<string>();
+    private static IEnumerable<string> FindExtensionsInAssemblies(IEnumerable<string> assemblyPaths, ILogger<Finder<TExtension>> logger)
+    {
+        var extensionAssemblyLocations = new List<string>();
 
-            foreach (var assemblyPath in assemblyPaths)
+        foreach (var assemblyPath in assemblyPaths)
+        {
+            try
             {
-                try
-                {
-                    var assemblyContext = new AportaAssemblyLoadContext(assemblyPath);
+                var assemblyContext = new AportaAssemblyLoadContext(assemblyPath);
 
-                    var assembly = assemblyContext.LoadFromAssemblyPath(assemblyPath);
-                    if (GetExtensionTypes(assembly).Any())
-                    {
-                        extensionAssemblyLocations.Add(assembly.Location);
-                    }
-
-                    assemblyContext.Unload();
-                }
-                catch (Exception exception)
+                var assembly = assemblyContext.LoadFromAssemblyPath(assemblyPath);
+                if (GetExtensionTypes(assembly).Any())
                 {
-                    logger.LogError(exception, "Unable to load assembly {AssemblyPath}", assemblyPath);
+                    extensionAssemblyLocations.Add(assembly.Location);
                 }
+
+                assemblyContext.Unload();
             }
-
-            return extensionAssemblyLocations;
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Unable to load assembly {AssemblyPath}", assemblyPath);
+            }
         }
 
-        public static IEnumerable<Type> GetExtensionTypes(Assembly assembly)
-        {
-            return assembly.GetTypes()
-                .Where(type =>
-                    !type.IsAbstract &&
-                    typeof(TExtension).IsAssignableFrom(type));
-        }
+        return extensionAssemblyLocations;
+    }
+
+    public static IEnumerable<Type> GetExtensionTypes(Assembly assembly)
+    {
+        return assembly.GetTypes()
+            .Where(type =>
+                !type.IsAbstract &&
+                typeof(TExtension).IsAssignableFrom(type));
     }
 }

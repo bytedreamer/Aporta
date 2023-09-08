@@ -3,18 +3,17 @@
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
         <RazorLangVersion>3.0</RazorLangVersion>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
-
-
+    
     <ItemGroup>
-        <PackageReference Include="Blazorise.Bootstrap" Version="1.2.2" />
-        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.2.2" />
-        <PackageReference Include="Blazorise.Snackbar" Version="1.2.2" />
-        <PackageReference Include="Microsoft.AspNetCore.Components" Version="6.0.16" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="6.0.16" />
+        <PackageReference Include="Blazorise.Bootstrap" Version="1.2.4" />
+        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.2.4" />
+        <PackageReference Include="Blazorise.Snackbar" Version="1.2.4" />
+        <PackageReference Include="Microsoft.AspNetCore.Components" Version="6.0.19" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="6.0.19" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     </ItemGroup>
-
 
     <ItemGroup>
       <ProjectReference Include="..\..\Aporta.Shared\Aporta.Shared.csproj" />

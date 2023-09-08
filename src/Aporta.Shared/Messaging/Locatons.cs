@@ -1,7 +1,6 @@
-namespace Aporta.Shared.Messaging
+namespace Aporta.Shared.Messaging;
+
+public static class Locations
 {
-    public static class Locations
-    {
-        public const string DataChangeNotification = "/signalR/dataChangeNotification";
-    }
+    public const string DataChangeNotification = "/signalR/dataChangeNotification";
 }

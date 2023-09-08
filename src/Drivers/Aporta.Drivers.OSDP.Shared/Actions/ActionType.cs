@@ -1,10 +1,9 @@
-namespace Aporta.Drivers.OSDP.Shared.Actions
+namespace Aporta.Drivers.OSDP.Shared.Actions;
+
+public enum ActionType
 {
-    public enum ActionType
-    {
-        AddBus,
-        RemoveBus,
-        AddUpdateDevice,
-        RemoveDevice
-    }
+    AddBus,
+    RemoveBus,
+    AddUpdateDevice,
+    RemoveDevice
 }

@@ -1,13 +1,12 @@
 using Aporta.Extensions.Endpoint;
 // ReSharper disable UnassignedGetOnlyAutoProperty
 
-namespace Aporta.Extensions.Hardware
+namespace Aporta.Extensions.Hardware;
+
+// ReSharper disable once ClassNeverInstantiated.Global
+public class OnlineStatusChangedEventArgs
 {
-    // ReSharper disable once ClassNeverInstantiated.Global
-    public class OnlineStatusChangedEventArgs
-    {
-        public IEndpoint Endpoint { get; }
+    public IEndpoint Endpoint { get; }
         
-        public bool IsOnline { get; }
-    }
+    public bool IsOnline { get; }
 }

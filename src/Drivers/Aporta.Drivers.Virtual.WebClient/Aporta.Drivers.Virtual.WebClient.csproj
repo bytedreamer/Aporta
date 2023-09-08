@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>default</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Blazorise.Bootstrap" Version="1.2.4" />
+        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.2.4" />
+        <PackageReference Include="Blazorise.Snackbar" Version="1.2.4" />
+        <PackageReference Include="Microsoft.AspNetCore.Components" Version="6.0.19" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="6.0.19" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    </ItemGroup>
+
+
+
+</Project>
