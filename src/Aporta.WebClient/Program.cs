@@ -7,27 +7,26 @@ using Blazorise.Icons.FontAwesome;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Aporta.WebClient
+namespace Aporta.WebClient;
+
+public class Program
 {
-    public class Program
+    public static async Task Main(string[] args)
     {
-        public static async Task Main(string[] args)
-        {
-            var builder = WebAssemblyHostBuilder.CreateDefault(args);
+        var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-            builder.Services
-                .AddBlazorise( options =>
-                {
-                    options.Immediate = true;
-                } )
-                .AddBootstrapProviders()
-                .AddFontAwesomeIcons();
+        builder.Services
+            .AddBlazorise( options =>
+            {
+                options.Immediate = true;
+            } )
+            .AddBootstrapProviders()
+            .AddFontAwesomeIcons();
 
-            builder.RootComponents.Add<App>("app");
-            builder.Services.AddScoped(_ => new HttpClient
-                { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+        builder.RootComponents.Add<App>("app");
+        builder.Services.AddScoped(_ => new HttpClient
+            { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-            await builder.Build().RunAsync();
-        }
+        await builder.Build().RunAsync();
     }
 }

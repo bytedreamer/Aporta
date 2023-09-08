@@ -8,91 +8,90 @@ using Aporta.Core.Models;
 using Aporta.Shared.Models;
 using NUnit.Framework;
 
-namespace Aporta.Core.Tests.DataAccess.Repositories
+namespace Aporta.Core.Tests.DataAccess.Repositories;
+
+public class PersonRepositoryTests
 {
-    public class PersonRepositoryTests
+    private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
+    private IDbConnection _persistConnection;
+    private Guid _extensionId;
+
+    [SetUp]
+    public async Task Setup()
     {
-        private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
-        private IDbConnection _persistConnection;
-        private Guid _extensionId;
+        _persistConnection = _dataAccess.CreateDbConnection();
+        _persistConnection.Open();
 
-        [SetUp]
-        public async Task Setup()
+        await _dataAccess.UpdateSchema();
+
+        _extensionId = Guid.NewGuid();
+        var extensions = new[]
         {
-            _persistConnection = _dataAccess.CreateDbConnection();
-            _persistConnection.Open();
+            new ExtensionHost {Id = _extensionId, Name = "ExtensionTest", Enabled = false}
+        };
 
-            await _dataAccess.UpdateSchema();
+        var extensionRepository = new ExtensionRepository(_dataAccess);
+        foreach (var extension in extensions)
+        {
+            await extensionRepository.Insert(extension);
+        }
+    }
 
-            _extensionId = Guid.NewGuid();
-            var extensions = new[]
-            {
-                new ExtensionHost {Id = _extensionId, Name = "ExtensionTest", Enabled = false}
-            };
+    [TearDown]
+    public void TearDown()
+    {
+        _persistConnection?.Close();
+        _persistConnection?.Dispose();
+    }
 
-            var extensionRepository = new ExtensionRepository(_dataAccess);
-            foreach (var extension in extensions)
-            {
-                await extensionRepository.Insert(extension);
-            }
+    [Test]
+    public async Task Insert()
+    {
+        // Arrange
+        var people = new[]
+        {
+            new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
+            new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+        };
+
+        var personRepository = new PersonRepository(_dataAccess);
+        foreach (var person in people)
+        {
+            await personRepository.Insert(person);
         }
 
-        [TearDown]
-        public void TearDown()
+        // Act 
+        var actualPerson = await personRepository.Get(2);
+
+        // Assert
+        Assert.AreEqual(2, people[1].Id);
+        Assert.AreEqual(2, actualPerson.Id);
+        Assert.AreEqual("First2", actualPerson.FirstName);
+        Assert.AreEqual("Last2", actualPerson.LastName);
+        Assert.IsTrue(actualPerson.Enabled);
+    }
+
+    [Test]
+    public async Task Delete()
+    {
+        // Arrange
+        var people = new[]
         {
-            _persistConnection?.Close();
-            _persistConnection?.Dispose();
-        }
-
-        [Test]
-        public async Task Insert()
-        {
-            // Arrange
-            var people = new[]
-            {
-                new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
-                new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
-            };
-
-            var personRepository = new PersonRepository(_dataAccess);
-            foreach (var person in people)
-            {
-                await personRepository.Insert(person);
-            }
-
-            // Act 
-            var actualPerson = await personRepository.Get(2);
-
-            // Assert
-            Assert.AreEqual(2, people[1].Id);
-            Assert.AreEqual(2, actualPerson.Id);
-            Assert.AreEqual("First2", actualPerson.FirstName);
-            Assert.AreEqual("Last2", actualPerson.LastName);
-            Assert.IsTrue(actualPerson.Enabled);
-        }
-
-        [Test]
-        public async Task Delete()
-        {
-            // Arrange
-            var people = new[]
-            {
-                new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
-                new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
-            };
+            new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
+            new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+        };
             
-            var personRepository = new PersonRepository(_dataAccess);
-            foreach (var person in people)
-            {
-                await personRepository.Insert(person);
-            }
-
-            // Act 
-            await personRepository.Delete(2);
-
-            // Assert
-            var actualPeople = await personRepository.GetAll();
-            Assert.AreEqual(1, actualPeople.Count());
+        var personRepository = new PersonRepository(_dataAccess);
+        foreach (var person in people)
+        {
+            await personRepository.Insert(person);
         }
+
+        // Act 
+        await personRepository.Delete(2);
+
+        // Assert
+        var actualPeople = await personRepository.GetAll();
+        Assert.AreEqual(1, actualPeople.Count());
     }
 }

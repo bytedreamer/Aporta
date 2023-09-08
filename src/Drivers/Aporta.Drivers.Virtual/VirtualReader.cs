@@ -1,4 +1,3 @@
-using System.Globalization;
 using Aporta.Extensions.Endpoint;
 
 namespace Aporta.Drivers.Virtual;

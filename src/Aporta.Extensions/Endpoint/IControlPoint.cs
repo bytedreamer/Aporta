@@ -1,11 +1,10 @@
 using System.Threading.Tasks;
 
-namespace Aporta.Extensions.Endpoint
+namespace Aporta.Extensions.Endpoint;
+
+public interface IControlPoint : IEndpoint
 {
-    public interface IControlPoint : IEndpoint
-    {
-        Task<bool> GetState();
+    Task<bool> GetState();
         
-        Task SetState(bool state);
-    }
+    Task SetState(bool state);
 }

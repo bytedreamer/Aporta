@@ -1,9 +1,8 @@
-namespace Aporta.Shared.Models
+namespace Aporta.Shared.Models;
+
+public class GlobalSetting
 {
-    public class GlobalSetting
-    {
-        public string Name { get; set; }
+    public string Name { get; set; }
         
-        public string Value { get; set; }
-    }
+    public string Value { get; set; }
 }

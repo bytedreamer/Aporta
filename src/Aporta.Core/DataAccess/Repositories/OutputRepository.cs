@@ -2,49 +2,48 @@ using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
 
-namespace Aporta.Core.DataAccess.Repositories
-{
-    public class OutputRepository : BaseRepository<Output>
-    {
-        public OutputRepository(IDataAccess dataAccess)
-        {
-            DataAccess = dataAccess;
-        }
-        
-        protected override IDataAccess DataAccess { get; }
+namespace Aporta.Core.DataAccess.Repositories;
 
-        protected override string SqlSelect => @"select output.id, output.endpoint_id as endpointId, output.name 
+public class OutputRepository : BaseRepository<Output>
+{
+    public OutputRepository(IDataAccess dataAccess)
+    {
+        DataAccess = dataAccess;
+    }
+        
+    protected override IDataAccess DataAccess { get; }
+
+    protected override string SqlSelect => @"select output.id, output.endpoint_id as endpointId, output.name 
                                                 from output";
 
-        protected override string SqlInsert => @"insert into output
+    protected override string SqlInsert => @"insert into output
                                                 (endpoint_id, name) values 
                                                 (@endpointId, @name)";
 
-        protected override string SqlDelete => @"delete from output where id = @id";
+    protected override string SqlDelete => @"delete from output where id = @id";
         
-        public async Task<Output> GetForDriverId(string driverId)
-        {
-            using var connection = DataAccess.CreateDbConnection();
-            connection.Open();
+    public async Task<Output> GetForDriverId(string driverId)
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
 
-            return await connection.QueryFirstAsync<Output>(SqlSelect + 
-                                                         @" inner join endpoint on output.endpoint_id = endpoint.id 
+        return await connection.QueryFirstAsync<Output>(SqlSelect + 
+                                                        @" inner join endpoint on output.endpoint_id = endpoint.id 
                                                             where endpoint.driver_id = @driverId",
-                new {driverId});
-        }
+            new {driverId});
+    }
         
-        protected override object InsertParameters(Output output)
+    protected override object InsertParameters(Output output)
+    {
+        return new
         {
-            return new
-            {
-                endpointId = output.EndpointId,
-                name = output.Name
-            };
-        }
+            endpointId = output.EndpointId,
+            name = output.Name
+        };
+    }
 
-        protected override void InsertId(Output output, int id)
-        {
-            output.Id = id;
-        }
+    protected override void InsertId(Output output, int id)
+    {
+        output.Id = id;
     }
 }

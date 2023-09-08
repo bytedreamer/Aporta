@@ -1,7 +1,6 @@
-namespace Aporta.Shared.Models
+namespace Aporta.Shared.Models;
+
+public class AssignedCredential : Credential
 {
-    public class AssignedCredential : Credential
-    {
-        public Person Person { get; set; }
-    }
+    public Person Person { get; set; }
 }

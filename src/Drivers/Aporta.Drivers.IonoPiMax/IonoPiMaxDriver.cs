@@ -3,155 +3,154 @@ using Aporta.Extensions.Hardware;
 using DebounceThrottle;
 using Microsoft.Extensions.Logging;
 
-namespace Aporta.Drivers.IonoPiMax
+namespace Aporta.Drivers.IonoPiMax;
+
+/// <summary>
+/// Driver implementation for the Iono Pi Max unit
+/// </summary>
+public class IonoPiMaxDriver : IHardwareDriver
 {
-    /// <summary>
-    /// Driver implementation for the Iono Pi Max unit
-    /// </summary>
-    public class IonoPiMaxDriver : IHardwareDriver
+    private const double RequiredFirmwareVersion = 1.7;
+        
+    private const string IonoPiMaxKernelPath = "/sys/class/ionopimax/";
+    private const string FirmwarePath = "mcu/fw_version";
+    private const string SerialPortInvertPath = "serial/rs232_rs485_inv";
+        
+    private const string RelaysPath = "digital_out";
+    private const int RelayCount = 4;
+
+    private readonly DebounceDispatcher[] _relayDeBouncers =
     {
-        private const double RequiredFirmwareVersion = 1.7;
+        new(200), new (200), new (200), new (200)
+    };
         
-        private const string IonoPiMaxKernelPath = "/sys/class/ionopimax/";
-        private const string FirmwarePath = "mcu/fw_version";
-        private const string SerialPortInvertPath = "serial/rs232_rs485_inv";
+    private readonly List<IEndpoint> _endpoints = new ();
+    private readonly List<FileSystemWatcher> _watchingEndpoints = new();
+    private ILogger<IonoPiMaxDriver>? _logger;
+
+    public Guid Id => Guid.Parse("00CED75B-02B7-4224-B298-B0EA2B763D1D");
+
+    public IEnumerable<IEndpoint> Endpoints => _endpoints;
         
-        private const string RelaysPath = "digital_out";
-        private const int RelayCount = 4;
+    public string Name => "Iono Pi Max";
 
-        private readonly DebounceDispatcher[] _relayDeBouncers =
-        {
-            new(200), new (200), new (200), new (200)
-        };
-        
-        private readonly List<IEndpoint> _endpoints = new ();
-        private readonly List<FileSystemWatcher> _watchingEndpoints = new();
-        private ILogger<IonoPiMaxDriver>? _logger;
-
-        public Guid Id => Guid.Parse("00CED75B-02B7-4224-B298-B0EA2B763D1D");
-
-        public IEnumerable<IEndpoint> Endpoints => _endpoints;
-        
-        public string Name => "Iono Pi Max";
-
-        public void Load(string configuration, ILoggerFactory loggerFactory)
-        {
-            _logger = loggerFactory.CreateLogger<IonoPiMaxDriver>();
+    public void Load(string configuration, ILoggerFactory loggerFactory)
+    {
+        _logger = loggerFactory.CreateLogger<IonoPiMaxDriver>();
             
-            CheckThatIonoPiMaxKernelExists();
-            CheckCorrectFirmwareIsLoaded();
-            EnableRS485Port();
-            AddRelays();
+        CheckThatIonoPiMaxKernelExists();
+        CheckCorrectFirmwareIsLoaded();
+        EnableRS485Port();
+        AddRelays();
 
-            OnUpdatedEndpoints();
+        OnUpdatedEndpoints();
+    }
+
+    private void AddRelays()
+    {
+        string relayPath = Path.Combine(IonoPiMaxKernelPath, RelaysPath);
+        for (var index = 1; index <= RelayCount; index++)
+        {
+            var endpoint = new Relay($"{Name} Relay {index}", Id, $"{relayPath}/o{index}");
+            _endpoints.Add(endpoint);
         }
 
-        private void AddRelays()
+        var watcher = new FileSystemWatcher(relayPath, "o*");
+        watcher.EnableRaisingEvents = true;
+        watcher.NotifyFilter = NotifyFilters.LastWrite;
+        watcher.Changed += async (_, args) =>
         {
-            string relayPath = Path.Combine(IonoPiMaxKernelPath, RelaysPath);
-            for (var index = 1; index <= RelayCount; index++)
+            if (args.Name is { Length: 2 })
             {
-                var endpoint = new Relay($"{Name} Relay {index}", Id, $"{relayPath}/o{index}");
-                _endpoints.Add(endpoint);
-            }
-
-            var watcher = new FileSystemWatcher(relayPath, "o*");
-            watcher.EnableRaisingEvents = true;
-            watcher.NotifyFilter = NotifyFilters.LastWrite;
-            watcher.Changed += async (_, args) =>
-            {
-                if (args.Name is { Length: 2 })
+                await _relayDeBouncers[byte.Parse(args.Name.TrimStart('o')) - 1].DebounceAsync(async () =>
                 {
-                    await _relayDeBouncers[byte.Parse(args.Name.TrimStart('o')) - 1].DebounceAsync(async () =>
+                    if (_endpoints.FirstOrDefault(endpoint => endpoint.Id == args.FullPath) is IControlPoint
+                        controlPoint)
                     {
-                        if (_endpoints.FirstOrDefault(endpoint => endpoint.Id == args.FullPath) is IControlPoint
-                            controlPoint)
-                        {
-                            OnStateChanged(controlPoint, await controlPoint.GetState());
-                        }
-                        else
-                        {
-                            _logger?.LogWarning("No endpoint found for {ArgsFullPath}", args.FullPath);
-                        }
-                    });
-                }
-            };
-            _watchingEndpoints.Add(watcher);
-        }
-
-        private void CheckThatIonoPiMaxKernelExists()
-        {
-            if (Directory.Exists(IonoPiMaxKernelPath)) return;
-
-            throw new Exception("Iono Pi Max kernel module is not installed");
-        }
-        
-        private void CheckCorrectFirmwareIsLoaded()
-        {
-            string firmwareFile = Path.Combine(IonoPiMaxKernelPath, FirmwarePath);
-            double.TryParse(File.ReadAllText(firmwareFile), out double firmware);
-            _logger?.LogInformation("Iono Pi Max firmware version is {Firmware}", firmware);
-            if (firmware < RequiredFirmwareVersion)
-            {
-                throw new Exception($"Iono Pi Max firmware need to be at least {RequiredFirmwareVersion}");
+                        OnStateChanged(controlPoint, await controlPoint.GetState());
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("No endpoint found for {ArgsFullPath}", args.FullPath);
+                    }
+                });
             }
-        }
+        };
+        _watchingEndpoints.Add(watcher);
+    }
+
+    private void CheckThatIonoPiMaxKernelExists()
+    {
+        if (Directory.Exists(IonoPiMaxKernelPath)) return;
+
+        throw new Exception("Iono Pi Max kernel module is not installed");
+    }
         
-        private static void EnableRS485Port()
+    private void CheckCorrectFirmwareIsLoaded()
+    {
+        string firmwareFile = Path.Combine(IonoPiMaxKernelPath, FirmwarePath);
+        double.TryParse(File.ReadAllText(firmwareFile), out double firmware);
+        _logger?.LogInformation("Iono Pi Max firmware version is {Firmware}", firmware);
+        if (firmware < RequiredFirmwareVersion)
         {
-            File.WriteAllText(Path.Combine(IonoPiMaxKernelPath, SerialPortInvertPath), "1");
+            throw new Exception($"Iono Pi Max firmware need to be at least {RequiredFirmwareVersion}");
         }
-
-        public void Unload()
-        {
-            foreach (var fileSystemWatcher in _watchingEndpoints)
-            {
-                fileSystemWatcher.Dispose();
-            }
-            _watchingEndpoints.Clear();
-        }
-
-        public string CurrentConfiguration()
-        {
-            return string.Empty;
-        }
-
-        public async Task<string> PerformAction(string action, string parameters)
-        {
-            return await Task.FromResult(string.Empty);
-        }
-
-        /// <inheritdoc />
-        public event EventHandler<EventArgs>? UpdatedEndpoints;
+    }
         
-        protected virtual void OnUpdatedEndpoints()
-        {
-            UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
-        }
+    private static void EnableRS485Port()
+    {
+        File.WriteAllText(Path.Combine(IonoPiMaxKernelPath, SerialPortInvertPath), "1");
+    }
 
-        /// <inheritdoc />
-        public event EventHandler<AccessCredentialReceivedEventArgs>? AccessCredentialReceived;
-        
-        protected virtual void OnAccessCredentialReceived(AccessCredentialReceivedEventArgs eventArgs)
+    public void Unload()
+    {
+        foreach (var fileSystemWatcher in _watchingEndpoints)
         {
-            AccessCredentialReceived?.Invoke(this, eventArgs);
+            fileSystemWatcher.Dispose();
         }
+        _watchingEndpoints.Clear();
+    }
 
-        /// <inheritdoc />
-        public event EventHandler<StateChangedEventArgs>? StateChanged;
-        
-        protected virtual void OnStateChanged(IEndpoint endpoint, bool state)
-        {
-            _logger?.LogInformation("State changed for {EndpointName} to {State}", endpoint.Name, state);
-            StateChanged?.Invoke(this, new StateChangedEventArgs(endpoint, state));
-        }
+    public string CurrentConfiguration()
+    {
+        return string.Empty;
+    }
 
-        /// <inheritdoc />
-        public event EventHandler<OnlineStatusChangedEventArgs>? OnlineStatusChanged;
+    public async Task<string> PerformAction(string action, string parameters)
+    {
+        return await Task.FromResult(string.Empty);
+    }
+
+    /// <inheritdoc />
+    public event EventHandler<EventArgs>? UpdatedEndpoints;
         
-        protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs eventArgs)
-        {
-            OnlineStatusChanged?.Invoke(this, eventArgs);
-        }
+    protected virtual void OnUpdatedEndpoints()
+    {
+        UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <inheritdoc />
+    public event EventHandler<AccessCredentialReceivedEventArgs>? AccessCredentialReceived;
+        
+    protected virtual void OnAccessCredentialReceived(AccessCredentialReceivedEventArgs eventArgs)
+    {
+        AccessCredentialReceived?.Invoke(this, eventArgs);
+    }
+
+    /// <inheritdoc />
+    public event EventHandler<StateChangedEventArgs>? StateChanged;
+        
+    protected virtual void OnStateChanged(IEndpoint endpoint, bool state)
+    {
+        _logger?.LogInformation("State changed for {EndpointName} to {State}", endpoint.Name, state);
+        StateChanged?.Invoke(this, new StateChangedEventArgs(endpoint, state));
+    }
+
+    /// <inheritdoc />
+    public event EventHandler<OnlineStatusChangedEventArgs>? OnlineStatusChanged;
+        
+    protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs eventArgs)
+    {
+        OnlineStatusChanged?.Invoke(this, eventArgs);
     }
 }

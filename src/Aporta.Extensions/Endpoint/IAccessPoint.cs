@@ -1,9 +1,8 @@
 using System.Threading.Tasks;
 
-namespace Aporta.Extensions.Endpoint
+namespace Aporta.Extensions.Endpoint;
+
+public interface IAccessPoint : IEndpoint
 {
-    public interface IAccessPoint : IEndpoint
-    {
-        Task Beep();
-    }
+    Task Beep();
 }

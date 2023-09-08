@@ -1,9 +1,8 @@
 using System.Threading.Tasks;
 
-namespace Aporta.Extensions.Endpoint
+namespace Aporta.Extensions.Endpoint;
+
+public interface IMonitorPoint : IEndpoint
 {
-    public interface IMonitorPoint : IEndpoint
-    {
-        Task<bool> GetState();
-    }
+    Task<bool> GetState();
 }

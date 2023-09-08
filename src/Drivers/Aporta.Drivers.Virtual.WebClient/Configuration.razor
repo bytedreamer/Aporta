@@ -23,9 +23,9 @@
 
 @code {
     [Inject] 
-    IMessageService MessageService { get; set; }
+    IMessageService? MessageService { get; set; }
     
-    private Snackbar _snackbar;
+    private Snackbar? _snackbar;
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
     
@@ -36,7 +36,7 @@
     public EventCallback<Guid> ExtensionIdChanged { get; set; }
 
     [Parameter]
-    public string RawConfiguration { get; set; }
+    public string? RawConfiguration { get; set; }
 
     [Parameter]
     public EventCallback<string> RawConfigurationChanged { get; set; }
