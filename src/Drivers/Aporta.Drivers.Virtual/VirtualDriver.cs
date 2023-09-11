@@ -11,6 +11,8 @@ public class VirtualDriver : IHardwareDriver
     private readonly List<IEndpoint> _endpoints = new();
     private readonly Configuration _configuration = new();
     
+    private ILogger<VirtualDriver>? _logger;
+    
     /// <inheritdoc />
     public string Name => "Virtual";
     
@@ -23,6 +25,8 @@ public class VirtualDriver : IHardwareDriver
     /// <inheritdoc />
     public void Load(string configuration, ILoggerFactory loggerFactory)
     {
+        _logger = loggerFactory.CreateLogger<VirtualDriver>();
+        
         _configuration.Readers.Add(new Reader{Name = "Virtual Reader 1", Number = 1});
         foreach (var reader in _configuration.Readers)
         {
@@ -72,10 +76,23 @@ public class VirtualDriver : IHardwareDriver
     
     /// <inheritdoc />
     public event EventHandler<AccessCredentialReceivedEventArgs>? AccessCredentialReceived;
+    protected virtual void OnAccessCredentialReceived(AccessCredentialReceivedEventArgs eventArgs)
+    {
+        AccessCredentialReceived?.Invoke(this, eventArgs);
+    }
     
     /// <inheritdoc />
     public event EventHandler<StateChangedEventArgs>? StateChanged;
+    protected virtual void OnStateChanged(IEndpoint endpoint, bool state)
+    {
+        _logger?.LogInformation("State changed for {EndpointName} to {State}", endpoint.Name, state);
+        StateChanged?.Invoke(this, new StateChangedEventArgs(endpoint, state));
+    }
     
     /// <inheritdoc />
     public event EventHandler<OnlineStatusChangedEventArgs>? OnlineStatusChanged;
+    protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs eventArgs)
+    {
+        OnlineStatusChanged?.Invoke(this, eventArgs);
+    }
 }
