@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Aporta.Shared;
+namespace Aporta.WebClient;
 
 public class SignalRRetryPolicy : IRetryPolicy
 {
