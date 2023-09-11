@@ -8,7 +8,7 @@
 
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-      <PackageReference Include="OSDP.Net" Version="4.0.3" />
+      <PackageReference Include="OSDP.Net" Version="4.1.1" />
       <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
