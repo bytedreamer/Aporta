@@ -59,19 +59,19 @@ public class OSDPDriver : IHardwareDriver
             {
                 foreach (var input in device.Inputs)
                 {
-                    _endpoints.Add(new OSDPMonitorPoint(Id, _panel, _portMapping[bus.PortName], device,
+                    _endpoints.Add(new OSDPInput(Id, _panel, _portMapping[bus.PortName], device,
                         input));
                 }
 
                 foreach (var output in device.Outputs)
                 {
-                    _endpoints.Add(new OSDPControlPoint(Id, _panel, _portMapping[bus.PortName], device,
+                    _endpoints.Add(new OSDPOutput(Id, _panel, _portMapping[bus.PortName], device,
                         output));
                 }
 
                 foreach (var reader in device.Readers)
                 {
-                    _endpoints.Add(new OSDPAccessPoint(Id, device, reader, _panel, _portMapping[bus.PortName]));
+                    _endpoints.Add(new OSDPAccess(Id, device, reader, _panel, _portMapping[bus.PortName]));
                 }
             }
         }
@@ -117,7 +117,7 @@ public class OSDPDriver : IHardwareDriver
                     Number = inputNumber
                 };
                 matchingDevice.Inputs.Add(input);
-                _endpoints.Add(new OSDPMonitorPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                _endpoints.Add(new OSDPInput(Id, _panel, eventArgs.ConnectionId, matchingDevice,
                     input));
             }
         }
@@ -135,7 +135,7 @@ public class OSDPDriver : IHardwareDriver
                     Number = outputNumber
                 };
                 matchingDevice.Outputs.Add(output);
-                _endpoints.Add(new OSDPControlPoint(Id, _panel, eventArgs.ConnectionId, matchingDevice,
+                _endpoints.Add(new OSDPOutput(Id, _panel, eventArgs.ConnectionId, matchingDevice,
                     output));
             }
         }
@@ -150,7 +150,7 @@ public class OSDPDriver : IHardwareDriver
                 Number = readerNumber
             };
             matchingDevice.Readers.Add(reader);
-            _endpoints.Add(new OSDPAccessPoint(Id, matchingDevice, reader, _panel, eventArgs.ConnectionId));
+            _endpoints.Add(new OSDPAccess(Id, matchingDevice, reader, _panel, eventArgs.ConnectionId));
         }
             
         matchingDevice.CheckedCapabilities = true;
@@ -161,7 +161,7 @@ public class OSDPDriver : IHardwareDriver
 
     private void PanelOnRawCardDataReplyReceived(object sender, ControlPanel.RawCardDataReplyEventArgs eventArgs)
     {
-        var accessPoint = _endpoints.Where(endpoint => endpoint is IAccessPoint).Cast<IAccessPoint>()
+        var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
             .SingleOrDefault(accessPoint => 
                 eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
                 accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
@@ -181,7 +181,7 @@ public class OSDPDriver : IHardwareDriver
     private void PanelOnInputStatusReportReplyReceived(object sender,
         ControlPanel.InputStatusReportReplyEventArgs eventArgs)
     {
-        var monitorPoints = _endpoints.Where(endpoint => endpoint is IMonitorPoint).Cast<IMonitorPoint>()
+        var monitorPoints = _endpoints.Where(endpoint => endpoint is IInput).Cast<IInput>()
             .Where(monitorPoint =>
                 eventArgs.ConnectionId == _portMapping[monitorPoint.Id.Split(":")[0]] &&
                 monitorPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
@@ -197,7 +197,7 @@ public class OSDPDriver : IHardwareDriver
     private void PanelOnOutputStatusReportReplyReceived(object sender,
         ControlPanel.OutputStatusReportReplyEventArgs eventArgs)
     {
-        var controlPoints = _endpoints.Where(endpoint => endpoint is IControlPoint).Cast<IControlPoint>()
+        var controlPoints = _endpoints.Where(endpoint => endpoint is IOutput).Cast<IOutput>()
             .Where(controlPoint =>
                 eventArgs.ConnectionId == _portMapping[controlPoint.Id.Split(":")[0]] &&
                 controlPoint.Id.Split(":")[1] == eventArgs.Address.ToString());

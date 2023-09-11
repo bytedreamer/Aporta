@@ -28,7 +28,7 @@ The project is early in its development. After working on access control product
     - Control output **(Done)**
     - Notify when input is tripped
  - Access Control
-    - Enroll new cardholder
+    - Enroll new cardholder **(Done)**
     - Basic access level assignment
     - Read entire card data for card number **(Done)**
     - Card number is a non-reversible hash **(Done)**

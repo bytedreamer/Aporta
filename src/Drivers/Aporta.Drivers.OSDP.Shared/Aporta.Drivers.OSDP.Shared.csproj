@@ -4,4 +4,8 @@
         <TargetFramework>net6.0</TargetFramework>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Remove="Packaging.Targets" />
+    </ItemGroup>
+
 </Project>

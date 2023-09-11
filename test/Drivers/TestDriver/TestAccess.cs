@@ -4,7 +4,7 @@ using Aporta.Extensions.Endpoint;
 
 namespace Aporta.Drivers.TestDriver;
 
-public class TestAccessPoint : IAccessPoint
+public class TestAccess : IAccess
 {
     public string Name { get; internal set; }
         

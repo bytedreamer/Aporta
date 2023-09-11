@@ -50,14 +50,14 @@ public class AccessService
     private void ExtensionServiceOnAccessCredentialReceived(object sender,
         AccessCredentialReceivedEventArgs eventArgs)
     {
-        bool foundTask = _processAccessCredential.TryGetValue(eventArgs.AccessPoint.Id, out var existingTask);
+        bool foundTask = _processAccessCredential.TryGetValue(eventArgs.Access.Id, out var existingTask);
 
         if (foundTask && existingTask is { Status: TaskStatus.WaitingForActivation })
         {
             return;
         }
 
-        _processAccessCredential[eventArgs.AccessPoint.Id] = Task.Run(() => ProcessAccessRequest(eventArgs));
+        _processAccessCredential[eventArgs.Access.Id] = Task.Run(() => ProcessAccessRequest(eventArgs));
     }
 
     private async Task ProcessAccessRequest(AccessCredentialReceivedEventArgs eventArgs)
@@ -66,16 +66,16 @@ public class AccessService
         {
             var endpoints = (await _endpointRepository.GetAll()).ToArray();
 
-            var matchingDoor = await MatchingDoor(eventArgs.AccessPoint.Id, endpoints);
+            var matchingDoor = await MatchingDoor(eventArgs.Access.Id, endpoints);
 
             if (matchingDoor == null)
             {
                 _logger.LogInformation(
-                    "Credential received from '{Name}' was not assigned to a door", eventArgs.AccessPoint.Name);
+                    "Credential received from '{Name}' was not assigned to a door", eventArgs.Access.Name);
                 return;
             }
 
-            var accessPoint = endpoints.First(endpoint => endpoint.DriverEndpointId == eventArgs.AccessPoint.Id);
+            var accessPoint = endpoints.First(endpoint => endpoint.DriverEndpointId == eventArgs.Access.Id);
 
             var matchingDoorStrike = MatchingDoorStrike(matchingDoor.DoorStrikeEndpointId, endpoints);
 
@@ -93,7 +93,7 @@ public class AccessService
 
             if (await IsAccessGranted(eventArgs.CardData, matchingDoor, accessPoint))
             {
-                await OpenDoor(eventArgs.AccessPoint, matchingDoorStrike, 3);
+                await OpenDoor(eventArgs.Access, matchingDoorStrike, 3);
             }
         }
         catch (Exception exception)
@@ -176,7 +176,7 @@ public class AccessService
         return true;
     }
 
-    private async Task OpenDoor(IAccessPoint accessPoint, Endpoint matchingDoorStrike, int strikeTimer)
+    private async Task OpenDoor(IAccess access, Endpoint matchingDoorStrike, int strikeTimer)
     {
         var controlPoint =
             _extensionService.GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId); 
@@ -191,7 +191,7 @@ public class AccessService
         var openDoorTasks = new[]
         {
             Task.Run(ControlStrike),
-            Task.Run(accessPoint.Beep)
+            Task.Run(access.Beep)
         };
 
         await Task.WhenAll(openDoorTasks);

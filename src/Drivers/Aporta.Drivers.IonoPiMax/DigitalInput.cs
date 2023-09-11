@@ -1,13 +1,13 @@
 using Aporta.Extensions.Endpoint;
 
-namespace Aporta.Drivers.Virtual;
+namespace Aporta.Drivers.IonoPiMax;
 
 /// <summary>
-/// An output relay endpoint
+/// A relay endpoint
 /// </summary>
-public class VirtualInput : IInput
+public class DigitalInput : IInput
 {
-    public VirtualInput(string name, Guid extensionId, string id)
+    public DigitalInput(string name, Guid extensionId, string id)
     {
         Name = name;
         ExtensionId = extensionId;
@@ -30,8 +30,8 @@ public class VirtualInput : IInput
     }
 
     /// <inheritdoc/>
-    public Task<bool> GetState()
+    public async Task<bool> GetState()
     {
-        return Task.FromResult(true);
+        return (await File.ReadAllTextAsync(Id)).Trim() == "1";
     }
 }
