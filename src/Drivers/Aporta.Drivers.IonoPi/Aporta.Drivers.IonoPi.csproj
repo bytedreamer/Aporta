@@ -6,7 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="System.Device.Gpio" Version="2.1.0" />
+      <PackageReference Include="System.Device.Gpio" Version="3.0.0" />
       <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
