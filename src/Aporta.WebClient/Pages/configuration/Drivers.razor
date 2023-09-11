@@ -6,6 +6,7 @@
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
 @using System.Dynamic
+@using Aporta.Shared
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -76,7 +77,7 @@ else
     {
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
-            .WithAutomaticReconnect()
+            .WithAutomaticReconnect(new SignalRRetryPolicy())
             .Build();
         _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
         {
