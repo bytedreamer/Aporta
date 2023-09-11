@@ -2,6 +2,7 @@
 
 @using Microsoft.AspNetCore.SignalR.Client
 
+@using Aporta.Shared
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.Shared.Models
@@ -46,7 +47,7 @@ else
         
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
-            .WithAutomaticReconnect()
+            .WithAutomaticReconnect(new SignalRRetryPolicy())
             .Build();
         _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
         {

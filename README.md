@@ -42,6 +42,8 @@ For both platforms .NET Core 6.0 runtime must be installed first.
 
 [.NET 6.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
 
+- ASP.NET Core Runtime is required
+
 ### Windows ###
 
 There is a standard MSI file that will install Aporta as a service.
@@ -66,4 +68,6 @@ Steps to install and run from Linux DEB packages
 ```shell
 sudo ./Aporta
 ```
-- Browse to the local web url ```https://localhost:8443```
+### Configuration ###
+
+Browse to the local web url ```https://localhost:8443```

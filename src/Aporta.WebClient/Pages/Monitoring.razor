@@ -5,6 +5,7 @@
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
+@using Aporta.Shared
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -140,7 +141,7 @@ else
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
-            .WithAutomaticReconnect()
+            .WithAutomaticReconnect(new SignalRRetryPolicy())
             .Build();
         _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
         {
