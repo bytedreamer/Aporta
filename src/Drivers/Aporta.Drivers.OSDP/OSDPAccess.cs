@@ -7,14 +7,14 @@ using OSDP.Net.Model.CommandData;
 
 namespace Aporta.Drivers.OSDP;
 
-public class OSDPAccessPoint : IAccessPoint
+public class OSDPAccess : IAccess
 {
     private readonly Device _device;
     private readonly Reader _reader;
     private readonly ControlPanel _panel;
     private readonly Guid _connectionId;
 
-    public OSDPAccessPoint(Guid extensionId, Device device, Reader reader, ControlPanel panel, Guid connectionId)
+    public OSDPAccess(Guid extensionId, Device device, Reader reader, ControlPanel panel, Guid connectionId)
     {
         _device = device;
         _reader = reader;

@@ -2,7 +2,7 @@ using Aporta.Extensions.Endpoint;
 
 namespace Aporta.Drivers.Virtual;
 
-public class VirtualReader : IAccessPoint
+public class VirtualReader : IAccess
 {
     public VirtualReader(string name, Guid extensionId, string id)
     {

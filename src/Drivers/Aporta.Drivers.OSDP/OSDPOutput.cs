@@ -8,14 +8,14 @@ using OSDP.Net.Model.CommandData;
 
 namespace Aporta.Drivers.OSDP;
 
-public class OSDPControlPoint : IControlPoint
+public class OSDPOutput : IOutput
 {
     private readonly ControlPanel _controlPanel;
     private readonly Guid _connectionId;
     private readonly Device _device;
     private readonly Output _output;
 
-    public OSDPControlPoint(Guid extensionId, ControlPanel controlPanel, Guid connectionId, Device device, Output output)
+    public OSDPOutput(Guid extensionId, ControlPanel controlPanel, Guid connectionId, Device device, Output output)
     {
         _controlPanel = controlPanel;
         _connectionId = connectionId;

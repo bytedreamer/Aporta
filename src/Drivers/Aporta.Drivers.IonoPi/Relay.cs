@@ -5,7 +5,7 @@ using Aporta.Extensions.Endpoint;
 
 namespace Aporta.Drivers.IonoPi;
 
-public class Relay : IControlPoint
+public class Relay : IOutput
 {
     private readonly GpioController _controller;
     private readonly int _pin;

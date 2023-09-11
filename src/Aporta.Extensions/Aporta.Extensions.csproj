@@ -8,9 +8,7 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
-      <PackageReference Update="Packaging.Targets">
-        <Version>0.1.220</Version>
-      </PackageReference>
+      <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
 </Project>

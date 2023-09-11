@@ -61,7 +61,7 @@ public class TestDriver : IHardwareDriver
                 using var reader = new StreamReader(pipeServer);
                 string inputState = await reader.ReadLineAsync() ?? string.Empty;
                 var stateData = inputState.Split('|');
-                if (Endpoints.First(endpoint => endpoint.Id == stateData[0]) is TestMonitorPoint monitorPoint)
+                if (Endpoints.First(endpoint => endpoint.Id == stateData[0]) is TestInput monitorPoint)
                 {
                     await monitorPoint.SetState(bool.Parse(stateData[1]));
                     OnStateChanged(new StateChangedEventArgs(monitorPoint,
@@ -72,11 +72,11 @@ public class TestDriver : IHardwareDriver
             
         _endPoints.AddRange(new IEndpoint[] 
         {
-            new TestAccessPoint{Name="Reader 1", Id = "R1", ExtensionId = ExtensionId},
-            new TestControlPoint{Name="Output 1", Id = "O1", ExtensionId = ExtensionId},
-            new TestControlPoint{Name="Output 2", Id = "O2", ExtensionId = ExtensionId},
-            new TestMonitorPoint{Name="Input 1", Id = "I1", ExtensionId = ExtensionId},
-            new TestMonitorPoint{Name="Input 2", Id = "I2", ExtensionId = ExtensionId}
+            new TestAccess{Name="Reader 1", Id = "R1", ExtensionId = ExtensionId},
+            new TestOutput{Name="Output 1", Id = "O1", ExtensionId = ExtensionId},
+            new TestOutput{Name="Output 2", Id = "O2", ExtensionId = ExtensionId},
+            new TestInput{Name="Input 1", Id = "I1", ExtensionId = ExtensionId},
+            new TestInput{Name="Input 2", Id = "I2", ExtensionId = ExtensionId}
         });
 
         OnUpdatedEndpoints();
@@ -118,7 +118,7 @@ public class TestDriver : IHardwareDriver
     private void OnAccessCredentialReceived(BitArray cardData, ushort bitCount)
     {
         AccessCredentialReceived?.Invoke(this,
-            new AccessCredentialReceivedEventArgs((IAccessPoint) _endPoints[0], cardData, bitCount));
+            new AccessCredentialReceivedEventArgs((IAccess) _endPoints[0], cardData, bitCount));
     }
 
     protected virtual void OnStateChanged(StateChangedEventArgs e)

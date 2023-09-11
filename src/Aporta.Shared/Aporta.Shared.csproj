@@ -11,9 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Update="Packaging.Targets">
-        <Version>0.1.220</Version>
-      </PackageReference>
+      <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
 </Project>

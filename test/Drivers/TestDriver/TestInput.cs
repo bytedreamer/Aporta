@@ -4,7 +4,7 @@ using Aporta.Extensions.Endpoint;
 
 namespace Aporta.Drivers.TestDriver;
 
-public sealed class TestControlPoint : IControlPoint
+public sealed class TestInput : IInput
 {
     private bool _currentState;
 
@@ -13,6 +13,7 @@ public sealed class TestControlPoint : IControlPoint
     public Guid ExtensionId { get; internal set; }
         
     public string Id { get; internal set;}
+        
     public Task<bool> GetOnlineStatus()
     {
         throw new NotImplementedException();
@@ -26,14 +27,6 @@ public sealed class TestControlPoint : IControlPoint
     public Task SetState(bool state)
     {
         _currentState = state;
-        OnControlPointStateChanged(_currentState);
         return Task.CompletedTask;
-    }
-
-    public event EventHandler<bool> ControlPointStateChanged;
-
-    private void OnControlPointStateChanged(bool state)
-    {
-        ControlPointStateChanged?.Invoke(this, state);
     }
 }

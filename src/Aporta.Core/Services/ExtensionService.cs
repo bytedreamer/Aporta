@@ -114,22 +114,22 @@ public class ExtensionService
         return _extensions.First(extension => extension.Id == extensionId);
     }
 
-    public IControlPoint GetControlPoint(Guid extensionId, string endpointId)
+    public IOutput GetControlPoint(Guid extensionId, string endpointId)
     {
         return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
-            .First(endpoint => endpoint.Id == endpointId) as IControlPoint;
+            .First(endpoint => endpoint.Id == endpointId) as IOutput;
     }
         
-    public IMonitorPoint GetMonitorPoint(Guid extensionId, string endpointId)
+    public IInput GetMonitorPoint(Guid extensionId, string endpointId)
     {
         return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
-            .First(endpoint => endpoint.Id == endpointId) as IMonitorPoint;
+            .First(endpoint => endpoint.Id == endpointId) as IInput;
     }
 
-    public IAccessPoint GetAccessPoint(Guid extensionId, string endpointId)
+    public IAccess GetAccessPoint(Guid extensionId, string endpointId)
     {
         return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
-            .First(endpoint => endpoint.Id == endpointId) as IAccessPoint;
+            .First(endpoint => endpoint.Id == endpointId) as IAccess;
     }
 
     public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
@@ -239,9 +239,9 @@ public class ExtensionService
                     DriverEndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
                     Type = endpoint switch
                     {
-                        IControlPoint _ => EndpointType.Output,
-                        IMonitorPoint _ => EndpointType.Input,
-                        IAccessPoint _ => EndpointType.Reader,
+                        IOutput _ => EndpointType.Output,
+                        IInput _ => EndpointType.Input,
+                        IAccess _ => EndpointType.Reader,
                         _ => throw new Exception("Invalid endpoint type")
                     }
                 };

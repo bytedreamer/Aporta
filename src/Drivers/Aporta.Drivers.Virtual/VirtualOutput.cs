@@ -5,7 +5,7 @@ namespace Aporta.Drivers.Virtual;
 /// <summary>
 /// An output relay endpoint
 /// </summary>
-public class VirtualOutput : IControlPoint
+public class VirtualOutput : IOutput
 {
     private bool _state;
     

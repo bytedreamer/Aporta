@@ -7,14 +7,14 @@ using OSDP.Net;
 
 namespace Aporta.Drivers.OSDP;
 
-public class OSDPMonitorPoint : IMonitorPoint
+public class OSDPInput : IInput
 {
     private readonly ControlPanel _controlPanel;
     private readonly Guid _connectionId;
     private readonly Device _device;
     private readonly Input _input;
 
-    public OSDPMonitorPoint(Guid extensionId, ControlPanel controlPanel, Guid connectionId, Device device, Input input)
+    public OSDPInput(Guid extensionId, ControlPanel controlPanel, Guid connectionId, Device device, Input input)
     {
         _controlPanel = controlPanel;
         _connectionId = connectionId;

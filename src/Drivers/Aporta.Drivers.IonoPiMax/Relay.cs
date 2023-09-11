@@ -3,9 +3,9 @@ using Aporta.Extensions.Endpoint;
 namespace Aporta.Drivers.IonoPiMax;
 
 /// <summary>
-/// An output relay endpoint
+/// A relay endpoint
 /// </summary>
-public class Relay : IControlPoint
+public class Relay : IOutput
 {
     public Relay(string name, Guid extensionId, string id)
     {

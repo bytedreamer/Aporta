@@ -1,7 +1,9 @@
-﻿using Aporta.Extensions.Endpoint;
+﻿using Microsoft.Extensions.Logging;
+
+using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
-using DebounceThrottle;
-using Microsoft.Extensions.Logging;
+
+using Timer = System.Timers.Timer;
 
 namespace Aporta.Drivers.IonoPiMax;
 
@@ -18,14 +20,16 @@ public class IonoPiMaxDriver : IHardwareDriver
         
     private const string RelaysPath = "digital_out";
     private const int RelayCount = 4;
+    
+    private const string DigitalInputPath = "digital_in";
+    private const int DigitalInputCount = 4;
 
-    private readonly DebounceDispatcher[] _relayDeBouncers =
-    {
-        new(200), new (200), new (200), new (200)
-    };
-        
     private readonly List<IEndpoint> _endpoints = new ();
-    private readonly List<FileSystemWatcher> _watchingEndpoints = new();
+    private readonly Dictionary<string, bool> _watchValues = new();
+
+    private Timer? _timer;
+    private readonly double _timerInterval = 500;
+    
     private ILogger<IonoPiMaxDriver>? _logger;
 
     public Guid Id => Guid.Parse("00CED75B-02B7-4224-B298-B0EA2B763D1D");
@@ -42,8 +46,50 @@ public class IonoPiMaxDriver : IHardwareDriver
         CheckCorrectFirmwareIsLoaded();
         EnableRS485Port();
         AddRelays();
+        AddDigitalInputs();
+        
+        MonitorEndpoints();
 
         OnUpdatedEndpoints();
+    }
+
+    private void MonitorEndpoints()
+    {
+        _timer = new Timer(_timerInterval);
+        _timer.Elapsed += async (_, _) =>
+        {
+            await Task.WhenAll(_endpoints.Where(endpoint => endpoint is IOutput or IInput).Select(async endpoint =>
+            {
+                switch (endpoint)
+                {
+                    case IOutput output:
+                    {
+                        bool currentState = await output.GetState();
+                        bool foundValue = _watchValues.TryGetValue(output.Id, out bool oldSate);
+                        if (!foundValue || currentState != oldSate)
+                        {
+                            OnStateChanged(output, currentState);
+                            _watchValues[output.Id] = currentState;
+                        }
+
+                        break;
+                    }
+                    case IInput input:
+                    {
+                        bool currentState = await input.GetState();
+                        bool foundValue = _watchValues.TryGetValue(input.Id, out bool oldSate);
+                        if (!foundValue || currentState != oldSate)
+                        {
+                            OnStateChanged(input, currentState);
+                            _watchValues[input.Id] = currentState;
+                        }
+
+                        break;
+                    }
+                }
+            }));
+        };
+        _timer.Start();
     }
 
     private void AddRelays()
@@ -51,32 +97,19 @@ public class IonoPiMaxDriver : IHardwareDriver
         string relayPath = Path.Combine(IonoPiMaxKernelPath, RelaysPath);
         for (var index = 1; index <= RelayCount; index++)
         {
-            var endpoint = new Relay($"{Name} Relay {index}", Id, $"{relayPath}/o{index}");
+            var relay = new Relay($"{Name} Relay {index}", Id, $"{relayPath}/o{index}");
+            _endpoints.Add(relay);
+        }
+    }
+    
+    private void AddDigitalInputs()
+    {
+        string digitalInputPath = Path.Combine(IonoPiMaxKernelPath, DigitalInputPath);
+        for (var index = 1; index <= DigitalInputCount; index++)
+        {
+            var endpoint = new DigitalInput($"{Name} Digital Input {index}", Id, $"{digitalInputPath}/di{index}");
             _endpoints.Add(endpoint);
         }
-
-        var watcher = new FileSystemWatcher(relayPath, "o*");
-        watcher.EnableRaisingEvents = true;
-        watcher.NotifyFilter = NotifyFilters.LastWrite;
-        watcher.Changed += async (_, args) =>
-        {
-            if (args.Name is { Length: 2 })
-            {
-                await _relayDeBouncers[byte.Parse(args.Name.TrimStart('o')) - 1].DebounceAsync(async () =>
-                {
-                    if (_endpoints.FirstOrDefault(endpoint => endpoint.Id == args.FullPath) is IControlPoint
-                        controlPoint)
-                    {
-                        OnStateChanged(controlPoint, await controlPoint.GetState());
-                    }
-                    else
-                    {
-                        _logger?.LogWarning("No endpoint found for {ArgsFullPath}", args.FullPath);
-                    }
-                });
-            }
-        };
-        _watchingEndpoints.Add(watcher);
     }
 
     private void CheckThatIonoPiMaxKernelExists()
@@ -104,11 +137,7 @@ public class IonoPiMaxDriver : IHardwareDriver
 
     public void Unload()
     {
-        foreach (var fileSystemWatcher in _watchingEndpoints)
-        {
-            fileSystemWatcher.Dispose();
-        }
-        _watchingEndpoints.Clear();
+        _timer?.Dispose();
     }
 
     public string CurrentConfiguration()

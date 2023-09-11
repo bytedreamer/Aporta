@@ -6,13 +6,13 @@ namespace Aporta.Extensions.Hardware;
 
 public class AccessCredentialReceivedEventArgs : EventArgs
 {
-    public AccessCredentialReceivedEventArgs(IAccessPoint accessPoint, BitArray cardData, ushort bitCount)
+    public AccessCredentialReceivedEventArgs(IAccess access, BitArray cardData, ushort bitCount)
     {
-        AccessPoint = accessPoint;
+        Access = access;
         CardData = cardData;
         BitCount = bitCount;
     }
-    public IAccessPoint AccessPoint { get; }
+    public IAccess Access { get; }
         
     public BitArray CardData { get; }
         
