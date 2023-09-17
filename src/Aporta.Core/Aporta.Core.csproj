@@ -3,13 +3,14 @@
     <PropertyGroup>
         <AssemblyName>Aporta.Core</AssemblyName>
         <RootNamespace>Aporta.Core</RootNamespace>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="Dapper" Version="2.0.151" />
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.1.0" />
-      <PackageReference Include="Microsoft.Data.Sqlite" Version="7.0.10" />
+      <PackageReference Include="Microsoft.Data.Sqlite" Version="7.0.11" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
