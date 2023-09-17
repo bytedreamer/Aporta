@@ -15,3 +15,7 @@ if ($null -eq $versionNode)
 $xml.Project.PropertyGroup.Version = $newVersion
 $xml.Save("Directory.Build.props")
 
+((Get-Content -path ./setup/Linux/CONTENT-amd64 -Raw) -replace '{version}','$newVersion') | Set-Content -Path ./setup/Linux/CONTENT-amd64
+((Get-Content -path ./setup/Linux/CONTENT-armhf -Raw) -replace '{version}','$newVersion') | Set-Content -Path ./setup/Linux/CONTENT-armhf
+((Get-Content -path ./setup/Linux/CONTENT-arm64 -Raw) -replace '{version}','$newVersion') | Set-Content -Path ./setup/Linux/CONTENT-arm64
+
