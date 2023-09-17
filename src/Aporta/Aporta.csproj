@@ -20,7 +20,6 @@
       <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="7.0.11" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="7.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="7.0.1" />
-      <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
     <ItemGroup>
