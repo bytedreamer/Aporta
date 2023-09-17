@@ -32,10 +32,10 @@ jobs:
   steps:
     - template: ci/build.yml
       
-- job: windows-installer
+- job: windows_installer
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   pool:
     vmImage: 'windows-latest'
   steps:
-    - template: ci/windows-installer.yml
+    - template: ci/windows_installer.yml
 
