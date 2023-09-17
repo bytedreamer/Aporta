@@ -1,0 +1,30 @@
+steps:
+- task: UseDotNet@2
+  displayName: 'Install .NET Core SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '7.x'
+    
+- task: DotNetCoreCLI@2
+  displayName: 'Build Aporta'
+  inputs:
+    command: 'build'
+    projects: 'src/Aporta.sln'
+    arguments: '--configuration $(buildConfiguration)'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
+    
+- task: DotNetCoreCLI@2
+  displayName: 'Unit Test Aporta'
+  inputs:
+    command: 'test'
+    nobuild: true
+    projects: '**/*Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: ResharperCli@2
+  displayName: 'ReSharper Inspection'
+  inputs:
+    solutionOrProjectPath: 'src/Aporta.sln'
+    failBuildLevelSelector: 'Warning'
+    additionalArguments: '--build'

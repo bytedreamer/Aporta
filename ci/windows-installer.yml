@@ -1,0 +1,29 @@
+steps:
+- task: PowerShell@2
+  inputs:
+    filePath: 'set-version.ps1'
+    arguments: '-newVersion $(AssemblyVersion)'
+    
+- task: UseDotNet@2
+  displayName: 'Install .NET Core SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '7.x'
+    
+- task: VSBuild@1
+  displayName: 'Build Windows Installer'
+  inputs:
+    solution: 'setup/Windows/SetupProject/SetupProject.wixproj'
+    msbuildArchitecture: 'x86'
+    configuration: 'Release'
+    msbuildArgs: '/p:RunWixToolsOutOfProc=true /p:OutputPath=$(Build.ArtifactStagingDirectory)/Setup/Windows'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Install Azure SignTool'
+  inputs:
+    command: custom
+    custom: tool
+    arguments: 'install --global AzureSignTool'
+
+- powershell: '& AzureSignTool sign -kvt "$(AzureKeyVaultTenantId)" -kvu "https://z-bitvault.vault.azure.net/" -kvi "$(AzureKeyVaultClientId)" -kvs "$(AzureKeyVaultClientSecret)" -kvc "CodeSign" -tr "http://timestamp.comodoca.com" -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
+  displayName: 'Sign the package'

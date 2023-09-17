@@ -7,9 +7,6 @@ trigger:
 - main
 - develop
 
-pool:
-  vmImage: 'windows-latest'
-
 variables:
 - group: CodeSigning
 - name: solution
@@ -21,106 +18,24 @@ variables:
 - name: major
   value: 0
 - name: minor
-  value: 1
+  value: 2
 - name: patch
-  value: 105
+  value: 0
 - name: AssemblyVersion
   value: $(major).$(minor).$(patch)
+  
+jobs:
 
-steps:
-
-- task: PowerShell@2
+- job: build
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+    - template: ci/build.yml
+      
+- job: windows-installer
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  inputs:
-    filePath: 'set-version.ps1'
-    arguments: '-newVersion $(AssemblyVersion)'
-    failOnStderr: true
-
-- task: UseDotNet@2
-  displayName: 'Install .NET Core SDK'
-  inputs:
-    packageType: 'sdk'
-    version: '7.x'
-
-- task: DotNetCoreCLI@2
-  displayName: 'Build Aporta'
-  inputs:
-    command: 'build'
-    projects: 'src/Aporta.sln'
-    arguments: '--configuration $(buildConfiguration)'
-    versioningScheme: 'byEnvVar'
-    versionEnvVar: 'AssemblyVersion'
-
-- task: DotNetCoreCLI@2
-  displayName: 'Unit Test Aporta'
-  inputs:
-    command: 'test'
-    nobuild: true
-    projects: '**/*Tests/*.csproj'
-    arguments: '--configuration $(buildConfiguration)'
-    
-- task: ResharperCli@2
-  displayName: 'ReSharper Inspection'
-  inputs:
-    solutionOrProjectPath: 'src/Aporta.sln'
-    failBuildLevelSelector: 'Warning'
-    additionalArguments: '--build'
-    
-- task: VSBuild@1
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  displayName: 'Build Windows Installer'
-  inputs:
-    solution: 'setup/Windows/SetupProject/SetupProject.wixproj'
-    msbuildArchitecture: 'x86'
-    configuration: 'Release'
-    msbuildArgs: '/p:RunWixToolsOutOfProc=true /p:OutputPath=$(Build.ArtifactStagingDirectory)/Setup/Windows'
-
-- task: DotNetCoreCLI@2
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  displayName: 'Install Azure SignTool'
-  inputs:
-    command: custom
-    custom: tool
-    arguments: 'install --global AzureSignTool'
-
-- powershell: '& AzureSignTool sign -kvt "$(AzureKeyVaultTenantId)" -kvu "https://z-bitvault.vault.azure.net/" -kvi "$(AzureKeyVaultClientId)" -kvs "$(AzureKeyVaultClientSecret)" -kvc "CodeSign" -tr "http://timestamp.comodoca.com" -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  displayName: 'Sign the package'
-
-- task: DotNetCoreCLI@2
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  displayName: 'Install dotnet deb packaging tool'
-  inputs:
-    command: 'custom'
-    custom: 'tool'
-    arguments: 'install --global dotnet-deb'
-
-- task: DotNetCoreCLI@2
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  displayName: 'Install dotnet deb packaging for project'
-  inputs:
-    command: 'custom'
-    custom: 'deb'
-    arguments: 'install'
-
-- task: DotNetCoreCLI@2
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  displayName: 'Create Debian x64 package'
-  inputs:
-    command: 'custom'
-    custom: 'deb'
-    arguments: 'src/Aporta/Aporta.csproj -r linux-x64 -c $(buildConfiguration) -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
-
-- task: DotNetCoreCLI@2
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  displayName: 'Create Debian ARM package'
-  inputs:
-    command: 'custom'
-    custom: 'deb'
-    arguments: 'src/Aporta/Aporta.csproj -r linux-arm -c $(buildConfiguration) -o "$(Build.ArtifactStagingDirectory)/Setup/Linux"'
-
-- task: PublishPipelineArtifact@1
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-  inputs:
-    targetPath: '$(Build.ArtifactStagingDirectory)'
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+    - template: ci/windows-installer.yml
 
