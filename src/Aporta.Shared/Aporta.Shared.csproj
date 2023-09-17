@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,7 +13,7 @@
 
     <ItemGroup>
       <PackageReference Remove="Packaging.Targets" />
-      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="6.0.21" />
+      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="7.0.11" />
     </ItemGroup>
 
 </Project>

@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
 
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <OutDir>$(SolutionDir)..\test\Aporta.Core.Tests\bin\$(Configuration)\Drivers\TestDriver</OutDir>
         <AssemblyName>Aporta.Drivers.TestDriver</AssemblyName>
         <RootNamespace>Aporta.Drivers.TestDriver</RootNamespace>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
