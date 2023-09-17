@@ -6,10 +6,4 @@
     <RepositoryType>git</RepositoryType>
     <Product>Aporta</Product>
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Packaging.Targets">
-      <Version>0.1.189-*</Version>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
 </Project>

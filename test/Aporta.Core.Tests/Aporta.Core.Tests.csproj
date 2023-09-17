@@ -14,7 +14,6 @@
         <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
         <PackageReference Include="SignalR.UnitTestingSupport.NUnit" Version="7.0.0" />
-        <PackageReference Remove="Packaging.Targets" />
     </ItemGroup>
 
     <ItemGroup>

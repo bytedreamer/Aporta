@@ -6,13 +6,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-    </ItemGroup>
-
-    <ItemGroup>
-    </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Remove="Packaging.Targets" />
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="7.0.11" />
     </ItemGroup>
 

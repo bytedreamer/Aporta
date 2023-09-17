@@ -7,8 +7,4 @@
         <LangVersion>default</LangVersion>
     </PropertyGroup>
 
-    <ItemGroup>
-      <PackageReference Remove="Packaging.Targets" />
-    </ItemGroup>
-
 </Project>
