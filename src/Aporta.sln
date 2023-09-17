@@ -47,6 +47,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Settings", "Settings", "{3A
 		..\azure-pipelines.yml = ..\azure-pipelines.yml
 		..\Directory.Build.props = ..\Directory.Build.props
 		..\set-version.ps1 = ..\set-version.ps1
+		..\ci\build.yml = ..\ci\build.yml
+		..\ci\windows-installer.yml = ..\ci\windows-installer.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Setup", "Setup", "{7721B58D-7236-4F4D-87C8-70A7107E3F7F}"
