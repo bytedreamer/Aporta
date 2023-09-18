@@ -15,10 +15,10 @@ if ($null -eq $versionNode)
 $xml.Project.PropertyGroup.Version = $newVersion
 $xml.Save("Directory.Build.props")
 
-$content = [System.IO.File]::ReadAllText("./setup/Linux/CONTENT-amd64").Replace("{version}",$newVersion)
-[System.IO.File]::WriteAllText("./setup/Linux/CONTENT-amd64", $content)
-$content = [System.IO.File]::ReadAllText("./setup/Linux/CONTENT-armhf").Replace("{version}",$newVersion)
-[System.IO.File]::WriteAllText("./setup/Linux/CONTENT-armhf", $content)
-$content = [System.IO.File]::ReadAllText("./setup/Linux/CONTENT-arm64").Replace("{version}",$newVersion)
-[System.IO.File]::WriteAllText("./setup/Linux/CONTENT-arm64", $content)
+$content = [System.IO.File]::ReadAllText("./setup/Linux/content-amd64").Replace("{version}",$newVersion)
+[System.IO.File]::WriteAllText("./setup/Linux/content-amd64", $content)
+$content = [System.IO.File]::ReadAllText("./setup/Linux/content-armhf").Replace("{version}",$newVersion)
+[System.IO.File]::WriteAllText("./setup/Linux/content-armhf", $content)
+$content = [System.IO.File]::ReadAllText("./setup/Linux/content-arm64").Replace("{version}",$newVersion)
+[System.IO.File]::WriteAllText("./setup/Linux/content-arm64", $content)
 
