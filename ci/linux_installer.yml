@@ -14,14 +14,41 @@ steps:
   displayName: 'Build Aporta for Linux x64'
   inputs:
     command: 'publish'
-    projects: 'src/Aporta/Aporta.csproj'
-    arguments: '-c $(buildConfiguration) -r linux-x64 --self-contained'
+    arguments: 'src/Aporta/Aporta.csproj -c $(buildConfiguration) -r linux-x64 --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
     
 - task: ShellScript@2
   inputs:
     scriptPath: 'ci/linux_install_amd64.sh'
+    disableAutoCwd: true
+    args: '$(Build.ArtifactStagingDirectory)/Setup/Linux'
+    
+- task: DotNetCoreCLI@2
+  displayName: 'Build Aporta for Linux arm'
+  inputs:
+    command: 'publish'
+    arguments: 'src/Aporta/Aporta.csproj -c $(buildConfiguration) -r linux-arm --self-contained'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
+
+- task: ShellScript@2
+  inputs:
+    scriptPath: 'ci/linux_install_armhf.sh'
+    disableAutoCwd: true
+    args: '$(Build.ArtifactStagingDirectory)/Setup/Linux'
+    
+- task: DotNetCoreCLI@2
+  displayName: 'Build Aporta for Linux arm64'
+  inputs:
+    command: 'publish'
+    arguments: 'src/Aporta/Aporta.csproj -c $(buildConfiguration) -r linux-arm64 --self-contained'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
+
+- task: ShellScript@2
+  inputs:
+    scriptPath: 'ci/linux_install_arm64.sh'
     disableAutoCwd: true
     args: '$(Build.ArtifactStagingDirectory)/Setup/Linux'
     
