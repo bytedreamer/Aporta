@@ -11,24 +11,7 @@
 		<MediaTemplate EmbedCab="yes" />
 
     <PropertyRef Id="WIX_ACCOUNT_USERS" />
-
-    <Property Id="DOTNETCORE6">0</Property>
-    <Property Id="DOTNETCORE7">0</Property>
-
-    <Binary Id="WixCA.dll" SourceFile="$(var.CustomActions.TargetDir)$(var.CustomActions.TargetName).CA.dll" />
-    <CustomAction Id="Check.NetCore" BinaryKey="WixCA.dll" DllEntry="CheckDotNetInstalled" Execute="firstSequence"  />
-
-    <Condition Message="You must first install the .NET 7 Runtime">
-      Installed OR DOTNETCORE7="1"
-    </Condition>
-
-    <InstallUISequence>
-      <Custom Action="Check.NetCore" Before="LaunchConditions">NOT Installed</Custom>
-    </InstallUISequence>
-    <InstallExecuteSequence>
-      <Custom Action="Check.NetCore" Before="LaunchConditions">NOT Installed</Custom>
-    </InstallExecuteSequence>
-
+        
     <Feature Id="ProductFeature" Title="Aporta" Level="1">
       <ComponentGroupRef Id="Aporta_Exe" />
       <ComponentGroupRef Id="Aporta_Project" />

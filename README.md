@@ -40,9 +40,7 @@ Aporta has installers for both Windows and Linux Debian distributions.
 
 ### Windows ###
 
-The Windows installation currently requires [ASP.NET 7.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
-
-[Aporta 64bit Windows Installer](https://www.z-bitco.com/downloads/Aporta.msi)
+[64-bit Windows MSI Installer](https://www.z-bitco.com/downloads/Aporta.msi)
 
 ### Linux ###
 
@@ -50,7 +48,7 @@ DEB packages have been created both x64 and Arm processors.
 
 - [amd64](https://www.z-bitco.com/downloads/Aporta.linux-amd64.deb) for Intel and AMD 64 bit processors
 - [armhf](https://www.z-bitco.com/downloads/Aporta.linux-armhf.deb) for older 32-bit Raspberry PIs
-- [arm64](https://www.z-bitco.com/downloads/Aporta.linux-arm64.deb) for Raspberry PIs 3+ and newer with 64 bit OS
+- [arm64](https://www.z-bitco.com/downloads/Aporta.linux-arm64.deb) for Raspberry PIs 3+ and newer with 64-bit OS
 
 Steps to install and run from Linux DEB packages
 

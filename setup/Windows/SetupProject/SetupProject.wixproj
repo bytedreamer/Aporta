@@ -33,16 +33,6 @@
     <Content Include="SetupProject.wax" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CustomActions\CustomActions.csproj">
-      <Name>CustomActions</Name>
-      <Project>{b8dcc198-4635-40c1-b709-a84dc33bfa0f}</Project>
-      <Private>True</Private>
-      <DoNotHarvest>True</DoNotHarvest>
-      <RefProjectOutputGroups>Binaries;Content;Satellites</RefProjectOutputGroups>
-      <RefTargetDir>INSTALLFOLDER</RefTargetDir>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <WixExtension Include="WixFirewallExtension">
       <HintPath>..\..\..\..\..\..\..\Program Files (x86)\WiX Toolset v3.11\bin\WixFirewallExtension.dll</HintPath>
       <Name>WixFirewallExtension</Name>
@@ -58,12 +48,12 @@
     <Error Text="The WiX Toolset v3.11 (or newer) build tools must be installed to build this project. To download the WiX Toolset, see http://wixtoolset.org/releases/" />
   </Target>
   <Target Name="BeforeBuild">
-    <Exec Command="dotnet publish ..\..\..\src\Aporta.sln -c $(Configuration) -r win-x64 --self-contained -p:PublishTrimmed=false" />
+    <Exec Command="dotnet publish ..\..\..\src\Aporta\Aporta.csproj -c $(Configuration) -r win-x64 --self-contained -p:PublishTrimmed=false" />
     <PropertyGroup>
-      <LinkerBaseInputPaths>..\..\..\src\Aporta\bin\$(Configuration)\net6.0\win-x64\publish</LinkerBaseInputPaths>
-      <DefineConstants>BasePath=..\..\..\src\Aporta\bin\$(Configuration)\net6.0\win-x64\publish</DefineConstants>
+      <LinkerBaseInputPaths>..\..\..\src\Aporta\bin\$(Configuration)\net7.0\win-x64\publish</LinkerBaseInputPaths>
+      <DefineConstants>BasePath=..\..\..\src\Aporta\bin\$(Configuration)\net7.0\win-x64\publish</DefineConstants>
     </PropertyGroup>
-    <HeatDirectory OutputFile="Aporta.wxs" DirectoryRefId="INSTALLFOLDER" ComponentGroupName="Aporta_Project" SuppressCom="true" Directory="..\..\..\src\Aporta\bin\$(Configuration)\net6.0\win-x64\publish" SuppressFragments="true" SuppressRegistry="true" SuppressRootDirectory="true" AutoGenerateGuids="false" GenerateGuidsNow="true" ToolPath="$(WixToolPath)" PreprocessorVariable="var.BasePath" Transforms="RemovePdbs.xslt;RemoveExe.xslt" RunAsSeparateProcess="true" />
+    <HeatDirectory OutputFile="Aporta.wxs" DirectoryRefId="INSTALLFOLDER" ComponentGroupName="Aporta_Project" SuppressCom="true" Directory="..\..\..\src\Aporta\bin\$(Configuration)\net7.0\win-x64\publish" SuppressFragments="true" SuppressRegistry="true" SuppressRootDirectory="true" AutoGenerateGuids="false" GenerateGuidsNow="true" ToolPath="$(WixToolPath)" PreprocessorVariable="var.BasePath" Transforms="RemovePdbs.xslt;RemoveExe.xslt" RunAsSeparateProcess="true" />
   </Target>
   <!--
 	To modify your build process, add your task inside one of the targets below and uncomment it.
