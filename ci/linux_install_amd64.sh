@@ -1,9 +1,9 @@
 #!/bin/bash
 
-mkdir -p package/amd64/DEBIAN
-mkdir -p package/amd64/usr/local/bin/Aporta
-cp setup/Linux/control-amd64 package/amd64/DEBIAN/control
+mkdir -p "$1/package/amd64/DEBIAN"
+mkdir -p "$1/package/amd64/usr/local/bin/Aporta"
+cp "$1/setup/Linux/control-amd64" "$1/package/amd64/DEBIAN/control"
 
-cp -r src/Aporta/bin/Release/net7.0/linux-x64/publish/* package/amd64/usr/local/bin/Aporta
+cp -r "$1/src/Aporta/bin/Release/net7.0/linux-x64/publish/*" "$1/package/amd64/usr/local/bin/Aporta"
 
-dpkg-deb --build package/amd64 "$1/Aporta.linux-amd64.deb"
+dpkg-deb --build "$1/package/amd64" "$2/Aporta.linux-amd64.deb"
