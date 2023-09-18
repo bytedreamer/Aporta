@@ -42,6 +42,7 @@ jobs:
     - template: ci/windows_installer.yml
       
 - job: linux_installer
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   pool:
     vmImage: 'ubuntu-latest'
   dependsOn:

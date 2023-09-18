@@ -23,7 +23,6 @@ steps:
     arguments: '--configuration $(buildConfiguration)'
 
 - task: ResharperCli@2
-  enabled: false
   displayName: 'ReSharper Inspection'
   inputs:
     solutionOrProjectPath: 'src/Aporta.sln'
