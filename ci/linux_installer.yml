@@ -11,7 +11,16 @@ steps:
     version: '7.x'
     
 - task: DotNetCoreCLI@2
-  displayName: 'Build Aporta for Linux x64'
+  displayName: 'Build Aporta'
+  inputs:
+    command: 'build'
+    projects: 'src/Aporta.sln'
+    arguments: '--configuration $(buildConfiguration)'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
+    
+- task: DotNetCoreCLI@2
+  displayName: 'Publish Aporta for Linux x64'
   inputs:
     command: 'publish'
     projects: "src/Aporta/Aporta.csproj"
@@ -27,7 +36,7 @@ steps:
     args: '$(Build.SourcesDirectory) $(Build.ArtifactStagingDirectory)'
     
 - task: DotNetCoreCLI@2
-  displayName: 'Build Aporta for Linux arm'
+  displayName: 'Publish Aporta for Linux arm'
   inputs:
     command: 'publish'
     projects: "src/Aporta/Aporta.csproj"
@@ -44,7 +53,7 @@ steps:
     args: '$(Build.SourcesDirectory) $(Build.ArtifactStagingDirectory)'
     
 - task: DotNetCoreCLI@2
-  displayName: 'Build Aporta for Linux arm64'
+  displayName: 'Publish Aporta for Linux arm64'
   inputs:
     command: 'publish'
     projects: "src/Aporta/Aporta.csproj"
