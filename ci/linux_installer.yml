@@ -19,7 +19,10 @@ steps:
     arguments: '-c $(buildConfiguration) -r linux-x64 --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
-    
+
+- powershell: Get-ChildItem -Path '$(Build.SourcesDirectory)' -recurse
+- powershell: Get-ChildItem -Path '$(Build.BinariesDirectory)' -recurse
+
 - task: ShellScript@2
   inputs:
     scriptPath: 'ci/linux_install_amd64.sh'
