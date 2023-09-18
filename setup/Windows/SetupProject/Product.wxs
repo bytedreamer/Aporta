@@ -13,12 +13,13 @@
     <PropertyRef Id="WIX_ACCOUNT_USERS" />
 
     <Property Id="DOTNETCORE6">0</Property>
+    <Property Id="DOTNETCORE7">0</Property>
 
     <Binary Id="WixCA.dll" SourceFile="$(var.CustomActions.TargetDir)$(var.CustomActions.TargetName).CA.dll" />
     <CustomAction Id="Check.NetCore" BinaryKey="WixCA.dll" DllEntry="CheckDotNetInstalled" Execute="firstSequence"  />
 
-    <Condition Message="You must first install the .NET 6 Runtime">
-      Installed OR DOTNETCORE6="1"
+    <Condition Message="You must first install the .NET 7 Runtime">
+      Installed OR DOTNETCORE7="1"
     </Condition>
 
     <InstallUISequence>

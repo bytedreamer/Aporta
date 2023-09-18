@@ -36,34 +36,30 @@ The project is early in its development. After working on access control product
 
 ## Installation ##
 
-Aporta has installers for both Windows and Linux Debian distributions. The should be minimal steps needed to get a fully functional access controller operating.
-
-For both platforms .NET Core 6.0 runtime must be installed first.
-
-[.NET 6.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
-
-- ASP.NET Core Runtime is required
+Aporta has installers for both Windows and Linux Debian distributions.
 
 ### Windows ###
 
-There is a standard MSI file that will install Aporta as a service.
+The Windows installation currently requires [ASP.NET 7.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/7.0)
 
 [Aporta 64bit Windows Installer](https://www.z-bitco.com/downloads/Aporta.msi)
 
 ### Linux ###
 
-DEB packages have been created both x64 and Arm processors. They have been compressed into a single compressed file.
+DEB packages have been created both x64 and Arm processors.
 
-[Linux Debian Packages](https://www.z-bitco.com/downloads/Aporta.tar.gz)
+- [amd64](https://www.z-bitco.com/downloads/Aporta.linux-amd64.deb) for Intel and AMD 64 bit processors
+- [armhf](https://www.z-bitco.com/downloads/Aporta.linux-armhf.deb) for older 32-bit Raspberry PIs
+- [arm64](https://www.z-bitco.com/downloads/Aporta.linux-arm64.deb) for Raspberry PIs 3+ and newer with 64 bit OS
 
 Steps to install and run from Linux DEB packages
 
 - Run commands from a shell terminal
 - Install files by running the following command using the correct version of the package file
 ```shell
- sudo dpkg -i Aporta.X.X.XX.linux-XXX.deb
+ sudo dpkg -i Aporta.linux-XXX.deb
  ```
-- Change directory to ```\usr\share\Aporta```
+- Change directory to ```\opt\Aporta```
 - The followng command will run the Aporta server
 ```shell
 sudo ./Aporta

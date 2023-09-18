@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text;
 using Microsoft.Deployment.WindowsInstaller;
 using Microsoft.Win32;
 
@@ -15,11 +16,18 @@ namespace CustomActions
             var registryKey =
                 localMachine64.OpenSubKey(@"SOFTWARE\WOW6432Node\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.NETCore.App\", false);
 
-            var latestVersion = registryKey?.GetValueNames().OrderByDescending(version => version).First() ?? string.Empty;
+            var versions = registryKey?.GetValueNames().OrderByDescending(version => version).ToArray() ?? new string[]{};
 
-            session.Log($"Found version {latestVersion} of .NET Core");
+            StringBuilder versionList = new StringBuilder();
+            foreach (var version in versions)
+            {
+                versionList.Append(version + " ");
+            }
+            session.Log($"Found version {versionList} of .NET Core");
 
-            session["DOTNETCORE6"] = latestVersion.StartsWith("6") ? "1" : "0";
+            session["DOTNETCORE6"] = versions.Any(version => version.StartsWith("6")) ? "1" : "0";
+            
+            session["DOTNETCORE7"] = versions.Any(version => version.StartsWith("7")) ? "1" : "0";
 
             return ActionResult.Success;
         }
