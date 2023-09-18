@@ -80,8 +80,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ci", "ci", "{BCC48DC3-6E2C-
 		..\ci\build.yml = ..\ci\build.yml
 		..\ci\windows_installer.yml = ..\ci\windows_installer.yml
 		..\ci\linux_install_amd64.sh = ..\ci\linux_install_amd64.sh
-		..\ci\linux_install_amdhf.sh = ..\ci\linux_install_amdhf.sh
 		..\ci\linux_install_arm64.sh = ..\ci\linux_install_arm64.sh
+		..\ci\linux_install_armhf.sh = ..\ci\linux_install_armhf.sh
 	EndProjectSection
 EndProject
 Global
