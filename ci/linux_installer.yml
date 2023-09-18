@@ -13,7 +13,7 @@ steps:
 - task: DotNetCoreCLI@2
   displayName: 'Build Aporta for Linux x64'
   inputs:
-    command: 'build'
+    command: 'publish'
     projects: 'src/Aporta/Aporta.csproj'
     arguments: '-c $(buildConfiguration) -r linux-x64 --self-contained'
     versioningScheme: 'byEnvVar'
