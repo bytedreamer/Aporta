@@ -16,12 +16,21 @@ steps:
     packageType: 'sdk'
     version: '7.x'
     
+- task: DotNetCoreCLI@2
+  displayName: 'Build Aporta'
+  inputs:
+    command: 'build'
+    projects: 'src/Aporta.sln'
+    arguments: '--configuration $(buildConfiguration)'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
+    
 - task: VSBuild@1
   displayName: 'Build Windows Installer'
   inputs:
     solution: 'setup/Windows/SetupProject/SetupProject.wixproj'
     msbuildArchitecture: 'x86'
-    configuration: 'Release'
+    configuration: '$(buildConfiguration)'
     msbuildArgs: '/p:RunWixToolsOutOfProc=true /p:OutputPath=$(Build.ArtifactStagingDirectory)'
 
 - task: DotNetCoreCLI@2
