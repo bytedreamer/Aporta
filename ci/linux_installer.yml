@@ -16,12 +16,10 @@ steps:
     command: 'publish'
     projects: "src/Aporta/Aporta.csproj"
     publishWebProjects: false
+    zipAfterPublish: false
     arguments: '-c $(buildConfiguration) -r linux-x64 --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
-
-- powershell: Get-ChildItem -Path '$(Build.SourcesDirectory)' -recurse
-- powershell: Get-ChildItem -Path '$(Build.BinariesDirectory)' -recurse
 
 - task: ShellScript@2
   inputs:
@@ -34,6 +32,7 @@ steps:
     command: 'publish'
     projects: "src/Aporta/Aporta.csproj"
     publishWebProjects: false
+    zipAfterPublish: false
     arguments: '-c $(buildConfiguration) -r linux-arm --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
@@ -50,6 +49,7 @@ steps:
     command: 'publish'
     projects: "src/Aporta/Aporta.csproj"
     publishWebProjects: false
+    zipAfterPublish: false
     arguments: '-c $(buildConfiguration) -r linux-arm64 --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
