@@ -27,3 +27,7 @@ steps:
 
 - powershell: '& AzureSignTool sign -kvt "$(AzureKeyVaultTenantId)" -kvu "https://z-bitvault.vault.azure.net/" -kvi "$(AzureKeyVaultClientId)" -kvs "$(AzureKeyVaultClientSecret)" -kvc "CodeSign" -tr "http://timestamp.comodoca.com" -v "$(Build.ArtifactStagingDirectory)/Setup/Windows/Aporta.msi"'
   displayName: 'Sign the package'
+  
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)'
