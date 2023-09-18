@@ -41,7 +41,7 @@ jobs:
       
 - job: linux_installer
   pool:
-    vmImage: 'linux-latest'
+    vmImage: 'ubuntu-latest'
   steps:
     - template: ci/linux_installer.yml
 
