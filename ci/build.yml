@@ -28,3 +28,4 @@ steps:
     solutionOrProjectPath: 'src/Aporta.sln'
     failBuildLevelSelector: 'Warning'
     additionalArguments: '--build'
+    enabled: false

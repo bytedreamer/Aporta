@@ -1,0 +1,24 @@
+steps:
+- task: PowerShell@2
+  inputs:
+    filePath: 'set-version.ps1'
+    arguments: '-newVersion $(AssemblyVersion)'
+    
+- task: UseDotNet@2
+  displayName: 'Install .NET Core SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '7.x'
+    
+- task: DotNetCoreCLI@2
+  displayName: 'Build Aporta for Linux x64'
+  inputs:
+    command: 'build'
+    projects: 'src/Aporta.sln'
+    arguments: '-c $(buildConfiguration) -r linux-x64 --self-contained'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion'
+    
+- task: ShellScript@2
+  inputs:
+    scriptPath: 'ci/linux_install_amd64.sh'
