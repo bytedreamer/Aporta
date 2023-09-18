@@ -20,16 +20,10 @@ steps:
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
     
-- task: Bash@3
-  displayName: 'Make Setup/Linux directory in artifacts'
-  inputs:
-    targetType: inline
-    script: mkdir -p $(Build.ArtifactStagingDirectory)/Setup/Linux
-    
 - task: ShellScript@2
   inputs:
     scriptPath: 'ci/linux_install_amd64.sh'
-    args: '$(Build.SourcesDirectory) $(Build.ArtifactStagingDirectory)/Setup/Linux'
+    args: '$(Build.SourcesDirectory) $(Build.ArtifactStagingDirectory)'
     
 - task: DotNetCoreCLI@2
   displayName: 'Build Aporta for Linux arm'
@@ -45,7 +39,7 @@ steps:
   inputs:
     scriptPath: 'ci/linux_install_armhf.sh'
     disableAutoCwd: true
-    args: '$(Build.SourcesDirectory) $(Build.ArtifactStagingDirectory)/Setup/Linux'
+    args: '$(Build.SourcesDirectory) $(Build.ArtifactStagingDirectory)'
     
 - task: DotNetCoreCLI@2
   displayName: 'Build Aporta for Linux arm64'
@@ -61,7 +55,7 @@ steps:
   inputs:
     scriptPath: 'ci/linux_install_arm64.sh'
     disableAutoCwd: true
-    args: '$(Build.SourcesDirectory) $(Build.ArtifactStagingDirectory)/Setup/Linux'
+    args: '$(Build.SourcesDirectory) $(Build.ArtifactStagingDirectory)'
     
 - task: PublishPipelineArtifact@1
   inputs:
