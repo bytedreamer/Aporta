@@ -14,7 +14,9 @@ steps:
   displayName: 'Build Aporta for Linux x64'
   inputs:
     command: 'publish'
-    arguments: 'src/Aporta/Aporta.csproj -c $(buildConfiguration) -r linux-x64 --self-contained'
+    projects: "src/Aporta/Aporta.csproj"
+    publishWebProjects: false
+    arguments: '-c $(buildConfiguration) -r linux-x64 --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
     
@@ -28,7 +30,9 @@ steps:
   displayName: 'Build Aporta for Linux arm'
   inputs:
     command: 'publish'
-    arguments: 'src/Aporta/Aporta.csproj -c $(buildConfiguration) -r linux-arm --self-contained'
+    projects: "src/Aporta/Aporta.csproj"
+    publishWebProjects: false
+    arguments: '-c $(buildConfiguration) -r linux-arm --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
 
@@ -42,7 +46,9 @@ steps:
   displayName: 'Build Aporta for Linux arm64'
   inputs:
     command: 'publish'
-    arguments: 'src/Aporta/Aporta.csproj -c $(buildConfiguration) -r linux-arm64 --self-contained'
+    projects: "src/Aporta/Aporta.csproj"
+    publishWebProjects: false
+    arguments: '-c $(buildConfiguration) -r linux-arm64 --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
 
