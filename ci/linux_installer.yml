@@ -14,7 +14,7 @@ steps:
   displayName: 'Build Aporta for Linux x64'
   inputs:
     command: 'build'
-    projects: 'src/Aporta.sln'
+    projects: 'src/Aporta/Aporta.csproj'
     arguments: '-c $(buildConfiguration) -r linux-x64 --self-contained'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
