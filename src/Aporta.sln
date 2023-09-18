@@ -47,8 +47,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Settings", "Settings", "{3A
 		..\azure-pipelines.yml = ..\azure-pipelines.yml
 		..\Directory.Build.props = ..\Directory.Build.props
 		..\set-version.ps1 = ..\set-version.ps1
-		..\ci\build.yml = ..\ci\build.yml
-		..\ci\windows-installer.yml = ..\ci\windows-installer.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Setup", "Setup", "{7721B58D-7236-4F4D-87C8-70A7107E3F7F}"
@@ -75,6 +73,14 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Drivers.Virtual.WebClient", "Drivers\Aporta.Drivers.Virtual.WebClient\Aporta.Drivers.Virtual.WebClient.csproj", "{75C7C3FE-36E4-418B-9224-A1417433BE8D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Drivers.Virtual.Shared", "Drivers\Aporta.Drivers.Virtual.Shared\Aporta.Drivers.Virtual.Shared.csproj", "{90D67495-7B53-4B79-A9BD-1C559FAC536F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ci", "ci", "{BCC48DC3-6E2C-4C8A-94D5-E9A34078A9C8}"
+	ProjectSection(SolutionItems) = preProject
+		..\ci\linux_installer.yml = ..\ci\linux_installer.yml
+		..\ci\build.yml = ..\ci\build.yml
+		..\ci\windows_installer.yml = ..\ci\windows_installer.yml
+		..\ci\linux_install_amd64.sh = ..\ci\linux_install_amd64.sh
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -239,6 +245,7 @@ Global
 		{077E6508-BD59-482E-BA46-41DC33BA7179} = {41EDA034-80AD-438B-8DE2-B60F9BFA3555}
 		{75C7C3FE-36E4-418B-9224-A1417433BE8D} = {41EDA034-80AD-438B-8DE2-B60F9BFA3555}
 		{90D67495-7B53-4B79-A9BD-1C559FAC536F} = {41EDA034-80AD-438B-8DE2-B60F9BFA3555}
+		{BCC48DC3-6E2C-4C8A-94D5-E9A34078A9C8} = {3A37D965-DB8E-406E-B472-F58E661921FA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65C2BC8A-D61C-4643-BD0F-2670F6AA9D01}

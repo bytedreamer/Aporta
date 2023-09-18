@@ -38,4 +38,10 @@ jobs:
     vmImage: 'windows-latest'
   steps:
     - template: ci/windows_installer.yml
+      
+- job: linux_installer
+  pool:
+    vmImage: 'linux-latest'
+  steps:
+    - template: ci/linux_installer.yml
 
