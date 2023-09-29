@@ -1,13 +1,15 @@
 ﻿using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Aporta.Core.Services;
-using Aporta.Utilities;
-using Aporta.Workers;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+using Aporta.Core.Services;
+using Aporta.Utilities;
+using Aporta.Workers;
 
 namespace Aporta;
 
@@ -22,7 +24,7 @@ class Program
         await host.RunAsync();
     }
 
-    public static IHostBuilder CreateSystemdHostBuilder(string[] args) =>
+    private static IHostBuilder CreateSystemdHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
             .UseSystemd()
             .ConfigureServices((_, services) =>
