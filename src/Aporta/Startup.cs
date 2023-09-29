@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Aporta;
 
@@ -46,6 +48,18 @@ public class Startup
             opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
                 new[] {"application/octet-stream"});
         });
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            services.AddLogging(loggingBuilder => {
+                loggingBuilder.AddFile("/var/log/aporta.log", options =>
+                {
+                    options.Append = true;
+                    options.MaxRollingFiles = 10;
+                    options.FileSizeLimitBytes = 1000000;
+                });
+            });
+        }
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
