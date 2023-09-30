@@ -81,7 +81,7 @@ _appsettings.Production.json_ - Location for Aporta settings
     "Kestrel": {
         "EndPoints": {
             "Https": {
-              "Url": "https://*:8443" -> web site port number
+              "Url": "https://*:8443" -> web site port number (check machine firewall settings if connecting remotely)
             }
         }
     }
