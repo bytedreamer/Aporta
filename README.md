@@ -64,4 +64,26 @@ sudo ./Aporta
 ```
 ### Configuration ###
 
-Browse to the local web url ```https://localhost:8443```
+Browse to the local web url ```https://localhost:8443``` to get startred. A [Quick Start Guide](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide) can be found in the Wiki section.
+
+_appsettings.Production.json_ - Location for Aporta settings
+
+```json
+{
+    "EventLog": {
+        "LogLevel": {
+            "Default": "Information", -> configure default logging level
+            "Microsoft": "Warning",
+            "Microsoft.Hosting.Lifetime": "Information"
+            }
+    },
+    "AllowedHosts": "*",
+    "Kestrel": {
+        "EndPoints": {
+            "Https": {
+              "Url": "https://*:8443" -> web site port number
+            }
+        }
+    }
+}
+```
