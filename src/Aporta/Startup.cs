@@ -49,7 +49,8 @@ public class Startup
                 new[] {"application/octet-stream"});
         });
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        // For nix based OSs, write logs to /var/log
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             services.AddLogging(loggingBuilder => {
                 loggingBuilder.AddFile("/var/log/aporta.log", options =>
