@@ -64,6 +64,10 @@ public class AccessService
     {
         try
         {
+            _logger.LogInformation(
+                "Credential with {BitCount} bits and raw data of {@CardData} received on door '{Name}'",
+                eventArgs.BitCount, BuildRawBitString(eventArgs.CardData), eventArgs.Access.Name);
+
             var endpoints = (await _endpointRepository.GetAll()).ToArray();
 
             var matchingDoor = await MatchingDoor(eventArgs.Access.Id, endpoints);
@@ -104,13 +108,9 @@ public class AccessService
 
     private async Task<bool> IsAccessGranted(BitArray cardData, Door matchingDoor, Endpoint accessPoint)
     {
-        var cardNumberBuilder = new StringBuilder();
-        foreach (bool bit in cardData)
-        {
-            cardNumberBuilder.Append(bit ? "1" : "0");
-        }
-
-        var assignedCredential = await _credentialRepository.AssignedCredential(cardNumberBuilder.ToString());
+        var rawBitsString = BuildRawBitString(cardData);
+        
+        var assignedCredential = await _credentialRepository.AssignedCredential(rawBitsString);
         int eventId;
         if (assignedCredential?.Person == null)
         {
@@ -130,7 +130,7 @@ public class AccessService
             if (assignedCredential == null)
             {
                 await _credentialRepository.Insert(new Credential
-                    { Number = cardNumberBuilder.ToString(), LastEvent = eventId });
+                    { Number = rawBitsString, LastEvent = eventId });
             }
             else
             {
@@ -174,6 +174,17 @@ public class AccessService
         await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
             
         return true;
+    }
+
+    private static string BuildRawBitString(BitArray cardData)
+    {
+        var cardNumberBuilder = new StringBuilder();
+        foreach (bool bit in cardData)
+        {
+            cardNumberBuilder.Append(bit ? "1" : "0");
+        }
+
+        return cardNumberBuilder.ToString();
     }
 
     private async Task OpenDoor(IAccess access, Endpoint matchingDoorStrike, int strikeTimer)
