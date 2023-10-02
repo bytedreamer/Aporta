@@ -24,8 +24,9 @@ public class Startup
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(
-            Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, "Data")));
+        services.AddDataProtection().SetDefaultKeyLifetime(TimeSpan.MaxValue).PersistKeysToFileSystem(
+            new DirectoryInfo(Path.Combine(
+                Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, "Data")));
         services.AddSingleton<IDataEncryption, DataEncryptor>();
 
         services.AddSingleton<IDataAccess, SqLiteDataAccess>();
@@ -46,13 +47,14 @@ public class Startup
         services.AddResponseCompression(opts =>
         {
             opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-                new[] {"application/octet-stream"});
+                new[] { "application/octet-stream" });
         });
 
         // For nix based OSs, write logs to /var/log
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            services.AddLogging(loggingBuilder => {
+            services.AddLogging(loggingBuilder =>
+            {
                 loggingBuilder.AddFile("/var/log/aporta.log", options =>
                 {
                     options.Append = true;
