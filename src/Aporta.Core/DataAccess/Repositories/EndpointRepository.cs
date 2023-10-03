@@ -27,6 +27,8 @@ public class EndpointRepository : BaseRepository<Endpoint>
         
     protected override string SqlDelete => @"delete from endpoint
                                             where id = @id";
+    
+    protected override string SqlRowCount => @"select count(*) from endpoint";
         
     public async Task<IEnumerable<Endpoint>> GetForExtension(Guid extensionId)
     {

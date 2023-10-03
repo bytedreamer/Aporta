@@ -5,6 +5,7 @@
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
+@using System.Text.Json
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -17,36 +18,141 @@
 }
 else
 {
-<Row>
-    <Column ColumnSize="ColumnSize.IsHalf">
+    <Row>
+        <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+            <TableHeader>
+                <TableRow>
+                    <TableHeaderCell>Timestamp</TableHeaderCell>
+                    <TableHeaderCell>Type</TableHeaderCell>
+                    <TableHeaderCell>Reason</TableHeaderCell>
+                    <TableHeaderCell>Endpoint</TableHeaderCell>
+                    <TableHeaderCell>Door</TableHeaderCell>
+                    <TableHeaderCell>Person</TableHeaderCell>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                @foreach (var eventItem in _events.Items)
+                {
+                    var eventData = JsonSerializer.Deserialize<EventData>(eventItem.Data);
+                    <TableRow>
+                        <TableRowHeader>
+                            @eventItem.Timestamp.ToLocalTime()
+                        </TableRowHeader>
+                        <TableRowCell>
+                            @(eventItem.Type.GetDescription())
+                        </TableRowCell>
+                        <TableRowCell>
+                            @(eventData.EventReason.GetDescription())
+                        </TableRowCell>
+                        <TableRowCell>
+                            @eventData.Endpoint?.Name
+                        </TableRowCell>
+                        <TableRowCell>
+                            @eventData.Door?.Name
+                        </TableRowCell>
+                        <TableRowCell>
+                            @eventData.Person?.FirstName @eventData.Person?.LastName
+                        </TableRowCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+        <Pagination>
+            <PaginationItem Disabled="@IsPageNavigationDisabled(PreviousPageItem)" @onclick="Previous">
+                <PaginationLink>
+                    <span aria-hidden="true">«</span>
+                </PaginationLink>
+            </PaginationItem>
+            @{
+                for (var i = 1; i <= _pageItems; i++)
+                {
+                    var pageNumberAsString = i.ToString();
+                    <PaginationItem @key="pageNumberAsString" Active="@IsActive(pageNumberAsString)">
+                        <PaginationLink Page="@pageNumberAsString" Clicked="SetActive">
+                            @pageNumberAsString
+                        </PaginationLink>
+                    </PaginationItem>
+                }
+            }
+            <PaginationItem Disabled="@IsPageNavigationDisabled(NextPageItem)" @onclick="Next">
+                <PaginationLink>
+                    <span aria-hidden="true">»</span>
+                </PaginationLink>
+            </PaginationItem>
+        </Pagination>
+    </Row>
+    
+    <Row>
+        <Column ColumnSize="ColumnSize.IsHalf">
+                <Card Margin="Margin.Is4.OnY">
+                    <CardTitle Margin="Margin.Is4.OnX">
+                        Inputs
+                    </CardTitle>
+                    <CardBody>
+                        <Table Hoverable="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHeaderCell>Name</TableHeaderCell>
+                                    <TableHeaderCell>State</TableHeaderCell>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                @foreach (var input in _inputs.OrderBy(output => output.Name))
+                                {
+                                    <TableRow>
+                                        <TableRowHeader>
+                                            @input.Name
+                                        </TableRowHeader>
+                                        <TableRowCell>
+                                            @if (_inputStates[input.Id].HasValue && _inputStates[input.Id].Value)
+                                            {
+                                                <Icon Name="IconName.ArrowUp" Style="color: red"/>
+                                            }
+                                            else if (_inputStates[input.Id].HasValue && !_inputStates[input.Id].Value)
+                                            {
+                                                <Icon Name="IconName.ArrowDown" Style="color: green"/>
+                                            }
+                                        </TableRowCell>
+                                    </TableRow>
+                                }
+                            </TableBody>
+                        </Table>
+                    </CardBody>
+                </Card>
+            </Column> 
+        <Column ColumnSize="ColumnSize.IsHalf">
             <Card Margin="Margin.Is4.OnY">
                 <CardTitle Margin="Margin.Is4.OnX">
-                    Inputs
+                    Outputs
                 </CardTitle>
                 <CardBody>
-                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                    <Table Hoverable="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
                         <TableHeader>
                             <TableRow>
                                 <TableHeaderCell>Name</TableHeaderCell>
                                 <TableHeaderCell>State</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            @foreach (var input in _inputs.OrderBy(output => output.Name))
+                            @foreach (var output in _outputs.OrderBy(output => output.Name))
                             {
                                 <TableRow>
                                     <TableRowHeader>
-                                        @input.Name
+                                        @output.Name
                                     </TableRowHeader>
-                                    <TableRowCell>
-                                        @if (_inputStates[input.Id].HasValue && _inputStates[input.Id].Value)
+                                    <TableHeaderCell>
+                                        @if (_outputStates[output.Id].HasValue && _outputStates[output.Id].Value)
                                         {
                                             <Icon Name="IconName.ArrowUp" Style="color: red"/>
                                         }
-                                        else if (_inputStates[input.Id].HasValue && !_inputStates[input.Id].Value)
+                                        else if (_outputStates[output.Id].HasValue && !_outputStates[output.Id].Value)
                                         {
                                             <Icon Name="IconName.ArrowDown" Style="color: green"/>
                                         }
+                                    </TableHeaderCell>
+                                    <TableRowCell>
+                                        <Check TValue="bool?" Checked="@_outputStates[output.Id]" CheckedChanged="async checkedValue => await SetOutputState(output.Id, checkedValue)"/>
                                     </TableRowCell>
                                 </TableRow>
                             }
@@ -54,49 +160,8 @@ else
                     </Table>
                 </CardBody>
             </Card>
-        </Column> 
-    <Column ColumnSize="ColumnSize.IsHalf">
-        <Card Margin="Margin.Is4.OnY">
-            <CardTitle Margin="Margin.Is4.OnX">
-                Outputs
-            </CardTitle>
-            <CardBody>
-                <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
-                    <TableHeader>
-                        <TableRow>
-                            <TableHeaderCell>Name</TableHeaderCell>
-                            <TableHeaderCell>State</TableHeaderCell>
-                            <TableHeaderCell></TableHeaderCell>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        @foreach (var output in _outputs.OrderBy(output => output.Name))
-                        {
-                            <TableRow>
-                                <TableRowHeader>
-                                    @output.Name
-                                </TableRowHeader>
-                                <TableHeaderCell>
-                                    @if (_outputStates[output.Id].HasValue && _outputStates[output.Id].Value)
-                                    {
-                                        <Icon Name="IconName.ArrowUp" Style="color: red"/>
-                                    }
-                                    else if (_outputStates[output.Id].HasValue && !_outputStates[output.Id].Value)
-                                    {
-                                        <Icon Name="IconName.ArrowDown" Style="color: green"/>
-                                    }
-                                </TableHeaderCell>
-                                <TableRowCell>
-                                    <Check TValue="bool?" Checked="@_outputStates[output.Id]" CheckedChanged="async checkedValue => await SetOutputState(output.Id, checkedValue)"/>
-                                </TableRowCell>
-                            </TableRow>
-                        }
-                    </TableBody>
-                </Table>
-            </CardBody>
-        </Card>
-    </Column>
-</Row>
+        </Column>
+    </Row>
 }
 
 <Snackbar @ref="_snackbar" Color="@_snackbarColor">
@@ -106,11 +171,19 @@ else
 </Snackbar>
 
 @code {
+    private PaginatedItemsDto<Event> _events;
+    
+    private const string PreviousPageItem = "previous";
+    private const string NextPageItem = "next";
+    private const int PageSize = 5;
+    private string _currentPage = "1";
+    private int _pageItems = 1;
+    
     private List<Input> _inputs;
-    private readonly Dictionary<int, bool?> _inputStates = new Dictionary<int, bool?>();
+    private readonly Dictionary<int, bool?> _inputStates = new();
     
     private List<Output> _outputs;
-    private readonly Dictionary<int, bool?> _outputStates = new Dictionary<int, bool?>();
+    private readonly Dictionary<int, bool?> _outputStates = new();
     
     private HubConnection _hubConnection;
     
@@ -120,6 +193,8 @@ else
     
     protected override async Task OnInitializedAsync()
     {
+        await LoadEvents();
+       
         _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
         if (_inputs != null)
         {
@@ -226,5 +301,51 @@ else
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
         }
+    }
+    
+    private bool IsActive(string page) => _currentPage == page;
+
+    private bool IsPageNavigationDisabled(string navigation)
+    {
+        return navigation switch
+        {
+            PreviousPageItem => _currentPage.Equals("1"),
+            NextPageItem => _currentPage.Equals(_pageItems.ToString()),
+            _ => false
+        };
+    }
+
+    private async Task Previous()
+    {
+        var currentPageAsInt = int.Parse(_currentPage);
+        if (currentPageAsInt > 1 )
+        {
+            _currentPage = (currentPageAsInt - 1).ToString();
+        }
+        
+        await LoadEvents();
+    }
+
+    private async Task Next()
+    {
+        var currentPageAsInt = int.Parse(_currentPage);
+        if (currentPageAsInt < _pageItems )
+        {
+            _currentPage = (currentPageAsInt + 1).ToString();
+        }
+        
+        await LoadEvents();
+    }
+
+    private async Task SetActive(string page)
+    {
+        _currentPage = page;
+        await LoadEvents();
+    }
+
+    private async Task LoadEvents()
+    {
+        _events = await Http.GetFromJsonAsync<PaginatedItemsDto<Event>>(Paths.Events + $"?pageNumber={_currentPage}&pageSize={PageSize}");
+        _pageItems = _events.TotalItems / PageSize + (_events.TotalItems % PageSize > 0 ? 1 : 0);
     }
 }

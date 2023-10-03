@@ -21,6 +21,8 @@ public class InputRepository : BaseRepository<Input>
                                                 (@endpointId, @name)";
 
     protected override string SqlDelete => @"delete from input where id = @id";
+    
+    protected override string SqlRowCount => @"select count(*) from input";
         
     public async Task<Input> GetForDriverId(string driverId)
     {

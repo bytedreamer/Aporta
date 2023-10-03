@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -22,5 +23,11 @@ public class EventsController
     public async Task<Event> Get(int eventId)
     {
         return await _eventService.Get(eventId);
+    }
+    
+    [HttpGet]
+    public async Task<PaginatedItemsDto<Event>> GetPagination([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+    {
+        return await _eventService.GetAll(pageNumber, pageSize);
     }
 }

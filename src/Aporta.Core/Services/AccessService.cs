@@ -151,7 +151,8 @@ public class AccessService
                 {
                     Door = matchingDoor,
                     Endpoint = accessPoint,
-                    Person = assignedCredential.Person
+                    Person = assignedCredential.Person,
+                    EventReason = EventReason.AccessNotAssigned
                 })
             });
             await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
@@ -168,7 +169,8 @@ public class AccessService
             {
                 Door = matchingDoor,
                 Endpoint = accessPoint,
-                Person = assignedCredential.Person
+                Person = assignedCredential.Person,
+                EventReason = EventReason.None
             })
         });
         await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
