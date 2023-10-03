@@ -32,7 +32,7 @@ The project is early in its development. After working on access control product
     - Basic access level assignment
     - Read entire card data for card number **(Done)**
     - Card number is a non-reversible hash **(Done)**
-    - Log access events
+    - Log access events **(Done)**
 
 ## Installation ##
 
