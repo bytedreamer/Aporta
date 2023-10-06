@@ -16,7 +16,7 @@
     else
     {
         <Row>
-            <Column ColumnSize="ColumnSize.Is6.OnDesktop">
+            <Column ColumnSize="ColumnSize.Is3.OnDesktop">
                 @if (_unusedPorts.Any())
                 {
                     <Button Color="Color.Primary" Clicked="_addPortModal.Show">Add RS-485 Port</Button>
@@ -28,6 +28,9 @@
                         <AlertDescription>None are available</AlertDescription>
                     </Alert>
                 }
+            </Column>
+            <Column ColumnSize="ColumnSize.Is3.OnDesktop">
+                <Button Color="Color.Secondary" Clicked="@(async () => await RescanPorts())">Rescan available RS-485 Ports</Button>
             </Column>
         </Row>
         @foreach (var bus in _configuration.Buses)
@@ -263,10 +266,6 @@
         {
             _addBus.PortName = _unusedPorts.First();
         }
-        else
-        {
-            
-        }
     }
 
     private async Task AddBus()
@@ -348,17 +347,26 @@
             }));
     }
     
-    private async Task PerformAction(string actionType, string parameters)
+    private async Task<string> PerformAction(string actionType, string parameters)
     {
         string url = string.Format(Paths.ExtensionPerformAction, ExtensionId, actionType);
         var response = await Http.PostAsync(url,
             new StringContent(parameters, Encoding.UTF8, "application/json"));
-        if (!response.IsSuccessStatusCode)
+        
+        if (response.IsSuccessStatusCode)
+        {
+            _snackbarMessage = $"Request successfully sent";
+            _snackbarColor = SnackbarColor.Info;
+            await _snackbar.Show();
+        }
+        else
         {
             _snackbarMessage = $"Unable to perform action {actionType}";
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
         }
+
+        return await response.Content.ReadAsStringAsync();
     }
 
     private void ValidateDeviceAddress(ValidatorEventArgs eventArgs)
@@ -367,4 +375,10 @@
         eventArgs.Status = _currentBus.Devices.All(device => device.Address != address) ? ValidationStatus.Success : ValidationStatus.Error;
     }
 
+    private async Task RescanPorts()
+    {
+        var ports = await PerformAction(ActionType.AvailablePorts.ToString(), "{}");
+        
+        _unusedPorts = JsonConvert.DeserializeObject<string[]>(ports).Except(_configuration.Buses.Select(bus => bus.PortName)).ToArray();
+    }
 }

@@ -8,5 +8,5 @@ public class Bus
         
     public int BaudRate { get; set; }
         
-    public List<Device> Devices { get; set; } = new List<Device>();
+    public List<Device> Devices { get; set; } = new();
 }
