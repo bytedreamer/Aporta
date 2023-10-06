@@ -16,7 +16,7 @@
     else
     {
         <Row>
-            <Column ColumnSize="ColumnSize.Is3.OnDesktop">
+            <Column ColumnSize="ColumnSize.IsAuto">
                 @if (_unusedPorts.Any())
                 {
                     <Button Color="Color.Primary" Clicked="_addPortModal.Show">Add RS-485 Port</Button>
@@ -29,8 +29,8 @@
                     </Alert>
                 }
             </Column>
-            <Column ColumnSize="ColumnSize.Is3.OnDesktop">
-                <Button Color="Color.Secondary" Clicked="@(async () => await RescanPorts())">Rescan available RS-485 Ports</Button>
+            <Column ColumnSize="ColumnSize.IsAuto">
+                <Button Color="Color.Secondary" Clicked="@(async () => await RescanPorts())">Rescan Available RS-485 Ports</Button>
             </Column>
         </Row>
         @foreach (var bus in _configuration.Buses)

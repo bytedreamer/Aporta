@@ -8,9 +8,12 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
+using Aporta.Core.Hubs;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
+using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services;
@@ -24,14 +27,17 @@ public class AccessService
     private readonly CredentialRepository _credentialRepository;
     private readonly EventRepository _eventRepository;
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
+    private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
-    public AccessService(IDataAccess dataAccess, ExtensionService extensionService, ILogger<AccessService> logger)
+    public AccessService(IDataAccess dataAccess, ExtensionService extensionService,
+        IHubContext<DataChangeNotificationHub> hubContext, ILogger<AccessService> logger)
     {
         _doorRepository = new DoorRepository(dataAccess);
         _credentialRepository = new CredentialRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
         _eventRepository = new EventRepository(dataAccess);
         _extensionService = extensionService;
+        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -136,6 +142,8 @@ public class AccessService
             {
                 await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
             }
+            
+            await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
             return false;
         }
@@ -156,6 +164,8 @@ public class AccessService
                 })
             });
             await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+            
+            await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
                 
             return false;
         }
@@ -174,6 +184,8 @@ public class AccessService
             })
         });
         await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+        
+        await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
             
         return true;
     }

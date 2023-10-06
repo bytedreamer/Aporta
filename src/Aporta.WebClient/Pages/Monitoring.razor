@@ -19,7 +19,7 @@
 else
 {
     <Row>
-        <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+        <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light" >
             <TableHeader>
                 <TableRow>
                     <TableHeaderCell>Timestamp</TableHeaderCell>
@@ -34,7 +34,7 @@ else
                 @foreach (var eventItem in _events.Items)
                 {
                     var eventData = JsonSerializer.Deserialize<EventData>(eventItem.Data);
-                    <TableRow>
+                    <TableRow Color="@_eventRowColor">
                         <TableRowHeader>
                             @eventItem.Timestamp.ToLocalTime()
                         </TableRowHeader>
@@ -57,29 +57,36 @@ else
                 }
             </TableBody>
         </Table>
-        <Pagination>
-            <PaginationItem Disabled="@IsPageNavigationDisabled(PreviousPageItem)" @onclick="Previous">
-                <PaginationLink>
-                    <span aria-hidden="true">«</span>
-                </PaginationLink>
-            </PaginationItem>
-            @{
-                for (var i = 1; i <= _pageItems; i++)
-                {
-                    var pageNumberAsString = i.ToString();
-                    <PaginationItem @key="pageNumberAsString" Active="@IsActive(pageNumberAsString)">
-                        <PaginationLink Page="@pageNumberAsString" Clicked="SetActive">
-                            @pageNumberAsString
+    </Row>
+    <Row>
+        <Column ColumnSize="ColumnSize.IsAuto">
+            <Button Color="Color.Primary" Size="Size.Small" Margin="Margin.Is4.FromBottom" Clicked="ToggleLiveEventMonitoring">@(_liveEventMonitoring ? "Disable" : "Enable") Live Monitoring</Button>
+        </Column> 
+        <Column ColumnSize="ColumnSize.IsAuto">
+            <Pagination Display="@(_liveEventMonitoring ? Display.None : Display.Always)" Size="Size.Small" Margin="Margin.Is2.FromStart">
+                    <PaginationItem Disabled="@IsPageNavigationDisabled(PreviousPageItem)" @onclick="Previous">
+                        <PaginationLink>
+                            <span aria-hidden="true">«</span>
                         </PaginationLink>
                     </PaginationItem>
-                }
-            }
-            <PaginationItem Disabled="@IsPageNavigationDisabled(NextPageItem)" @onclick="Next">
-                <PaginationLink>
-                    <span aria-hidden="true">»</span>
-                </PaginationLink>
-            </PaginationItem>
-        </Pagination>
+                    @{
+                        for (var i = 1; i <= _pageItems; i++)
+                        {
+                            var pageNumberAsString = i.ToString();
+                            <PaginationItem @key="pageNumberAsString" Active="@IsActive(pageNumberAsString)">
+                                <PaginationLink Page="@pageNumberAsString" Clicked="SetActive">
+                                    @pageNumberAsString
+                                </PaginationLink>
+                            </PaginationItem>
+                        }
+                    }
+                    <PaginationItem Disabled="@IsPageNavigationDisabled(NextPageItem)" @onclick="Next">
+                        <PaginationLink>
+                            <span aria-hidden="true">»</span>
+                        </PaginationLink>
+                    </PaginationItem>
+                </Pagination>
+        </Column>
     </Row>
     
     <Row>
@@ -178,6 +185,8 @@ else
     private const int PageSize = 5;
     private string _currentPage = "1";
     private int _pageItems = 1;
+    private Color _eventRowColor = Color.Default;
+    private bool _liveEventMonitoring;
     
     private List<Input> _inputs;
     private readonly Dictionary<int, bool?> _inputStates = new();
@@ -261,6 +270,18 @@ else
         {
             _inputStates[input] = newState;
             
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.NewEventReceived, async _ =>
+        {
+            if (!_liveEventMonitoring) return;
+            
+            _events = await Http.GetFromJsonAsync<PaginatedItemsDto<Event>>(Paths.Events + $"?pageNumber=1&pageSize={PageSize}");
+            _eventRowColor = Color.Warning;
+            StateHasChanged();
+
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            _eventRowColor = Color.Default;
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
@@ -348,4 +369,21 @@ else
         _events = await Http.GetFromJsonAsync<PaginatedItemsDto<Event>>(Paths.Events + $"?pageNumber={_currentPage}&pageSize={PageSize}");
         _pageItems = _events.TotalItems / PageSize + (_events.TotalItems % PageSize > 0 ? 1 : 0);
     }
+
+    private async Task ToggleLiveEventMonitoring()
+    {
+        _liveEventMonitoring = !_liveEventMonitoring;
+
+        if (_liveEventMonitoring)
+        {
+            _events = await Http.GetFromJsonAsync<PaginatedItemsDto<Event>>(Paths.Events + $"?pageNumber=1&pageSize={PageSize}");
+            _eventRowColor = Color.Warning;
+            StateHasChanged();
+
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            _eventRowColor = Color.Default;
+            StateHasChanged();
+        }
+    }
+
 }

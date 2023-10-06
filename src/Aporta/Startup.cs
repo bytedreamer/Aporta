@@ -24,7 +24,7 @@ public class Startup
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddDataProtection().SetDefaultKeyLifetime(TimeSpan.MaxValue).PersistKeysToFileSystem(
+        services.AddDataProtection().SetDefaultKeyLifetime(TimeSpan.FromDays(5000)).PersistKeysToFileSystem(
             new DirectoryInfo(Path.Combine(
                 Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory, "Data")));
         services.AddSingleton<IDataEncryption, DataEncryptor>();
