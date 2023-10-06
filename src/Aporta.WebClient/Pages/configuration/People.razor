@@ -28,7 +28,7 @@ else
         <Column>
             <Card Margin="Margin.Is4.OnY">
                 <CardBody>
-                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                    <Table Hoverable="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
                         <TableHeader>
                             <TableRow>
                                 <TableHeaderCell>Status</TableHeaderCell>
@@ -161,7 +161,7 @@ else
                         <Select TValue="int" @bind-SelectedValue="@_enrollCredentialId">
                             @foreach (var availableCredential in _availableCredentialsForEnrollment)
                             {
-                                <SelectItem Value="availableCredential.Item1.Id">@availableCredential.Item2.Timestamp at @availableCredential.Item3.Door.Name</SelectItem>
+                                <SelectItem Value="availableCredential.Item1.Id">@availableCredential.Item2.Timestamp.ToLocalTime() at @availableCredential.Item3.Door.Name</SelectItem>
                             }
                         </Select>
                     </FieldBody>

@@ -5,5 +5,6 @@ public enum ActionType
     AddBus,
     RemoveBus,
     AddUpdateDevice,
-    RemoveDevice
+    RemoveDevice,
+    AvailablePorts
 }

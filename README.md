@@ -32,7 +32,7 @@ The project is early in its development. After working on access control product
     - Basic access level assignment
     - Read entire card data for card number **(Done)**
     - Card number is a non-reversible hash **(Done)**
-    - Log access events
+    - Log access events **(Done)**
 
 ## Installation ##
 
@@ -64,4 +64,26 @@ sudo ./Aporta
 ```
 ### Configuration ###
 
-Browse to the local web url ```https://localhost:8443```
+Browse to the local web url ```https://localhost:8443``` to get startred. A [Quick Start Guide](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide) can be found in the Wiki section.
+
+_appsettings.Production.json_ - Location for Aporta settings
+
+```json
+{
+    "EventLog": {
+        "LogLevel": {
+            "Default": "Information", -> configure default logging level
+            "Microsoft": "Warning",
+            "Microsoft.Hosting.Lifetime": "Information"
+            }
+    },
+    "AllowedHosts": "*",
+    "Kestrel": {
+        "EndPoints": {
+            "Https": {
+              "Url": "https://*:8443" -> web site port number (check machine firewall settings if connecting remotely)
+            }
+        }
+    }
+}
+```

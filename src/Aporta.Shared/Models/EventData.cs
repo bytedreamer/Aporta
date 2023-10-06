@@ -10,6 +10,14 @@ public class EventData
 
 public enum EventReason
 {
+    [Description("None")]
+    None,
+    [Description("Door Used")]
+    DoorUsed,
+    [Description("Door Not Used")]
+    DoorNotUsed,
+    [Description("Access Not Assigned")]
+    AccessNotAssigned,
     [Description("Credential Not Enrolled")]
     CredentialNotEnrolled
 }

@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using Dapper;
+
+using Aporta.Shared.Models;
 
 namespace Aporta.Core.DataAccess.Repositories;
 
@@ -13,6 +16,8 @@ public abstract class BaseRepository<T>
     protected abstract string SqlInsert { get; }
         
     protected abstract string SqlDelete { get; }
+    
+    protected abstract string SqlRowCount { get; }
 
     public async Task<T> Get(int id)
     {
@@ -28,6 +33,24 @@ public abstract class BaseRepository<T>
         connection.Open();
 
         return await connection.QueryAsync<T>(SqlSelect);
+    }
+
+    public async Task<PaginatedItemsDto<T>> GetAll(int pageNumber, int pageSize, string orderBy)
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        int offset = (pageNumber - 1) * pageSize;
+        var results = await connection.QueryAsync<T>($@"{SqlSelect} order by {orderBy} desc limit @offset, @pageSize",
+            new { offset, pageSize });
+
+        return new PaginatedItemsDto<T>
+        {
+            Items = results,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalItems = await connection.ExecuteScalarAsync<int>(SqlRowCount)
+        };
     }
 
     public async Task<int> Insert(T record)

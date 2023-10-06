@@ -22,6 +22,8 @@ public class PersonRepository : BaseRepository<Person>
                                                 (@firstName, @lastName, @enabled)";
         
     protected override string SqlDelete => @"delete from person where id = @id";
+    
+    protected override string SqlRowCount => @"select count(*) from person";
         
     protected override object InsertParameters(Person person)
     {

@@ -8,9 +8,12 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
+using Aporta.Core.Hubs;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
+using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services;
@@ -24,14 +27,17 @@ public class AccessService
     private readonly CredentialRepository _credentialRepository;
     private readonly EventRepository _eventRepository;
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
+    private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
-    public AccessService(IDataAccess dataAccess, ExtensionService extensionService, ILogger<AccessService> logger)
+    public AccessService(IDataAccess dataAccess, ExtensionService extensionService,
+        IHubContext<DataChangeNotificationHub> hubContext, ILogger<AccessService> logger)
     {
         _doorRepository = new DoorRepository(dataAccess);
         _credentialRepository = new CredentialRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
         _eventRepository = new EventRepository(dataAccess);
         _extensionService = extensionService;
+        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -64,6 +70,10 @@ public class AccessService
     {
         try
         {
+            _logger.LogInformation(
+                "Credential with {BitCount} bits and raw data of {@CardData} received on door '{Name}'",
+                eventArgs.BitCount, BuildRawBitString(eventArgs.CardData), eventArgs.Access.Name);
+
             var endpoints = (await _endpointRepository.GetAll()).ToArray();
 
             var matchingDoor = await MatchingDoor(eventArgs.Access.Id, endpoints);
@@ -104,13 +114,9 @@ public class AccessService
 
     private async Task<bool> IsAccessGranted(BitArray cardData, Door matchingDoor, Endpoint accessPoint)
     {
-        var cardNumberBuilder = new StringBuilder();
-        foreach (bool bit in cardData)
-        {
-            cardNumberBuilder.Append(bit ? "1" : "0");
-        }
-
-        var assignedCredential = await _credentialRepository.AssignedCredential(cardNumberBuilder.ToString());
+        var rawBitsString = BuildRawBitString(cardData);
+        
+        var assignedCredential = await _credentialRepository.AssignedCredential(rawBitsString);
         int eventId;
         if (assignedCredential?.Person == null)
         {
@@ -130,12 +136,14 @@ public class AccessService
             if (assignedCredential == null)
             {
                 await _credentialRepository.Insert(new Credential
-                    { Number = cardNumberBuilder.ToString(), LastEvent = eventId });
+                    { Number = rawBitsString, LastEvent = eventId });
             }
             else
             {
                 await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
             }
+            
+            await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
             return false;
         }
@@ -151,10 +159,13 @@ public class AccessService
                 {
                     Door = matchingDoor,
                     Endpoint = accessPoint,
-                    Person = assignedCredential.Person
+                    Person = assignedCredential.Person,
+                    EventReason = EventReason.AccessNotAssigned
                 })
             });
             await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+            
+            await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
                 
             return false;
         }
@@ -168,12 +179,26 @@ public class AccessService
             {
                 Door = matchingDoor,
                 Endpoint = accessPoint,
-                Person = assignedCredential.Person
+                Person = assignedCredential.Person,
+                EventReason = EventReason.None
             })
         });
         await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+        
+        await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
             
         return true;
+    }
+
+    private static string BuildRawBitString(BitArray cardData)
+    {
+        var cardNumberBuilder = new StringBuilder();
+        foreach (bool bit in cardData)
+        {
+            cardNumberBuilder.Append(bit ? "1" : "0");
+        }
+
+        return cardNumberBuilder.ToString();
     }
 
     private async Task OpenDoor(IAccess access, Endpoint matchingDoorStrike, int strikeTimer)

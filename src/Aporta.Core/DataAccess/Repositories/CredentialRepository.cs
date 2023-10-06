@@ -38,7 +38,9 @@ public class CredentialRepository : BaseRepository<Credential>
     private string SqlUnassignedCredentials => SqlSelect + @" where credential.id NOT IN (SELECT credential_id FROM credential_assignment)";
 
     protected override string SqlDelete => @"delete from credential where id = @id";
-        
+
+    protected override string SqlRowCount => @"select count(*) from credential";
+
     protected override object InsertParameters(Credential credential)
     {
         return new

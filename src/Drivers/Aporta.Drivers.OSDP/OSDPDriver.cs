@@ -268,12 +268,19 @@ public class OSDPDriver : IHardwareDriver
     public async Task<string> PerformAction(string action, string parameters)
     {
         Enum.TryParse(action, out ActionType actionEnum);
+
+        if (actionEnum == ActionType.AvailablePorts)
+        {
+            _configuration.AvailablePorts = SerialPort.GetPortNames();
+        }
+        
         return actionEnum switch
         {
             ActionType.AddBus => AddBus(parameters),
             ActionType.RemoveBus => RemoveBus(parameters),
             ActionType.AddUpdateDevice => AddUpdateDevice(parameters),
             ActionType.RemoveDevice => RemoveDevice(parameters),
+            ActionType.AvailablePorts => JsonConvert.SerializeObject(SerialPort.GetPortNames()),
             _ => await Task.FromResult(string.Empty)
         };
     }

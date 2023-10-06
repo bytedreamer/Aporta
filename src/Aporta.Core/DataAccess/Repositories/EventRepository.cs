@@ -23,6 +23,8 @@ public class EventRepository : BaseRepository<Event>
                                                 (@endpointId, @timestamp, @type, @data)";
         
     protected override string SqlDelete => @"delete from event where id = @id";
+
+    protected override string SqlRowCount => @"select count(*) from event";
         
     protected override object InsertParameters(Event @event)
     {

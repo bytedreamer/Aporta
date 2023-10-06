@@ -28,6 +28,8 @@ public class DoorRepository : BaseRepository<Door>
                                                  @requestToExitEndpointId, @doorStrikeEndpointId, @name)";
 
     protected override string SqlDelete => @"delete from door where id = @id";
+    
+    protected override string SqlRowCount => @"select count(*) from door";
 
     protected override object InsertParameters(Door door)
     {
