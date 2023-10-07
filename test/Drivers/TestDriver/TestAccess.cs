@@ -17,7 +17,7 @@ public class TestAccess : IAccess
         throw new NotImplementedException();
     }
 
-    public Task Beep()
+    public Task AccessGrantedNotification()
     {
         throw new NotImplementedException();
     }

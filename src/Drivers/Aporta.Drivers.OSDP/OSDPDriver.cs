@@ -252,6 +252,11 @@ public class OSDPDriver : IHardwareDriver
 
     public void Unload()
     {
+        foreach (var access in _endpoints.Where(endpoint => endpoint is OSDPAccess).Cast<OSDPAccess>())
+        {
+            access.Dispose();
+        }
+        
         _panel.Shutdown();
             
         _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;

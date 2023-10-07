@@ -216,7 +216,7 @@ public class AccessService
         var openDoorTasks = new[]
         {
             Task.Run(ControlStrike),
-            Task.Run(access.Beep)
+            Task.Run(access.AccessGrantedNotification)
         };
 
         await Task.WhenAll(openDoorTasks);
