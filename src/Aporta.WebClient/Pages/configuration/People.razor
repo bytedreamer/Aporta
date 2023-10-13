@@ -41,7 +41,7 @@ else
                             @foreach (var person in _people.OrderBy(person => person.FirstName))
                             {
                                 <TableRow>
-                                    <TableRowCell>
+                                    <TableRowCell Clicked="@(async () => await ShowStatusDetails(person))">
                                         @if (person.Enabled)
                                         {
                                             <Tooltip Text="Enabled" Inline="true">
@@ -174,6 +174,50 @@ else
             </ModalFooter>
         </ModalContent>
     </Modal>
+    
+    <Modal @ref="_statusModal">
+        <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    Person status details
+                </ModalTitle>
+                <CloseButton Clicked="@_enrollModal.Hide"/>
+            </ModalHeader>
+            <ModalBody>
+                
+                <Table Hoverable="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHeaderCell>Description</TableHeaderCell>
+                            <TableHeaderCell>Value</TableHeaderCell>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow>
+                            <TableRowCell>
+                                Badge is enrolled
+                            </TableRowCell>
+                            <TableRowCell>
+                                @PersonIsEnrolled(_statusDetailsPerson.Id)
+                            </TableRowCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableRowCell>
+                                Person is enabled
+                            </TableRowCell>
+                            <TableRowCell>
+                                @_statusDetailsPerson.Enabled
+                            </TableRowCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Primary" Clicked="@_statusModal.Hide">Close</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
 }
 
 <Snackbar @ref="_snackbar" Color="@_snackbarColor">
@@ -193,6 +237,7 @@ else
     private List<Credential> _assigned;
     private Person _addPerson;
     private Person _enrollPerson;
+    private Person _statusDetailsPerson;
     private int _enrollCredentialId;
 
     private readonly List<Tuple<Credential, Event, EventData>> _availableCredentialsForEnrollment = new();
@@ -203,6 +248,8 @@ else
     private Validations _addPersonValidations;
     
     private Modal _enrollModal;
+    
+    private Modal _statusModal;
     
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
@@ -300,6 +347,13 @@ else
         }
         await _snackbar.Show();
     }
+    
+    private async Task ShowStatusDetails(Person person)
+    {
+        _statusDetailsPerson = person;
+        
+        await _statusModal.Show();
+    }
 
     private async Task ShowEnroll(Person person)
     {
@@ -361,4 +415,5 @@ else
     {
         return _assigned.Any(credential => credential.AssignedPersonId == personId);
     }
+    
 }
