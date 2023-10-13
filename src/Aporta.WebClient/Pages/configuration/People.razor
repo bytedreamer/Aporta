@@ -12,6 +12,7 @@
 @inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">People</Heading>
+<Divider />
 
 @if (_people == null)
 {
@@ -185,7 +186,7 @@ else
             </ModalHeader>
             <ModalBody>
                 
-                <Table Hoverable="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
                     <TableHeader>
                         <TableRow>
                             <TableHeaderCell>Description</TableHeaderCell>
