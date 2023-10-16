@@ -24,4 +24,9 @@ public class VirtualReader : IAccess
     {
         return Task.CompletedTask;
     }
+
+    public Task AccessDeniedNotification()
+    {
+        return Task.CompletedTask;
+    }
 }

@@ -56,6 +56,25 @@ public class OSDPAccess : IAccess, IDisposable, IAsyncDisposable
         
         await Task.WhenAll(accessGrantedNotificationTasks);
     }
+    
+    public async Task AccessDeniedNotification()
+    {
+        var accessDeniedNotificationTasks = new[]
+        {
+            _panel.ReaderLedControl(_connectionId, _device.Address,
+                new ReaderLedControls(new[]
+                {
+                    new ReaderLedControl(_reader.Number, 0, TemporaryReaderControlCode.SetTemporaryAndStartTimer, 2, 1,
+                        LedColor.Red, LedColor.Black, 10, PermanentReaderControlCode.SetPermanentState, 1, 1,
+                        LedColor.Red,
+                        LedColor.Red)
+                })),
+            _panel.ReaderBuzzerControl(_connectionId, _device.Address,
+                new ReaderBuzzerControl(_reader.Number, ToneCode.Default, 2, 1, 2))
+        };
+        
+        await Task.WhenAll(accessDeniedNotificationTasks);
+    }
 
     private async void FlashHeartbeat(object o)
     {
