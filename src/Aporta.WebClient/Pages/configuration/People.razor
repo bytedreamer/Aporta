@@ -12,6 +12,7 @@
 @inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">People</Heading>
+<Divider />
 
 @if (_people == null)
 {
@@ -41,7 +42,7 @@ else
                             @foreach (var person in _people.OrderBy(person => person.FirstName))
                             {
                                 <TableRow>
-                                    <TableRowCell>
+                                    <TableRowCell Clicked="@(async () => await ShowDetails(person))">
                                         @if (person.Enabled)
                                         {
                                             <Tooltip Text="Enabled" Inline="true">
@@ -61,10 +62,10 @@ else
                                             </Tooltip>
                                         }
                                     </TableRowCell>
-                                    <TableRowHeader>
+                                    <TableRowHeader Clicked="@(async () => await ShowDetails(person))">
                                         @person.FirstName
                                     </TableRowHeader>
-                                    <TableRowHeader>
+                                    <TableRowHeader Clicked="@(async () => await ShowDetails(person))">
                                         @person.LastName
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
@@ -174,6 +175,50 @@ else
             </ModalFooter>
         </ModalContent>
     </Modal>
+    
+    <Modal @ref="_personDetailsModal">
+        <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    Person details
+                </ModalTitle>
+                <CloseButton Clicked="@_enrollModal.Hide"/>
+            </ModalHeader>
+            <ModalBody>
+                
+                <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHeaderCell>Description</TableHeaderCell>
+                            <TableHeaderCell>Value</TableHeaderCell>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow>
+                            <TableRowCell>
+                                Badge is enrolled
+                            </TableRowCell>
+                            <TableRowCell>
+                                @PersonIsEnrolled(_detailsPerson.Id)
+                            </TableRowCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableRowCell>
+                                Person is enabled
+                            </TableRowCell>
+                            <TableRowCell>
+                                @_detailsPerson.Enabled
+                            </TableRowCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Primary" Clicked="@_personDetailsModal.Hide">Close</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
 }
 
 <Snackbar @ref="_snackbar" Color="@_snackbarColor">
@@ -193,6 +238,7 @@ else
     private List<Credential> _assigned;
     private Person _addPerson;
     private Person _enrollPerson;
+    private Person _detailsPerson;
     private int _enrollCredentialId;
 
     private readonly List<Tuple<Credential, Event, EventData>> _availableCredentialsForEnrollment = new();
@@ -203,6 +249,8 @@ else
     private Validations _addPersonValidations;
     
     private Modal _enrollModal;
+    
+    private Modal _personDetailsModal;
     
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
@@ -300,6 +348,13 @@ else
         }
         await _snackbar.Show();
     }
+    
+    private async Task ShowDetails(Person person)
+    {
+        _detailsPerson = person;
+        
+        await _personDetailsModal.Show();
+    }
 
     private async Task ShowEnroll(Person person)
     {
@@ -361,4 +416,5 @@ else
     {
         return _assigned.Any(credential => credential.AssignedPersonId == personId);
     }
+    
 }

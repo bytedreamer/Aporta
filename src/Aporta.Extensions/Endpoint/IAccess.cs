@@ -4,5 +4,7 @@ namespace Aporta.Extensions.Endpoint;
 
 public interface IAccess : IEndpoint
 {
-    Task Beep();
+    Task AccessGrantedNotification();
+    
+    Task AccessDeniedNotification();
 }

@@ -105,6 +105,10 @@ public class AccessService
             {
                 await OpenDoor(eventArgs.Access, matchingDoorStrike, 3);
             }
+            else
+            {
+                await eventArgs.Access.AccessDeniedNotification();
+            }
         }
         catch (Exception exception)
         {
@@ -216,7 +220,7 @@ public class AccessService
         var openDoorTasks = new[]
         {
             Task.Run(ControlStrike),
-            Task.Run(access.Beep)
+            Task.Run(access.AccessGrantedNotification)
         };
 
         await Task.WhenAll(openDoorTasks);

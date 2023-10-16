@@ -17,6 +17,8 @@
 else
 {
     <Heading Size="HeadingSize.Is1">@_extension.Name Driver Configuration</Heading>
+    <Divider />
+    
     @if (_extension.Id == Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5"))
     {
         <Aporta.Drivers.OSDP.WebClient.Configuration @bind-ExtensionId="_extension.Id" @bind-RawConfiguration="_extension.Configuration"/>

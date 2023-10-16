@@ -20,7 +20,12 @@ public class VirtualReader : IAccess
         return Task.FromResult(true);
     }
 
-    public Task Beep()
+    public Task AccessGrantedNotification()
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task AccessDeniedNotification()
     {
         return Task.CompletedTask;
     }

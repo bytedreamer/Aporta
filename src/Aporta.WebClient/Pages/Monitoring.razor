@@ -1,16 +1,18 @@
 @page "/monitoring"
 
+@using System.Text.Json
+
 @using Microsoft.AspNetCore.SignalR.Client
 
 @using Aporta.Shared.Models
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
-@using System.Text.Json
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Monitoring</Heading>
+<Divider />
 
 @if (_outputs == null)
 {
