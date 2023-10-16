@@ -4,6 +4,7 @@
 @using Newtonsoft.Json
 
 @using Aporta.Shared.Calls
+@using Aporta.Shared.Models
 @using Aporta.Drivers.OSDP.Shared
 @using Aporta.Drivers.OSDP.Shared.Actions
 
@@ -60,12 +61,12 @@
                         </Row>
                     </CardTitle>
                     <CardBody>
-                        <Table Striped="true" Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                        <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
                             <TableHeader>
                                 <TableRow>
+                                    <TableHeaderCell>Status</TableHeaderCell>
                                     <TableHeaderCell>Name</TableHeaderCell>
                                     <TableHeaderCell>Address</TableHeaderCell>
-                                    <TableHeaderCell>Connected</TableHeaderCell>
                                     <TableHeaderCell></TableHeaderCell>
                                 </TableRow>
                             </TableHeader>
@@ -73,13 +74,7 @@
                                 @foreach (var device in bus.Devices.OrderBy(device => device.Address))
                                 {
                                     <TableRow>
-                                        <TableRowHeader>
-                                            @device.Name
-                                        </TableRowHeader>
-                                        <TableRowCell>
-                                            @device.Address
-                                        </TableRowCell>
-                                        <TableRowCell>
+                                        <TableRowCell Clicked="@(async () => await ShowDetails(device))">
                                             @if (device.IsConnected)
                                             {
                                                 <Icon Name="IconName.ArrowUp" Style="color: green" Margin="Margin.Is3.OnX"/>
@@ -89,11 +84,23 @@
                                                 <Icon Name="IconName.ArrowDown" Style="color: red" Margin="Margin.Is3.OnX"/>
                                             }
                                         </TableRowCell>
+                                        <TableRowHeader Clicked="@(async () => await ShowDetails(device))">
+                                            @device.Name
+                                        </TableRowHeader>
+                                        <TableRowCell Clicked="@(async () => await ShowDetails(device))">
+                                            @device.Address
+                                        </TableRowCell>
                                         <TableRowCell TextAlignment="TextAlignment.End">
-                                            <Button Size="Size.Small"
-                                                    Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address, device.Name))">
-                                                <Icon Name="IconName.Delete" Style="color: red"/>
-                                            </Button>
+                                            <Dropdown>
+                                                <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                    Action
+                                                </DropdownToggle>
+                                                <DropdownMenu>
+                                                    <DropdownItem Clicked="@(async () => await ClearDeviceIdentity(device))">Clear Identity</DropdownItem>
+                                                    <DropdownDivider/>
+                                                    <DropdownItem Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address, device.Name))">Delete</DropdownItem>
+                                                </DropdownMenu>
+                                            </Dropdown>
                                         </TableRowCell>
                                     </TableRow>
                                 }
@@ -146,52 +153,152 @@
 
         <Modal @ref="_addDeviceModal">
             <ModalContent Size="ModalSize.Default" Centered="true">
-            <ModalHeader>
-                        <ModalTitle>
-                            Add Device to @_currentBus?.PortName
-                        </ModalTitle>
-                        <CloseButton Clicked="@_addDeviceModal.Hide"/>
-                    </ModalHeader>
-                    <ModalBody>
-                        <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addDeviceValidations">
-                            <Validation Validator="@ValidationRule.IsNotEmpty" >
-                                <Field>
-                                    <FieldLabel>Name</FieldLabel>
-                                    <FieldBody>
-                                        <TextEdit @bind-Text="_addDevice.Name">
-                                            <Feedback>
-                                                <ValidationError>
-                                                    Please enter a name for the device
-                                                </ValidationError>
-                                            </Feedback>
-                                        </TextEdit>
-                                    </FieldBody>
-                                </Field>
-                            </Validation>
-                            <Validation Validator="@ValidateDeviceAddress">
-                                <Field>
-                                    <FieldLabel>Address</FieldLabel>
-                                    <FieldBody>
-                                        <NumericEdit @bind-Value="_addDevice.Address" TValue="byte" Decimals="0">
-                                            <ValidationError>
-                                                Address already used by a device
-                                            </ValidationError>
-                                        </NumericEdit>
-                                    </FieldBody>
-                                </Field>
-                            </Validation>
+                <ModalHeader>
+                    <ModalTitle>
+                        Add Device to @_currentBus?.PortName
+                    </ModalTitle>
+                    <CloseButton Clicked="@_addDeviceModal.Hide"/>
+                </ModalHeader>
+                <ModalBody>
+                    <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addDeviceValidations">
+                        <Validation Validator="@ValidationRule.IsNotEmpty" >
                             <Field>
+                                <FieldLabel>Name</FieldLabel>
                                 <FieldBody>
-                                    <Check @bind-Checked="@_addDevice.RequireSecurity" TValue="bool">Require Security</Check>
+                                    <TextEdit @bind-Text="_addDevice.Name">
+                                        <Feedback>
+                                            <ValidationError>
+                                                Please enter a name for the device
+                                            </ValidationError>
+                                        </Feedback>
+                                    </TextEdit>
                                 </FieldBody>
                             </Field>
-                        </Validations>
-                    </ModalBody>
-                    <ModalFooter>
-                        <Button Color="Color.Secondary" Clicked="@_addDeviceModal.Hide">Cancel</Button>
-                        <Button Color="Color.Primary" Clicked="@(async () => await AddDevice())">Add</Button>
-                    </ModalFooter>
+                        </Validation>
+                        <Validation Validator="@ValidateDeviceAddress">
+                            <Field>
+                                <FieldLabel>Address</FieldLabel>
+                                <FieldBody>
+                                    <NumericEdit @bind-Value="_addDevice.Address" TValue="byte" Decimals="0">
+                                        <ValidationError>
+                                            Address already used by a device
+                                        </ValidationError>
+                                    </NumericEdit>
+                                </FieldBody>
+                            </Field>
+                        </Validation>
+                        <Field>
+                            <FieldBody>
+                                <Check @bind-Checked="@_addDevice.RequireSecurity" TValue="bool">Require Security</Check>
+                            </FieldBody>
+                        </Field>
+                    </Validations>
+                </ModalBody>
+                <ModalFooter>
+                    <Button Color="Color.Secondary" Clicked="@_addDeviceModal.Hide">Cancel</Button>
+                    <Button Color="Color.Primary" Clicked="@(async () => await AddDevice())">Add</Button>
+                </ModalFooter>
  
+            </ModalContent>
+        </Modal>
+        
+        <Modal @ref="_deviceDetailsModal">
+            <ModalContent Size="ModalSize.Default" Centered="true">
+                <ModalHeader>
+                    <ModalTitle>
+                        @_detailsDevice.Name details
+                    </ModalTitle>
+                    <CloseButton Clicked="@_deviceDetailsModal.Hide"/>
+                </ModalHeader>
+                <ModalBody>
+                    
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Description</TableHeaderCell>
+                                <TableHeaderCell>Value</TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableRowCell>
+                                    Port
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.PortName
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Address
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.Address
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Connection Status
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @GetConnectionStatus(_detailsDevice)
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Vendor Code
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.Identification.VendorCode
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Serial Number
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.Identification.SerialNumber
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Firmware Version
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.Identification.FirmwareVersion
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Access Reader
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.Readers.Any()
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Number of Inputs
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.Inputs.Count
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Number of Outputs
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.Outputs.Count
+                                </TableRowCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+    
+                </ModalBody>
+                <ModalFooter>
+                    <Button Color="Color.Primary" Clicked="@_deviceDetailsModal.Hide">Close</Button>
+                </ModalFooter>
             </ModalContent>
         </Modal>
     }
@@ -211,11 +318,14 @@
     private Bus _addBus;
     private Bus _currentBus;
     private Device _addDevice;
+    private Device _detailsDevice;
     private string[] _unusedPorts;
     
     private Modal _addPortModal;
     private Modal _addDeviceModal;
     private Validations _addDeviceValidations;
+    private Modal _deviceDetailsModal;
+
     
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
@@ -272,7 +382,7 @@
     {
         await _addPortModal.Hide();
         
-        await PerformAction(ActionType.AddBus.ToString(),
+        await PerformAction(ActionType.AddBus,
             JsonConvert.SerializeObject(new BusAction
             {
                 Bus = _addBus
@@ -292,10 +402,19 @@
 
         var matchingBus = _configuration.Buses.First(bus => bus.PortName == busPortName);
 
-        await PerformAction(ActionType.RemoveBus.ToString(),
+        await PerformAction(ActionType.RemoveBus,
             JsonConvert.SerializeObject(new BusAction
             {
                 Bus = matchingBus
+            }));
+    }
+    
+    private async Task ClearDeviceIdentity(Device clearIdentityDevice)
+    {
+        await PerformAction(ActionType.ClearDeviceIdentity,
+            JsonConvert.SerializeObject(new DeviceAction
+            {
+                Device = clearIdentityDevice
             }));
     }
 
@@ -317,7 +436,7 @@
         await _addDeviceModal.Hide();
 
         _addDevice.PortName = _currentBus.PortName;
-        await PerformAction(ActionType.AddUpdateDevice.ToString(),
+        await PerformAction(ActionType.AddUpdateDevice,
             JsonConvert.SerializeObject(new DeviceAction
             {
                 Device = _addDevice
@@ -340,14 +459,14 @@
         var removingDevice = _currentBus.Devices.First(device => device.Address == address);
 
         removingDevice.PortName = _currentBus.PortName;
-        await PerformAction(ActionType.RemoveDevice.ToString(),
+        await PerformAction(ActionType.RemoveDevice,
             JsonConvert.SerializeObject(new DeviceAction
             {
                 Device = removingDevice
             }));
     }
     
-    private async Task<string> PerformAction(string actionType, string parameters)
+    private async Task<string> PerformAction(ActionType actionType, string parameters)
     {
         string url = string.Format(Paths.ExtensionPerformAction, ExtensionId, actionType);
         var response = await Http.PostAsync(url,
@@ -355,18 +474,25 @@
         
         if (response.IsSuccessStatusCode)
         {
-            _snackbarMessage = $"Request successfully sent";
+            _snackbarMessage = $"Request to perform action {actionType.GetDescription()} successfully sent";
             _snackbarColor = SnackbarColor.Info;
             await _snackbar.Show();
         }
         else
         {
-            _snackbarMessage = $"Unable to perform action {actionType}";
+            _snackbarMessage = $"Unable to perform action {actionType.GetDescription()}";
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
         }
 
         return await response.Content.ReadAsStringAsync();
+    }
+    
+    private async Task ShowDetails(Device device)
+    {
+        _detailsDevice = device;
+        
+        await _deviceDetailsModal.Show();
     }
 
     private void ValidateDeviceAddress(ValidatorEventArgs eventArgs)
@@ -377,8 +503,25 @@
 
     private async Task RescanPorts()
     {
-        var ports = await PerformAction(ActionType.AvailablePorts.ToString(), "{}");
-        
+        var ports = await PerformAction(ActionType.AvailablePorts, "{}");
+
         _unusedPorts = JsonConvert.DeserializeObject<string[]>(ports).Except(_configuration.Buses.Select(bus => bus.PortName)).ToArray();
     }
+
+    private string GetConnectionStatus(Device device)
+    {
+        if (device.IsConnected)
+        {
+            return "Online";
+        }
+        else if (device.IdentityNotMatched)
+        {
+            return "Identity Mismatch";
+        }
+        else
+        {
+            return "Offline";
+        }
+    }
+
 }

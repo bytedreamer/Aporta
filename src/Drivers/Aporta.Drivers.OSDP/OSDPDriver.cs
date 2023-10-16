@@ -88,11 +88,34 @@ public class OSDPDriver : IHardwareDriver
         if (!eventArgs.IsConnected || matchingDevice.CheckedCapabilities)
         {
             matchingDevice.IsConnected = eventArgs.IsConnected;
-                
+            if (matchingDevice.IsConnected)
+            {
+                matchingDevice.IsConnected = await ProcessDeviceIdentification(eventArgs, matchingDevice);
+            }
+            
             OnUpdatedEndpoints();
             return;
         }
-            
+
+        if (!await ProcessDeviceIdentification(eventArgs, matchingDevice))
+        {
+            OnUpdatedEndpoints();
+            return;
+        }
+
+        if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice))
+        {
+            OnUpdatedEndpoints();
+            return;
+        }
+        
+        matchingDevice.IsConnected = true;
+                
+        OnUpdatedEndpoints();
+    }
+
+    private async Task<bool> ProcessDeviceCapabilities(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
+    {
         DeviceCapabilities capabilities;
         try
         {
@@ -100,10 +123,12 @@ public class OSDPDriver : IHardwareDriver
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "Unable to get device capabilities");
-            return;
+            _logger.LogWarning(exception, "Unable to get device capabilities for \'{MatchingDeviceName}\'",
+                matchingDevice.Name);
+            _panel.RemoveDevice(eventArgs.ConnectionId, eventArgs.Address);
+            return false;
         }
-            
+
         foreach (var inputCapability in capabilities.Capabilities.Where(capability =>
                      capability.Function == CapabilityFunction.ContactStatusMonitoring))
         {
@@ -152,11 +177,54 @@ public class OSDPDriver : IHardwareDriver
             matchingDevice.Readers.Add(reader);
             _endpoints.Add(new OSDPAccess(Id, matchingDevice, reader, _panel, eventArgs.ConnectionId));
         }
-            
+        
         matchingDevice.CheckedCapabilities = true;
-        matchingDevice.IsConnected = eventArgs.IsConnected;
-                
-        OnUpdatedEndpoints();
+
+        return true;
+    }
+
+    private async Task<bool> ProcessDeviceIdentification(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
+    {
+        matchingDevice.IdentityNotMatched = false;
+        
+        DeviceIdentification identification;
+        try
+        {
+            identification = await _panel.IdReport(eventArgs.ConnectionId, eventArgs.Address);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Unable to get device identification for \'{MatchingDeviceName}\'",
+                matchingDevice.Name);
+            _panel.RemoveDevice(eventArgs.ConnectionId, eventArgs.Address);
+            return false;
+        }
+
+        if (matchingDevice.Identification == null)
+        {
+            matchingDevice.Identification = new Identification
+            {
+                VendorCode = BitConverter.ToString(identification.VendorCode.ToArray()),
+                SerialNumber = identification.SerialNumber,
+                FirmwareVersion =
+                    $"{identification.FirmwareMajor}.{identification.FirmwareMinor}.{identification.FirmwareBuild}"
+            };
+        }
+        else
+        {
+            if (matchingDevice.Identification.VendorCode != BitConverter.ToString(identification.VendorCode.ToArray()) ||
+                matchingDevice.Identification.SerialNumber != identification.SerialNumber)
+            {
+                matchingDevice.IdentityNotMatched = true;
+                _logger.LogWarning("Device identification mismatch for \'{MatchingDeviceName}\'", matchingDevice.Name);
+                _panel.RemoveDevice(eventArgs.ConnectionId, eventArgs.Address);
+                return false;
+            }
+        }
+
+        matchingDevice.IdentityNotMatched = false;
+        
+        return true;
     }
 
     private void PanelOnRawCardDataReplyReceived(object sender, ControlPanel.RawCardDataReplyEventArgs eventArgs)
@@ -286,6 +354,7 @@ public class OSDPDriver : IHardwareDriver
             ActionType.AddUpdateDevice => AddUpdateDevice(parameters),
             ActionType.RemoveDevice => RemoveDevice(parameters),
             ActionType.AvailablePorts => JsonConvert.SerializeObject(SerialPort.GetPortNames()),
+            ActionType.ClearDeviceIdentity => ClearDeviceIdentity(parameters),
             _ => await Task.FromResult(string.Empty)
         };
     }
@@ -361,6 +430,21 @@ public class OSDPDriver : IHardwareDriver
             .RemoveAll(device => device.Address == deviceAction.Device.Address);
 
         _panel.RemoveDevice(_portMapping[deviceAction.Device.PortName], deviceAction.Device.Address);
+
+        return string.Empty;
+    }
+    
+    private string ClearDeviceIdentity(string parameters)
+    {
+        var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
+        if (deviceAction == null) return string.Empty;
+
+        var foundDevice = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName).Devices
+            .First(device => device.Address == deviceAction.Device.Address);
+        foundDevice.Identification = null;
+
+        _panel.AddDevice(_portMapping[deviceAction.Device.PortName], deviceAction.Device.Address, true,
+            deviceAction.Device.RequireSecurity);
 
         return string.Empty;
     }
