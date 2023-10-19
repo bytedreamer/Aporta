@@ -75,14 +75,16 @@
                                 {
                                     <TableRow>
                                         <TableRowCell Clicked="@(async () => await ShowDetails(device))">
-                                            @if (device.IsConnected)
-                                            {
-                                                <Icon Name="IconName.ArrowUp" Style="color: green" Margin="Margin.Is3.OnX"/>
-                                            } 
-                                            else
-                                            {
-                                                <Icon Name="IconName.ArrowDown" Style="color: red" Margin="Margin.Is3.OnX"/>
-                                            }
+                                            <Tooltip Text="@GetConnectionStatus(device)" Inline="true">
+                                                @if (device.IsConnected)
+                                                {
+                                                    <Icon Name="IconName.ArrowUp" Style="color: green" Margin="Margin.Is3.OnX"/>
+                                                }
+                                                else
+                                                {
+                                                    <Icon Name="IconName.ArrowDown" Style="color: red" Margin="Margin.Is3.OnX"/>
+                                                }
+                                            </Tooltip>
                                         </TableRowCell>
                                         <TableRowHeader Clicked="@(async () => await ShowDetails(device))">
                                             @device.Name
