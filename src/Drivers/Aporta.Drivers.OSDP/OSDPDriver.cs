@@ -3,15 +3,19 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading.Tasks;
-using Aporta.Extensions.Endpoint;
-using Aporta.Extensions.Hardware;
+
 using Microsoft.Extensions.Logging;
-using Aporta.Drivers.OSDP.Shared;
-using Aporta.Drivers.OSDP.Shared.Actions;
+
 using Newtonsoft.Json;
+
 using OSDP.Net;
 using OSDP.Net.Connections;
 using OSDP.Net.Model.ReplyData;
+
+using Aporta.Extensions.Endpoint;
+using Aporta.Extensions.Hardware;
+using Aporta.Drivers.OSDP.Shared;
+using Aporta.Drivers.OSDP.Shared.Actions;
 
 namespace Aporta.Drivers.OSDP;
 
@@ -85,33 +89,38 @@ public class OSDPDriver : IHardwareDriver
             bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
         var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
 
-        if (!eventArgs.IsConnected || matchingDevice.CheckedCapabilities)
+        switch (eventArgs.IsConnected)
         {
-            matchingDevice.IsConnected = eventArgs.IsConnected;
-            if (matchingDevice.IsConnected)
+            case false:
+                _logger.LogWarning("Device \'{MatchingDeviceName}\' is offline", matchingDevice.Name);
+                matchingDevice.IsConnected = false;
+                matchingDevice.IdentityNotMatched = false;
+
+                OnUpdatedEndpoints();
+                return;
+            case true:
             {
-                matchingDevice.IsConnected = await ProcessDeviceIdentification(eventArgs, matchingDevice);
+                _logger.LogInformation("Device \'{MatchingDeviceName}\' is online", matchingDevice.Name);
+
+                if (!await ProcessDeviceIdentification(eventArgs, matchingDevice))
+                {
+                    matchingDevice.IsConnected = false;
+                    OnUpdatedEndpoints();
+                    return;
+                }
+
+                if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice))
+                {
+                    matchingDevice.IsConnected = false;
+                    OnUpdatedEndpoints();
+                    return;
+                }
+
+                matchingDevice.IsConnected = true;
+                OnUpdatedEndpoints();
+                return;
             }
-            
-            OnUpdatedEndpoints();
-            return;
         }
-
-        if (!await ProcessDeviceIdentification(eventArgs, matchingDevice))
-        {
-            OnUpdatedEndpoints();
-            return;
-        }
-
-        if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice))
-        {
-            OnUpdatedEndpoints();
-            return;
-        }
-        
-        matchingDevice.IsConnected = true;
-                
-        OnUpdatedEndpoints();
     }
 
     private async Task<bool> ProcessDeviceCapabilities(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
@@ -185,8 +194,6 @@ public class OSDPDriver : IHardwareDriver
 
     private async Task<bool> ProcessDeviceIdentification(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
     {
-        matchingDevice.IdentityNotMatched = false;
-        
         DeviceIdentification identification;
         try
         {

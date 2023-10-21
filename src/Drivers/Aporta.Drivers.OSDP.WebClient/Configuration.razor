@@ -76,14 +76,7 @@
                                     <TableRow>
                                         <TableRowCell Clicked="@(async () => await ShowDetails(device))">
                                             <Tooltip Text="@GetConnectionStatus(device)" Inline="true">
-                                                @if (device.IsConnected)
-                                                {
-                                                    <Icon Name="IconName.ArrowUp" Style="color: green" Margin="Margin.Is3.OnX"/>
-                                                }
-                                                else
-                                                {
-                                                    <Icon Name="IconName.ArrowDown" Style="color: red" Margin="Margin.Is3.OnX"/>
-                                                }
+                                                <Icon Name="@GetConnectionStatusIcon(device)" Style="@GetConnectionStatusIconColor(device)" Margin="Margin.Is3.OnX"/>
                                             </Tooltip>
                                         </TableRowCell>
                                         <TableRowHeader Clicked="@(async () => await ShowDetails(device))">
@@ -191,7 +184,7 @@
                         </Validation>
                         <Field>
                             <FieldBody>
-                                <Check @bind-Checked="@_addDevice.RequireSecurity" TValue="bool">Require Security</Check>
+                                <Check @bind-Checked="@_addDevice.RequireSecurity" TValue="bool">Require Security Using AES-128 Encryption</Check>
                             </FieldBody>
                         </Field>
                     </Validations>
@@ -236,6 +229,14 @@
                                 </TableRowCell>
                                 <TableRowCell>
                                     @_detailsDevice.Address
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Requires Security Using AES-128 Encryption
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice.RequireSecurity
                                 </TableRowCell>
                             </TableRow>
                             <TableRow>
@@ -523,6 +524,38 @@
         else
         {
             return "Offline";
+        }
+    }
+    
+    private IconName GetConnectionStatusIcon(Device device)
+    {
+        if (device.IsConnected)
+        {
+            return IconName.ArrowUp;
+        }
+        else if (device.IdentityNotMatched)
+        {
+            return IconName.Exclamation;
+        }
+        else
+        {
+            return IconName.ArrowDown;
+        }
+    }
+    
+    private string GetConnectionStatusIconColor(Device device)
+    {
+        if (device.IsConnected)
+        {
+            return "color: green";
+        }
+        else if (device.IdentityNotMatched)
+        {
+            return "color: orange";
+        }
+        else
+        {
+            return "color: red";
         }
     }
 
