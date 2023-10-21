@@ -175,7 +175,8 @@ public class OSDPDriver : IHardwareDriver
         }
 
         // Some readers don't report Reader capability
-        if (capabilities.Capabilities.Any(capability => capability.Function == CapabilityFunction.CardDataFormat))
+        if (capabilities.Capabilities.Any(capability => capability.Function == CapabilityFunction.CardDataFormat) &&
+            !matchingDevice.Readers.Any())
         {
             const byte readerNumber = 0;
             var reader = new Reader
@@ -186,7 +187,7 @@ public class OSDPDriver : IHardwareDriver
             matchingDevice.Readers.Add(reader);
             _endpoints.Add(new OSDPAccess(Id, matchingDevice, reader, _panel, eventArgs.ConnectionId));
         }
-        
+
         matchingDevice.CheckedCapabilities = true;
 
         return true;
