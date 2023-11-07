@@ -14,13 +14,14 @@ public interface IHardwareDriver : IExtension
     public Guid Id { get; }
         
     public IEnumerable<IEndpoint> Endpoints { get; }
-        
+
     /// <summary>
     /// Load the driver
     /// </summary>
     /// <param name="configuration">Configuration settings for the driver</param>
+    /// <param name="dataEncryption">Allow for data encryption of sensitive data</param>
     /// <param name="loggerFactory">Logging</param>
-    void Load(string configuration, ILoggerFactory loggerFactory);
+    void Load(string configuration, IDataEncryption dataEncryption, ILoggerFactory loggerFactory);
         
     /// <summary>
     /// Unload the driver
@@ -32,6 +33,13 @@ public interface IHardwareDriver : IExtension
     /// </summary>
     /// <returns>A configuration with initial values</returns>
     string CurrentConfiguration();
+    
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="jsonConfigurationString"></param>
+    /// <returns></returns>
+    string ScrubSensitiveConfigurationData(string jsonConfigurationString);
 
     /// <summary>
     /// Perform a custom action for the driver

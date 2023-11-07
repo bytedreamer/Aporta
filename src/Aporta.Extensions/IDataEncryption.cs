@@ -1,4 +1,4 @@
-namespace Aporta.Core.Services;
+namespace Aporta.Extensions;
 
 public interface IDataEncryption
 {

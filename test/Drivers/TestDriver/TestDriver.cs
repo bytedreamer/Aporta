@@ -7,10 +7,12 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Logging;
+
 using Aporta.Extensions;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
-using Microsoft.Extensions.Logging;
 
 namespace Aporta.Drivers.TestDriver;
 
@@ -28,7 +30,7 @@ public class TestDriver : IHardwareDriver
 
     public IEnumerable<IEndpoint> Endpoints => _endPoints;
 
-    public void Load(string configuration, ILoggerFactory loggerFactory)
+    public void Load(string configuration, IDataEncryption dataEncryption, ILoggerFactory loggerFactory)
     {
         _tokenSource = new CancellationTokenSource();
         Task.Factory.StartNew(async () =>
@@ -95,6 +97,11 @@ public class TestDriver : IHardwareDriver
     public string CurrentConfiguration()
     {
         return string.Empty;
+    }
+
+    public string ScrubSensitiveConfigurationData(string jsonConfigurationString)
+    {
+        return jsonConfigurationString;
     }
 
     public Task<string> PerformAction(string action, string parameters)

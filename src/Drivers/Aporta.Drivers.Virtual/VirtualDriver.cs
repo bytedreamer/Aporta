@@ -1,4 +1,5 @@
 ﻿using Aporta.Drivers.Virtual.Shared;
+using Aporta.Extensions;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
@@ -23,7 +24,7 @@ public class VirtualDriver : IHardwareDriver
     public IEnumerable<IEndpoint> Endpoints => _endpoints;
     
     /// <inheritdoc />
-    public void Load(string configuration, ILoggerFactory loggerFactory)
+    public void Load(string configuration, IDataEncryption dataEncryption, ILoggerFactory loggerFactory)
     {
         _logger = loggerFactory.CreateLogger<VirtualDriver>();
         
@@ -48,7 +49,7 @@ public class VirtualDriver : IHardwareDriver
         
         OnUpdatedEndpoints();
     }
-    
+
     /// <inheritdoc />
     public void Unload()
     {
@@ -59,6 +60,12 @@ public class VirtualDriver : IHardwareDriver
     public string CurrentConfiguration()
     {
         return JsonConvert.SerializeObject(_configuration);
+    }
+
+    /// <inheritdoc />
+    public string ScrubSensitiveConfigurationData(string jsonConfigurationString)
+    {
+        return jsonConfigurationString;
     }
 
     /// <inheritdoc />

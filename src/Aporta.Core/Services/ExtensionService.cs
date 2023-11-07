@@ -15,6 +15,7 @@ using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Extension;
 using Aporta.Core.Hubs;
 using Aporta.Core.Models;
+using Aporta.Extensions;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
@@ -27,21 +28,22 @@ namespace Aporta.Core.Services;
 /// </summary>
 public class ExtensionService
 {
-    private static readonly SemaphoreSlim EndpointUpdateSemaphore = new SemaphoreSlim(1, 1);
+    private static readonly SemaphoreSlim EndpointUpdateSemaphore = new(1, 1);
 
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<ExtensionService> _logger;
     private readonly ExtensionRepository _extensionRepository;
     private readonly EndpointRepository _endpointRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
-
-    private readonly List<ExtensionHost> _extensions = new List<ExtensionHost>();
+    private readonly IDataEncryption _dataEncryption;
+    private readonly List<ExtensionHost> _extensions = new();
     private readonly object _extensionLock = new ();
 
-    public ExtensionService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
-        ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
+    public ExtensionService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext, 
+        IDataEncryption dataEncryption, ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
     {
         _hubContext = hubContext;
+        _dataEncryption = dataEncryption;
         _logger = logger;
         _loggerFactory = loggerFactory;
         _endpointRepository = new EndpointRepository(dataAccess);
@@ -216,7 +218,7 @@ public class ExtensionService
             extension.Driver.AccessCredentialReceived += DriverOnAccessCredentialReceived;
             extension.Driver.StateChanged += DriverOnStateChanged;
 
-            extension.Driver.Load(extension.Configuration, _loggerFactory);
+            extension.Driver.Load(extension.Configuration, _dataEncryption, _loggerFactory);
             extension.Configuration = extension.Driver.CurrentConfiguration();
 
             extension.Loaded = true;

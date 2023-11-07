@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Aporta.Extensions;
+using Microsoft.Extensions.Logging;
 
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
-
 using Timer = System.Timers.Timer;
 
 namespace Aporta.Drivers.IonoPiMax;
@@ -38,7 +38,7 @@ public class IonoPiMaxDriver : IHardwareDriver
         
     public string Name => "Iono Pi Max";
 
-    public void Load(string configuration, ILoggerFactory loggerFactory)
+    public void Load(string configuration, IDataEncryption dataEncryption, ILoggerFactory loggerFactory)
     {
         _logger = loggerFactory.CreateLogger<IonoPiMaxDriver>();
             
@@ -143,6 +143,11 @@ public class IonoPiMaxDriver : IHardwareDriver
     public string CurrentConfiguration()
     {
         return string.Empty;
+    }
+
+    public string ScrubSensitiveConfigurationData(string jsonConfigurationString)
+    {
+        return jsonConfigurationString;
     }
 
     public async Task<string> PerformAction(string action, string parameters)

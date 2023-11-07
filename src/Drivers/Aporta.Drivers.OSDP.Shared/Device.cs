@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Aporta.Drivers.OSDP.Shared;
@@ -11,9 +12,26 @@ public class Device
     public string PortName { get; set; }
         
     public bool RequireSecurity { get; set; }
+    
+    public DateTime LastKeyRotation { get; set; }
+
+    public string SecurityKey { get; set; }
 
     public bool IdentityNotMatched { get; set; }
-    
+
+    public SecureMode SecureMode
+    {
+        get
+        {
+            if (!RequireSecurity)
+            {
+                return SecureMode.Clear;
+            }
+
+            return LastKeyRotation == default ? SecureMode.Install : SecureMode.Secure;
+        }
+    }
+
     public bool CheckedCapabilities { get; set; }
         
     public bool IsConnected { get; set; }
@@ -53,4 +71,11 @@ public class Reader
     public string Name { get; init; }
         
     public byte Number { get; init; }
+}
+
+public enum SecureMode
+{
+    Clear,
+    Install,
+    Secure
 }

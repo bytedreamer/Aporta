@@ -76,7 +76,8 @@
                                     <TableRow>
                                         <TableRowCell Clicked="@(async () => await ShowDetails(device))">
                                             <Tooltip Text="@GetConnectionStatus(device)" Inline="true">
-                                                <Icon Name="@GetConnectionStatusIcon(device)" Style="@GetConnectionStatusIconColor(device)" Margin="Margin.Is3.OnX"/>
+                                                <Icon Name="@GetConnectionStatusIcon(device)" Style="@GetConnectionStatusIconColor(device)" />
+                                                <Icon Name="@GetSecurityStatusIcon(device)" Style="@GetSecurityStatusIconColor(device)" />
                                             </Tooltip>
                                         </TableRowCell>
                                         <TableRowHeader Clicked="@(async () => await ShowDetails(device))">
@@ -515,7 +516,7 @@
     {
         if (device.IsConnected)
         {
-            return "Online";
+            return $"Online ({device.SecureMode})";
         }
         else if (device.IdentityNotMatched)
         {
@@ -533,14 +534,13 @@
         {
             return IconName.ArrowUp;
         }
-        else if (device.IdentityNotMatched)
-        {
-            return IconName.Exclamation;
-        }
-        else
-        {
-            return IconName.ArrowDown;
-        }
+        
+        return device.IdentityNotMatched ? IconName.Exclamation : IconName.ArrowDown;
+    }
+    
+    private IconName GetSecurityStatusIcon(Device device)
+    {
+        return device.SecureMode == SecureMode.Secure ? IconName.Lock : IconName.LockOpen;
     }
     
     private string GetConnectionStatusIconColor(Device device)
@@ -549,14 +549,13 @@
         {
             return "color: green";
         }
-        else if (device.IdentityNotMatched)
-        {
-            return "color: orange";
-        }
-        else
-        {
-            return "color: red";
-        }
+        
+        return device.IdentityNotMatched ? "color: orange" : "color: red";
+    }
+
+    private string GetSecurityStatusIconColor(Device device)
+    {
+        return device.SecureMode == SecureMode.Secure ? "color: green" : "color: red";
     }
 
 }

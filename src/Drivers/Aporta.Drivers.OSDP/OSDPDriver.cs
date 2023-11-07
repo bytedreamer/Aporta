@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -16,6 +18,7 @@ using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Aporta.Drivers.OSDP.Shared;
 using Aporta.Drivers.OSDP.Shared.Actions;
+using Aporta.Extensions;
 
 namespace Aporta.Drivers.OSDP;
 
@@ -28,15 +31,19 @@ public class OSDPDriver : IHardwareDriver
     private readonly List<IEndpoint> _endpoints = new();
         
     private ControlPanel _panel;
+    private IDataEncryption _dataEncryption;
     private ILogger<OSDPDriver> _logger;
     private Configuration _configuration = new() {Buses = new List<Bus>()};
 
     public Guid Id => Guid.Parse("D3C5DE68-E019-48D6-AB58-76F4B15CD0D5");
 
+    /// <inheritdoc />
     public string Name => "OSDP";
 
-    public void Load(string configuration, ILoggerFactory loggerFactory)
+    /// <inheritdoc />
+    public void Load(string configuration, IDataEncryption dataEncryption, ILoggerFactory loggerFactory)
     {
+        _dataEncryption = dataEncryption;
         _logger = loggerFactory.CreateLogger<OSDPDriver>();
         _panel = new ControlPanel(loggerFactory.CreateLogger<ControlPanel>());
             
@@ -293,8 +300,33 @@ public class OSDPDriver : IHardwareDriver
             var connection = _portMapping[bus.PortName];
             foreach (var device in bus.Devices)
             {
-                _panel.AddDevice(connection, device.Address, true, device.RequireSecurity);
+                try
+                {
+                    _panel.AddDevice(connection, device.Address, true, device.RequireSecurity,
+                        CheckSecurityKey(device));
+                }
+                catch
+                {
+                    // ignored
+                }
             }
+        }
+    }
+
+    private byte[] CheckSecurityKey(Device device)
+    {
+        if (device.SecureMode != SecureMode.Secure) return null;
+
+        try
+        {
+            return Encoding.ASCII.GetBytes(_dataEncryption.Decrypt(device.SecurityKey));
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Unable to get decrypt the security key for \'{DeviceName}\'",
+                device.Name);
+
+            throw;
         }
     }
 
@@ -323,9 +355,11 @@ public class OSDPDriver : IHardwareDriver
         }
 
         if (_configuration == null) return;
+        
         _configuration.AvailablePorts = SerialPort.GetPortNames();
     }
 
+    /// <inheritdoc />
     public void Unload()
     {
         foreach (var access in _endpoints.Where(endpoint => endpoint is OSDPAccess).Cast<OSDPAccess>())
@@ -341,9 +375,18 @@ public class OSDPDriver : IHardwareDriver
         _panel.OutputStatusReportReplyReceived -= PanelOnOutputStatusReportReplyReceived;
     }
 
+    /// <inheritdoc />
     public string CurrentConfiguration()
     {
         return JsonConvert.SerializeObject(_configuration);
+    }
+
+    /// <inheritdoc />
+    public string ScrubSensitiveConfigurationData(string jsonConfigurationString)
+    {
+        var configuration  = JsonConvert.DeserializeObject<Configuration>(jsonConfigurationString);
+        configuration.Buses.ForEach(bus => bus.Devices.ForEach(device => device.SecurityKey = null));
+        return JsonConvert.SerializeObject(configuration);
     }
 
     public async Task<string> PerformAction(string action, string parameters)
@@ -455,6 +498,17 @@ public class OSDPDriver : IHardwareDriver
             deviceAction.Device.RequireSecurity);
 
         return string.Empty;
+    }
+
+    private byte[] CreateRandomKey()
+    {
+        int keySizeInBytes = 128;
+        byte[] randomKey = new byte[keySizeInBytes];
+
+        using RandomNumberGenerator rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomKey);
+
+        return randomKey;
     }
 
     protected virtual void OnUpdatedEndpoints()

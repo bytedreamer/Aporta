@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
+using Aporta.Extensions;
 using Aporta.Shared.Models;
 
 namespace Aporta.Core.Services;

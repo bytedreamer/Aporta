@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
+using Aporta.Extensions;
 using Aporta.Shared.Messaging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -45,6 +46,7 @@ public class ExtensionServiceTests
         // Arrange
         var extensionService = new ExtensionService(_dataAccess,
                 new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
+                new Mock<IDataEncryption>().Object,
                 _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
             {CurrentDirectory = Environment.CurrentDirectory};
 
@@ -64,6 +66,7 @@ public class ExtensionServiceTests
         // Arrange
         var hubContextSupport = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
         var extensionService = new ExtensionService(_dataAccess, hubContextSupport.IHubContextMock.Object,
+            new Mock<IDataEncryption>().Object,
                 _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
             {CurrentDirectory = Environment.CurrentDirectory};
         await extensionService.Startup();
