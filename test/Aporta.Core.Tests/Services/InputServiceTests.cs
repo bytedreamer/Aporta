@@ -46,7 +46,7 @@ public class InputServiceTests
             _loggerFactory){CurrentDirectory = Environment.CurrentDirectory};
         await _extensionService.Startup();
         await _extensionService.EnableExtension(_extensionId, true);
-        Assert.That(() => _extensionService.Extensions.First().Loaded,
+        Assert.That(() => _extensionService.GetExtensions().First().Loaded,
             Is.True.After(1000, 100));
     }
 

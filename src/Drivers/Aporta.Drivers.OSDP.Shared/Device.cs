@@ -16,7 +16,9 @@ public class Device
     public DateTime LastKeyRotation { get; set; }
 
     public string SecurityKey { get; set; }
-
+    
+    public bool KeyMismatch { get; set; } 
+    
     public bool IdentityNotMatched { get; set; }
 
     public SecureMode SecureMode

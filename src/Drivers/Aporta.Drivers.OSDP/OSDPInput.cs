@@ -31,7 +31,7 @@ public class OSDPInput : IInput
 
     public async Task<bool> GetState()
     {
-        return (await _controlPanel.InputStatus(_connectionId, _device.Address)).InputStatuses.ToArray()[
+        return (await _controlPanel.InputStatus(_connectionId, _device.Address).ConfigureAwait(false)).InputStatuses.ToArray()[
             _input.Number];
     }
         

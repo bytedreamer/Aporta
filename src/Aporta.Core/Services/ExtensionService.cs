@@ -52,8 +52,6 @@ public class ExtensionService
         
     public string CurrentDirectory { get; init; }
 
-    public IEnumerable<ExtensionHost> Extensions => _extensions;
-
     public async Task Startup()
     {
         _logger.LogInformation("Starting extension service");
@@ -118,20 +116,42 @@ public class ExtensionService
 
     public IOutput GetControlPoint(Guid extensionId, string endpointId)
     {
-        return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
+        return _extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
             .First(endpoint => endpoint.Id == endpointId) as IOutput;
     }
         
     public IInput GetMonitorPoint(Guid extensionId, string endpointId)
     {
-        return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
+        return _extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
             .First(endpoint => endpoint.Id == endpointId) as IInput;
     }
 
     public IAccess GetAccessPoint(Guid extensionId, string endpointId)
     {
-        return Extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
+        return _extensions.First(extension => extension.Id == extensionId).Driver.Endpoints
             .First(endpoint => endpoint.Id == endpointId) as IAccess;
+    }
+
+    public IEnumerable<Shared.Models.Extension> GetExtensions()
+    {
+        return _extensions.Select(extension =>
+        {
+            var clone =  extension.ShallowCopy();
+            clone.Configuration = extension.Driver?.ScrubSensitiveConfigurationData(clone.Configuration);
+            return clone;
+        });
+    }
+    
+    public Shared.Models.Extension GetExtension(Guid extensionId)
+    {
+        var extension = _extensions.FirstOrDefault(extension => extension.Id == extensionId);
+        var clone = extension?.ShallowCopy();
+        
+        if (clone == null) return null;
+        
+        clone.Configuration = extension.Driver?.ScrubSensitiveConfigurationData(clone.Configuration);;
+
+        return clone;
     }
 
     public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;

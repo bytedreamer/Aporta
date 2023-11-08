@@ -87,7 +87,7 @@ public class IonoPiMaxDriver : IHardwareDriver
                         break;
                     }
                 }
-            }));
+            })).ConfigureAwait(false);
         };
         _timer.Start();
     }

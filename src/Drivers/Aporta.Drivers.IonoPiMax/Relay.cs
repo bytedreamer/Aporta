@@ -32,12 +32,12 @@ public class Relay : IOutput
     /// <inheritdoc/>
     public async Task<bool> GetState()
     {
-        return (await File.ReadAllTextAsync(Id)).Trim() == "1";
+        return (await File.ReadAllTextAsync(Id).ConfigureAwait(false)).Trim() == "1";
     }
 
     /// <inheritdoc/>
     public async Task SetState(bool state)
     {
-        await File.WriteAllTextAsync(Id, state ? "1" : "0");
+        await File.WriteAllTextAsync(Id, state ? "1" : "0").ConfigureAwait(false);
     }
 }

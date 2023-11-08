@@ -32,6 +32,6 @@ public class DigitalInput : IInput
     /// <inheritdoc/>
     public async Task<bool> GetState()
     {
-        return (await File.ReadAllTextAsync(Id)).Trim() == "1";
+        return (await File.ReadAllTextAsync(Id).ConfigureAwait(false)).Trim() == "1";
     }
 }

@@ -54,8 +54,8 @@ public class ExtensionServiceTests
         await extensionService.Startup();
 
         // Assert
-        Assert.AreEqual(1, extensionService.Extensions.Count());
-        Assert.IsFalse(extensionService.Extensions.First().Loaded);
+        Assert.AreEqual(1, extensionService.GetExtensions().Count());
+        Assert.IsFalse(extensionService.GetExtensions().First().Loaded);
             
         extensionService.Shutdown();
     }
@@ -75,7 +75,7 @@ public class ExtensionServiceTests
         await extensionService.EnableExtension(_extensionId, true);
 
         // Assert
-        Assert.That(() => extensionService.Extensions.First().Loaded,
+        Assert.That(() => extensionService.GetExtensions().First().Loaded,
             Is.True.After(1000, 100));
         hubContextSupport.ClientsAllMock
             .Verify(

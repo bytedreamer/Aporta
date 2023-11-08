@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -19,6 +18,7 @@ using Aporta.Extensions.Hardware;
 using Aporta.Drivers.OSDP.Shared;
 using Aporta.Drivers.OSDP.Shared.Actions;
 using Aporta.Extensions;
+using OSDP.Net.Model.CommandData;
 
 namespace Aporta.Drivers.OSDP;
 
@@ -51,6 +51,7 @@ public class OSDPDriver : IHardwareDriver
         _panel.RawCardDataReplyReceived += PanelOnRawCardDataReplyReceived;
         _panel.InputStatusReportReplyReceived += PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived += PanelOnOutputStatusReportReplyReceived;
+        _panel.NakReplyReceived += PanelOnNakReplyReceived;
 
         ExtractConfiguration(configuration);
             
@@ -95,6 +96,7 @@ public class OSDPDriver : IHardwareDriver
         var matchingBus = _configuration.Buses.Single(bus =>
             bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
         var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
+        matchingDevice.KeyMismatch = false;
 
         switch (eventArgs.IsConnected)
         {
@@ -109,14 +111,24 @@ public class OSDPDriver : IHardwareDriver
             {
                 _logger.LogInformation("Device \'{MatchingDeviceName}\' is online", matchingDevice.Name);
 
-                if (!await ProcessDeviceIdentification(eventArgs, matchingDevice))
+                if (matchingDevice.SecureMode == SecureMode.Install)
+                {
+                    _logger.LogInformation("Device \'{MatchingDeviceName}\' is in install mode, attempting to rotate key", matchingDevice.Name);
+                    await RotateKey(JsonConvert.SerializeObject(new DeviceAction { Device = matchingDevice }));
+                    
+                    matchingDevice.IsConnected = true;
+                    OnUpdatedEndpoints();
+                    return;
+                }
+
+                if (!await ProcessDeviceIdentification(eventArgs, matchingDevice).ConfigureAwait(false))
                 {
                     matchingDevice.IsConnected = false;
                     OnUpdatedEndpoints();
                     return;
                 }
 
-                if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice))
+                if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice).ConfigureAwait(false))
                 {
                     matchingDevice.IsConnected = false;
                     OnUpdatedEndpoints();
@@ -135,7 +147,7 @@ public class OSDPDriver : IHardwareDriver
         DeviceCapabilities capabilities;
         try
         {
-            capabilities = await _panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address);
+            capabilities = await _panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -205,7 +217,7 @@ public class OSDPDriver : IHardwareDriver
         DeviceIdentification identification;
         try
         {
-            identification = await _panel.IdReport(eventArgs.ConnectionId, eventArgs.Address);
+            identification = await _panel.IdReport(eventArgs.ConnectionId, eventArgs.Address).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -292,41 +304,37 @@ public class OSDPDriver : IHardwareDriver
                     short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))]));
         }
     }
+    
+    private void PanelOnNakReplyReceived(object sender, ControlPanel.NakReplyEventArgs eventArgs)
+    {
+        if (eventArgs.Nak.ErrorCode != ErrorCode.CommunicationSecurityNotMet) return;
+        
+        var device = _configuration.Buses.First(bus => _portMapping[bus.PortName] == eventArgs.ConnectionId).Devices
+            .First(device => device.Address == eventArgs.Address);
+
+        // Prevent repeating the same update
+        if (device.KeyMismatch) return;
+        
+        device.KeyMismatch = true;
+        
+        OnUpdatedEndpoints();
+    }
 
     private void AddDevices()
     {
         foreach (var bus in _configuration.Buses)
         {
-            var connection = _portMapping[bus.PortName];
             foreach (var device in bus.Devices)
             {
                 try
                 {
-                    _panel.AddDevice(connection, device.Address, true, device.RequireSecurity,
-                        CheckSecurityKey(device));
+                    AddDeviceToPanel(device);
                 }
                 catch
                 {
                     // ignored
                 }
             }
-        }
-    }
-
-    private byte[] CheckSecurityKey(Device device)
-    {
-        if (device.SecureMode != SecureMode.Secure) return null;
-
-        try
-        {
-            return Encoding.ASCII.GetBytes(_dataEncryption.Decrypt(device.SecurityKey));
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning(exception, "Unable to get decrypt the security key for \'{DeviceName}\'",
-                device.Name);
-
-            throw;
         }
     }
 
@@ -373,6 +381,7 @@ public class OSDPDriver : IHardwareDriver
         _panel.RawCardDataReplyReceived -= PanelOnRawCardDataReplyReceived;
         _panel.InputStatusReportReplyReceived -= PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived -= PanelOnOutputStatusReportReplyReceived;
+        _panel.NakReplyReceived -= PanelOnNakReplyReceived;
     }
 
     /// <inheritdoc />
@@ -406,7 +415,10 @@ public class OSDPDriver : IHardwareDriver
             ActionType.RemoveDevice => RemoveDevice(parameters),
             ActionType.AvailablePorts => JsonConvert.SerializeObject(SerialPort.GetPortNames()),
             ActionType.ClearDeviceIdentity => ClearDeviceIdentity(parameters),
-            _ => await Task.FromResult(string.Empty)
+            ActionType.ResetToClear => ResetToClear(parameters),
+            ActionType.ResetToInstallMode => ResetToInstallMode(parameters),
+            ActionType.RotateKey => await RotateKey(parameters),
+            _ => await Task.FromResult(string.Empty).ConfigureAwait(false)
         };
     }
 
@@ -463,8 +475,7 @@ public class OSDPDriver : IHardwareDriver
         _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName).Devices
             .Add(deviceAction.Device);
 
-        _panel.AddDevice(_portMapping[deviceAction.Device.PortName], deviceAction.Device.Address, true,
-            deviceAction.Device.RequireSecurity);
+        AddDeviceToPanel(deviceAction.Device);
 
         return string.Empty;
     }
@@ -492,23 +503,125 @@ public class OSDPDriver : IHardwareDriver
 
         var foundDevice = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName).Devices
             .First(device => device.Address == deviceAction.Device.Address);
+        
+        _logger?.LogInformation("Clearing identity for device '{DeviceName}'", foundDevice.Name);
+        
         foundDevice.Identification = null;
+        
+        _panel.RemoveDevice(_portMapping[foundDevice.PortName], foundDevice.Address);
+        AddDeviceToPanel(foundDevice);
 
-        _panel.AddDevice(_portMapping[deviceAction.Device.PortName], deviceAction.Device.Address, true,
-            deviceAction.Device.RequireSecurity);
+        return string.Empty;
+    }
+    
+    private string ResetToClear(string parameters)
+    {
+        var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
+        if (deviceAction == null) return string.Empty;
+        
+        var foundDevice = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName).Devices
+            .First(device => device.Address == deviceAction.Device.Address);
+        
+        _logger?.LogInformation("Setting device '{DeviceName}' security to clear text", foundDevice.Name);
+
+        foundDevice.RequireSecurity = false;
+        foundDevice.LastKeyRotation = default;
+        
+        _panel.RemoveDevice(_portMapping[foundDevice.PortName], foundDevice.Address);
+        AddDeviceToPanel(foundDevice);
+
+        return string.Empty;
+    }
+
+    private string ResetToInstallMode(string parameters)
+    {
+        var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
+        if (deviceAction == null) return string.Empty;
+        
+        var foundDevice = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName).Devices
+            .First(device => device.Address == deviceAction.Device.Address);
+        
+        _logger?.LogInformation("Setting device '{DeviceName}' security to install mode", foundDevice.Name);
+
+        foundDevice.RequireSecurity = true;
+        foundDevice.LastKeyRotation = default;
+
+        _panel.RemoveDevice(_portMapping[foundDevice.PortName], foundDevice.Address);
+        AddDeviceToPanel(foundDevice);
+
+        return string.Empty;
+    }
+
+    private async Task<string> RotateKey(string parameters)
+    {
+        var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
+        if (deviceAction == null) return string.Empty;
+
+        var foundDevice = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName).Devices
+            .First(device => device.Address == deviceAction.Device.Address);
+        
+        _logger?.LogInformation("Rotating the key for device '{DeviceName}'", foundDevice.Name);
+        
+        var newKey = CreateRandomKey();
+
+        try
+        {
+            bool keySetSuccess = await _panel.EncryptionKeySet(_portMapping[foundDevice.PortName],
+                foundDevice.Address,
+                new EncryptionKeyConfiguration(KeyType.SecureChannelBaseKey,
+                    newKey)).ConfigureAwait(false);
+
+            if (keySetSuccess)
+            {
+                foundDevice.RequireSecurity = true;
+                foundDevice.SecurityKey = _dataEncryption.Encrypt(BitConverter.ToString(newKey).Replace("-", ""));
+                foundDevice.LastKeyRotation = DateTime.UtcNow;
+
+                _panel.RemoveDevice(_portMapping[foundDevice.PortName], foundDevice.Address);
+                AddDeviceToPanel(foundDevice);
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Unable to rotate the security key for \'{DeviceName}\'",
+                foundDevice.Name);
+        }
 
         return string.Empty;
     }
 
     private byte[] CreateRandomKey()
     {
-        int keySizeInBytes = 128;
+        int keySizeInBytes = 16;
         byte[] randomKey = new byte[keySizeInBytes];
 
         using RandomNumberGenerator rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomKey);
 
         return randomKey;
+    }
+
+    private void AddDeviceToPanel(Device device)
+    {
+        _panel.AddDevice(_portMapping[device.PortName], device.Address, true, device.RequireSecurity, 
+            CheckSecurityKey(device));
+    }
+    
+    private byte[] CheckSecurityKey(Device device)
+    {
+        if (device.SecureMode != SecureMode.Secure) return null;
+
+        try
+        {
+            return Convert.FromHexString(_dataEncryption.Decrypt(device.SecurityKey));
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Unable to get decrypt the security key for \'{DeviceName}\'",
+                device.Name);
+
+            throw;
+        }
     }
 
     protected virtual void OnUpdatedEndpoints()
