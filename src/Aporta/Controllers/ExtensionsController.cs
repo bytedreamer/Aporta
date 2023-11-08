@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Aporta.Core.Models;
 using Aporta.Core.Services;
 using Aporta.Shared.Models;
-using Force.DeepCloner;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 

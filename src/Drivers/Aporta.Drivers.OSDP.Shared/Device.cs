@@ -34,6 +34,7 @@ public class Device
         }
     }
 
+    // ReSharper disable once UnusedAutoPropertyAccessor.Global
     public bool CheckedCapabilities { get; set; }
         
     public bool IsConnected { get; set; }

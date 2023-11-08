@@ -149,7 +149,7 @@ public class ExtensionService
         
         if (clone == null) return null;
         
-        clone.Configuration = extension.Driver?.ScrubSensitiveConfigurationData(clone.Configuration);;
+        clone.Configuration = extension.Driver?.ScrubSensitiveConfigurationData(clone.Configuration);
 
         return clone;
     }
