@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
+using Aporta.Extensions;
 using Aporta.Shared.Messaging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -45,6 +46,7 @@ public class ExtensionServiceTests
         // Arrange
         var extensionService = new ExtensionService(_dataAccess,
                 new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
+                new Mock<IDataEncryption>().Object,
                 _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
             {CurrentDirectory = Environment.CurrentDirectory};
 
@@ -52,8 +54,8 @@ public class ExtensionServiceTests
         await extensionService.Startup();
 
         // Assert
-        Assert.AreEqual(1, extensionService.Extensions.Count());
-        Assert.IsFalse(extensionService.Extensions.First().Loaded);
+        Assert.AreEqual(1, extensionService.GetExtensions().Count());
+        Assert.IsFalse(extensionService.GetExtensions().First().Loaded);
             
         extensionService.Shutdown();
     }
@@ -64,6 +66,7 @@ public class ExtensionServiceTests
         // Arrange
         var hubContextSupport = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
         var extensionService = new ExtensionService(_dataAccess, hubContextSupport.IHubContextMock.Object,
+            new Mock<IDataEncryption>().Object,
                 _loggerFactory.CreateLogger<ExtensionService>(), _loggerFactory)
             {CurrentDirectory = Environment.CurrentDirectory};
         await extensionService.Startup();
@@ -72,7 +75,7 @@ public class ExtensionServiceTests
         await extensionService.EnableExtension(_extensionId, true);
 
         // Assert
-        Assert.That(() => extensionService.Extensions.First().Loaded,
+        Assert.That(() => extensionService.GetExtensions().First().Loaded,
             Is.True.After(1000, 100));
         hubContextSupport.ClientsAllMock
             .Verify(

@@ -16,4 +16,9 @@ public class Extension
     /// Has the extension been loaded 
     /// </summary>
     public bool Loaded { get; set; }
+    
+    public Extension ShallowCopy()
+    {
+        return (Extension) this.MemberwiseClone();
+    }
 }

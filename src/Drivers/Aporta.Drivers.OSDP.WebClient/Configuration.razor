@@ -75,14 +75,10 @@
                                 {
                                     <TableRow>
                                         <TableRowCell Clicked="@(async () => await ShowDetails(device))">
-                                            @if (device.IsConnected)
-                                            {
-                                                <Icon Name="IconName.ArrowUp" Style="color: green" Margin="Margin.Is3.OnX"/>
-                                            } 
-                                            else
-                                            {
-                                                <Icon Name="IconName.ArrowDown" Style="color: red" Margin="Margin.Is3.OnX"/>
-                                            }
+                                            <Tooltip Text="@GetConnectionStatus(device)" Inline="true">
+                                                <Icon Name="@GetConnectionStatusIcon(device)" Style="@GetConnectionStatusIconColor(device)" />
+                                                <Icon Name="@GetSecurityStatusIcon(device)" Style="@GetSecurityStatusIconColor(device)" />
+                                            </Tooltip>
                                         </TableRowCell>
                                         <TableRowHeader Clicked="@(async () => await ShowDetails(device))">
                                             @device.Name
@@ -96,6 +92,19 @@
                                                     Action
                                                 </DropdownToggle>
                                                 <DropdownMenu>
+                                                    @if (device.SecureMode == SecureMode.Clear)
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await ResetToInstallMode(device))">Reset To Install Mode Security</DropdownItem>
+                                                    }
+                                                    else
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await ResetToClear(device))">Reset To Clear Text Security</DropdownItem>
+                                                    }
+                                                    @if (device.SecureMode == SecureMode.Secure)
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await RotateKey(device))">Rotate Key</DropdownItem>
+                                                    }
+                                                    <DropdownDivider/>
                                                     <DropdownItem Clicked="@(async () => await ClearDeviceIdentity(device))">Clear Identity</DropdownItem>
                                                     <DropdownDivider/>
                                                     <DropdownItem Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address, device.Name))">Delete</DropdownItem>
@@ -189,7 +198,7 @@
                         </Validation>
                         <Field>
                             <FieldBody>
-                                <Check @bind-Checked="@_addDevice.RequireSecurity" TValue="bool">Require Security</Check>
+                                <Check @bind-Checked="@_addDevice.RequireSecurity" TValue="bool">Require Security Using AES-128 Encryption</Check>
                             </FieldBody>
                         </Field>
                     </Validations>
@@ -225,7 +234,7 @@
                                     Port
                                 </TableRowCell>
                                 <TableRowCell>
-                                    @_detailsDevice.PortName
+                                    @_detailsDevice?.PortName
                                 </TableRowCell>
                             </TableRow>
                             <TableRow>
@@ -233,7 +242,23 @@
                                     Address
                                 </TableRowCell>
                                 <TableRowCell>
-                                    @_detailsDevice.Address
+                                    @_detailsDevice?.Address
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Requires Security Using AES-128 Encryption
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @_detailsDevice?.RequireSecurity
+                                </TableRowCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableRowCell>
+                                    Last Key Rotation Time
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @GetLastKeyRotationTime(_detailsDevice)
                                 </TableRowCell>
                             </TableRow>
                             <TableRow>
@@ -249,7 +274,7 @@
                                     Vendor Code
                                 </TableRowCell>
                                 <TableRowCell>
-                                    @_detailsDevice.Identification.VendorCode
+                                    @_detailsDevice?.Identification.VendorCode
                                 </TableRowCell>
                             </TableRow>
                             <TableRow>
@@ -257,7 +282,7 @@
                                     Serial Number
                                 </TableRowCell>
                                 <TableRowCell>
-                                    @_detailsDevice.Identification.SerialNumber
+                                    @_detailsDevice?.Identification.SerialNumber
                                 </TableRowCell>
                             </TableRow>
                             <TableRow>
@@ -265,7 +290,7 @@
                                     Firmware Version
                                 </TableRowCell>
                                 <TableRowCell>
-                                    @_detailsDevice.Identification.FirmwareVersion
+                                    @_detailsDevice?.Identification.FirmwareVersion
                                 </TableRowCell>
                             </TableRow>
                             <TableRow>
@@ -273,7 +298,7 @@
                                     Access Reader
                                 </TableRowCell>
                                 <TableRowCell>
-                                    @_detailsDevice.Readers.Any()
+                                    @_detailsDevice?.Readers.Any()
                                 </TableRowCell>
                             </TableRow>
                             <TableRow>
@@ -281,7 +306,7 @@
                                     Number of Inputs
                                 </TableRowCell>
                                 <TableRowCell>
-                                    @_detailsDevice.Inputs.Count
+                                    @_detailsDevice?.Inputs.Count
                                 </TableRowCell>
                             </TableRow>
                             <TableRow>
@@ -289,7 +314,7 @@
                                     Number of Outputs
                                 </TableRowCell>
                                 <TableRowCell>
-                                    @_detailsDevice.Outputs.Count
+                                    @_detailsDevice?.Outputs.Count
                                 </TableRowCell>
                             </TableRow>
                         </TableBody>
@@ -312,35 +337,38 @@
 <MessageProvider />
 
 @code {
-    [Inject] 
+
+    [Inject]
     IMessageService MessageService { get; set; }
-    
+
     private Bus _addBus;
     private Bus _currentBus;
     private Device _addDevice;
     private Device _detailsDevice;
     private string[] _unusedPorts;
-    
+
     private Modal _addPortModal;
     private Modal _addDeviceModal;
     private Validations _addDeviceValidations;
     private Modal _deviceDetailsModal;
 
-    
+
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
-    
+
     private readonly IEnumerable<int> _baudRates = new[]
     {
         9600,
         19200,
         38400,
-        115200
+        57600,
+        115200,
+        230400
     };
 
     private Aporta.Drivers.OSDP.Shared.Configuration _configuration;
-    
+
     [Parameter]
     public Guid ExtensionId { get; set; }
 
@@ -357,7 +385,7 @@
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.OSDP.Shared.Configuration>(RawConfiguration);
 
-        _addDevice = new Device {Name = string.Empty, Address = 0, RequireSecurity = true};
+        _addDevice = new Device { Name = string.Empty, Address = 0, RequireSecurity = true };
 
         InitializeNewBus();
     }
@@ -381,7 +409,7 @@
     private async Task AddBus()
     {
         await _addPortModal.Hide();
-        
+
         await PerformAction(ActionType.AddBus,
             JsonConvert.SerializeObject(new BusAction
             {
@@ -408,7 +436,48 @@
                 Bus = matchingBus
             }));
     }
-    
+
+    private async Task ResetToClear(Device resetToClearDevice)
+    {
+        if (await MessageService.Confirm($"Are you sure you want to reset device '{resetToClearDevice.Name}' to clear text security?", "Reset To Clear Text Security", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Info;
+        }))
+        {
+            await PerformAction(ActionType.ResetToClear,
+                JsonConvert.SerializeObject(new DeviceAction
+                {
+                    Device = resetToClearDevice
+                }));
+        }
+    }
+
+    private async Task ResetToInstallMode(Device resetToInstallModeDevice)
+    {
+        if (await MessageService.Confirm($"Are you sure you want to reset device '{resetToInstallModeDevice.Name}' to install mode security? Make sure that the device is configured for install mode.", "Reset To Install Mode Security", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Info;
+        }))
+        {
+            await PerformAction(ActionType.ResetToInstallMode,
+                JsonConvert.SerializeObject(new DeviceAction
+                {
+                    Device = resetToInstallModeDevice
+                }));
+        }
+    }
+
+    private async Task RotateKey(Device rotateKeyDevice)
+    {
+        await PerformAction(ActionType.RotateKey,
+            JsonConvert.SerializeObject(new DeviceAction
+            {
+                Device = rotateKeyDevice
+            }));
+    }
+
     private async Task ClearDeviceIdentity(Device clearIdentityDevice)
     {
         await PerformAction(ActionType.ClearDeviceIdentity,
@@ -421,8 +490,8 @@
     private void ShowAddDeviceDialog(string portName)
     {
         _currentBus = _configuration.Buses.First(bus => bus.PortName == portName);
-        _addDevice = new Device{Name = string.Empty, Address = 0, RequireSecurity = true};
-        
+        _addDevice = new Device { Name = string.Empty, Address = 0, RequireSecurity = true };
+
         _addDeviceModal.Show();
     }
 
@@ -432,7 +501,7 @@
         {
             return;
         }
-        
+
         await _addDeviceModal.Hide();
 
         _addDevice.PortName = _currentBus.PortName;
@@ -453,7 +522,7 @@
         {
             return;
         }
-        
+
         _currentBus = _configuration.Buses.First(bus => bus.PortName == portName);
 
         var removingDevice = _currentBus.Devices.First(device => device.Address == address);
@@ -465,13 +534,13 @@
                 Device = removingDevice
             }));
     }
-    
+
     private async Task<string> PerformAction(ActionType actionType, string parameters)
     {
         string url = string.Format(Paths.ExtensionPerformAction, ExtensionId, actionType);
         var response = await Http.PostAsync(url,
             new StringContent(parameters, Encoding.UTF8, "application/json"));
-        
+
         if (response.IsSuccessStatusCode)
         {
             _snackbarMessage = $"Request to perform action {actionType.GetDescription()} successfully sent";
@@ -487,11 +556,11 @@
 
         return await response.Content.ReadAsStringAsync();
     }
-    
+
     private async Task ShowDetails(Device device)
     {
         _detailsDevice = device;
-        
+
         await _deviceDetailsModal.Show();
     }
 
@@ -512,16 +581,55 @@
     {
         if (device.IsConnected)
         {
-            return "Online";
+            return $"Online ({device.SecureMode})";
         }
-        else if (device.IdentityNotMatched)
+        if (device.KeyMismatch)
+        {
+            return "Key Mismatch";
+        }
+        if (device.IdentityNotMatched)
         {
             return "Identity Mismatch";
         }
-        else
+
+        return "Offline";
+    }
+
+    private IconName GetConnectionStatusIcon(Device device)
+    {
+        if (device.IsConnected)
         {
-            return "Offline";
+            return IconName.ArrowUp;
         }
+
+        return device.IdentityNotMatched || device.KeyMismatch ? IconName.Exclamation : IconName.ArrowDown;
+    }
+
+    private IconName GetSecurityStatusIcon(Device device)
+    {
+        return device.SecureMode == SecureMode.Secure ? IconName.Lock : IconName.LockOpen;
+    }
+
+    private string GetConnectionStatusIconColor(Device device)
+    {
+        if (device.IsConnected)
+        {
+            return "color: green";
+        }
+
+        return device.IdentityNotMatched || device.KeyMismatch ? "color: orange" : "color: red";
+    }
+
+    private string GetSecurityStatusIconColor(Device device)
+    {
+        return device.SecureMode == SecureMode.Secure ? "color: green" : "color: red";
+    }
+
+    private string GetLastKeyRotationTime(Device device)
+    {
+        return _detailsDevice?.LastKeyRotation != null && _detailsDevice.LastKeyRotation != default ?
+            $"{_detailsDevice?.LastKeyRotation.ToLocalTime().ToShortDateString()} {_detailsDevice?.LastKeyRotation.ToLocalTime().ToShortTimeString()}"
+            : "N/A";
     }
 
 }

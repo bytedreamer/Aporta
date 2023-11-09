@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Device.Gpio;
 using System.Linq;
 using System.Threading.Tasks;
+using Aporta.Extensions;
 using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
@@ -24,7 +25,7 @@ public class IonoPiDriver : IHardwareDriver
 
     public string Name => "Iono Pi RTC board";
 
-    public void Load(string configuration, ILoggerFactory loggerFactory)
+    public void Load(string configuration, IDataEncryption dataEncryption, ILoggerFactory loggerFactory)
     {
         //var logger = loggerFactory.CreateLogger<IonoPiDriver>();
 
@@ -68,6 +69,11 @@ public class IonoPiDriver : IHardwareDriver
     public string CurrentConfiguration()
     {
         return string.Empty;
+    }
+
+    public string ScrubSensitiveConfigurationData(string jsonConfigurationString)
+    {
+        return jsonConfigurationString;
     }
 
     public async Task<string> PerformAction(string action, string parameters)

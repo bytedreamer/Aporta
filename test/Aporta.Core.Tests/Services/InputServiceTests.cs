@@ -17,6 +17,7 @@ using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
+using Aporta.Extensions;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
 
@@ -40,11 +41,12 @@ public class InputServiceTests
         await _dataAccess.UpdateSchema();
         _extensionService = new ExtensionService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
+            new Mock<IDataEncryption>().Object,
             _loggerFactory.CreateLogger<ExtensionService>(),
             _loggerFactory){CurrentDirectory = Environment.CurrentDirectory};
         await _extensionService.Startup();
         await _extensionService.EnableExtension(_extensionId, true);
-        Assert.That(() => _extensionService.Extensions.First().Loaded,
+        Assert.That(() => _extensionService.GetExtensions().First().Loaded,
             Is.True.After(1000, 100));
     }
 

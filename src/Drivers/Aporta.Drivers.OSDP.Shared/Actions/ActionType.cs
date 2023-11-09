@@ -15,5 +15,11 @@ public enum ActionType
     [Description("Rescan Available Ports")]
     AvailablePorts,
     [Description("Clear OSDP Device Identity")]
-    ClearDeviceIdentity
+    ClearDeviceIdentity,
+    [Description("Reset OSDP Device To Install Mode Security")]
+    ResetToInstallMode,
+    [Description("Reset OSDP Device To Clear Text Security")]
+    ResetToClear,
+    [Description("Rotate OSDP Device Encryption Key")]
+    RotateKey
 }

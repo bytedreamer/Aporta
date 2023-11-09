@@ -54,7 +54,7 @@ public class OSDPAccess : IAccess, IDisposable, IAsyncDisposable
                 new ReaderBuzzerControl(_reader.Number, ToneCode.Default, 1, 1, 3))
         };
         
-        await Task.WhenAll(accessGrantedNotificationTasks);
+        await Task.WhenAll(accessGrantedNotificationTasks).ConfigureAwait(false);
     }
     
     public async Task AccessDeniedNotification()
@@ -73,7 +73,7 @@ public class OSDPAccess : IAccess, IDisposable, IAsyncDisposable
                 new ReaderBuzzerControl(_reader.Number, ToneCode.Default, 2, 1, 2))
         };
         
-        await Task.WhenAll(accessDeniedNotificationTasks);
+        await Task.WhenAll(accessDeniedNotificationTasks).ConfigureAwait(false);
     }
 
     private async void FlashHeartbeat(object o)
@@ -88,7 +88,7 @@ public class OSDPAccess : IAccess, IDisposable, IAsyncDisposable
                         new ReaderLedControl(_reader.Number, 0, TemporaryReaderControlCode.SetTemporaryAndStartTimer, 1, 1,
                             LedColor.Black, LedColor.Black, 5, PermanentReaderControlCode.SetPermanentState, 1, 1, LedColor.Red,
                             LedColor.Red)
-                    }));
+                    })).ConfigureAwait(false);
             }
         }
         catch
@@ -104,6 +104,6 @@ public class OSDPAccess : IAccess, IDisposable, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_heartbeatTimer != null) await _heartbeatTimer.DisposeAsync();
+        if (_heartbeatTimer != null) await _heartbeatTimer.DisposeAsync().ConfigureAwait(false);
     }
 }

@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
+using Aporta.Extensions;
 using Aporta.Shared.Models;
 
 namespace Aporta.Core.Services;
@@ -14,7 +15,6 @@ public class GlobalSettingService : IDisposable
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
     private const string SslCertificatePassword = "SslCertificatePassword";
-    private const string CardNumberHashSalt = "CardNumberHashSalt";
         
     public GlobalSettingService(IDataAccess dataAccess, IDataEncryption dataEncryption)
     {
@@ -40,31 +40,6 @@ public class GlobalSettingService : IDisposable
                 {Name = SslCertificatePassword, Value = encryptedPassword});
 
             return password;
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
-    }
-
-    public async Task<byte[]> GetCardNumberHashSalt()
-    {
-        await _semaphore.WaitAsync();
-
-        try
-        {
-            var encryptedSalt = await _globalSettingRepository.Get(CardNumberHashSalt);
-            if (encryptedSalt != null)
-            {
-                return Convert.FromBase64String(_dataEncryption.Decrypt(encryptedSalt));
-            }
-
-            var salt = _dataEncryption.GenerateSalt();
-            encryptedSalt = _dataEncryption.Encrypt(Convert.ToBase64String(salt));
-            await _globalSettingRepository.Insert(new GlobalSetting
-                {Name = CardNumberHashSalt, Value = encryptedSalt});
-
-            return salt;
         }
         finally
         {

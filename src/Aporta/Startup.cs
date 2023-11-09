@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
+using Aporta.Extensions;
 using Aporta.Shared.Messaging;
 using Aporta.Utilities;
 using Microsoft.AspNetCore.Builder;

@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Aporta.Core.Models;
 using Aporta.Core.Services;
+using Aporta.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -25,15 +24,15 @@ public class ExtensionsController : ControllerBase
     }
 
     [HttpGet]
-    public IEnumerable<ExtensionHost> Get()
+    public IEnumerable<Extension> Get()
     {
-        return _extensionService.Extensions;
+        return _extensionService.GetExtensions();
     }
         
     [HttpGet("{extensionId:Guid}")]
-    public ExtensionHost Get(Guid extensionId)
+    public Extension Get(Guid extensionId)
     {
-        return _extensionService.Extensions.First(extension => extension.Id == extensionId);
+        return _extensionService.GetExtension(extensionId);
     }
 
     [HttpPost("{extensionId:Guid}")]

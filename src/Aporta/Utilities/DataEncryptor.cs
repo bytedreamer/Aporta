@@ -1,6 +1,6 @@
 using System;
 using System.Security.Cryptography;
-using Aporta.Core.Services;
+using Aporta.Extensions;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.DataProtection;
 

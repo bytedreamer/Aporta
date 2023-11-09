@@ -32,7 +32,7 @@ public class OSDPOutput : IOutput
 
     public async Task<bool> GetState()
     {
-        return (await _controlPanel.OutputStatus(_connectionId, _device.Address)).OutputStatuses.ToArray()[
+        return (await _controlPanel.OutputStatus(_connectionId, _device.Address).ConfigureAwait(false)).OutputStatuses.ToArray()[
             _output.Number];
     }
 
