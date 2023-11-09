@@ -91,55 +91,61 @@ public class OSDPDriver : IHardwareDriver
 
     public IEnumerable<IEndpoint> Endpoints => _endpoints;
 
-    private async void PanelOnConnectionStatusChanged(object sender, ControlPanel.ConnectionStatusEventArgs eventArgs)
+    private void PanelOnConnectionStatusChanged(object sender, ControlPanel.ConnectionStatusEventArgs eventArgs)
     {
-        var matchingBus = _configuration.Buses.Single(bus =>
-            bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
-        var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
-        matchingDevice.KeyMismatch = false;
-
-        switch (eventArgs.IsConnected)
+        Task.Run(async () =>
         {
-            case false:
-                _logger.LogWarning("Device \'{MatchingDeviceName}\' is offline", matchingDevice.Name);
-                matchingDevice.IsConnected = false;
-                matchingDevice.IdentityNotMatched = false;
+            var matchingBus = _configuration.Buses.Single(bus =>
+                bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
+            var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
 
-                OnUpdatedEndpoints();
-                return;
-            case true:
+            matchingDevice.KeyMismatch = false;
+
+            switch (eventArgs.IsConnected)
             {
-                _logger.LogInformation("Device \'{MatchingDeviceName}\' is online", matchingDevice.Name);
+                case false:
+                    _logger.LogWarning("Device \'{MatchingDeviceName}\' is offline", matchingDevice.Name);
+                    matchingDevice.IsConnected = false;
+                    matchingDevice.IdentityNotMatched = false;
 
-                if (matchingDevice.SecureMode == SecureMode.Install)
+                    OnUpdatedEndpoints();
+                    return;
+                case true:
                 {
-                    _logger.LogInformation("Device \'{MatchingDeviceName}\' is in install mode, attempting to rotate key", matchingDevice.Name);
-                    await RotateKey(JsonConvert.SerializeObject(new DeviceAction { Device = matchingDevice }));
-                    
+                    _logger.LogInformation("Device \'{MatchingDeviceName}\' is online", matchingDevice.Name);
+
+                    if (matchingDevice.SecureMode == SecureMode.Install)
+                    {
+                        _logger.LogInformation(
+                            "Device \'{MatchingDeviceName}\' is in install mode, attempting to rotate key",
+                            matchingDevice.Name);
+                        await RotateKey(JsonConvert.SerializeObject(new DeviceAction { Device = matchingDevice }));
+
+                        matchingDevice.IsConnected = true;
+                        OnUpdatedEndpoints();
+                        return;
+                    }
+
+                    if (!await ProcessDeviceIdentification(eventArgs, matchingDevice).ConfigureAwait(false))
+                    {
+                        matchingDevice.IsConnected = false;
+                        OnUpdatedEndpoints();
+                        return;
+                    }
+
+                    if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice).ConfigureAwait(false))
+                    {
+                        matchingDevice.IsConnected = false;
+                        OnUpdatedEndpoints();
+                        return;
+                    }
+
                     matchingDevice.IsConnected = true;
                     OnUpdatedEndpoints();
                     return;
                 }
-
-                if (!await ProcessDeviceIdentification(eventArgs, matchingDevice).ConfigureAwait(false))
-                {
-                    matchingDevice.IsConnected = false;
-                    OnUpdatedEndpoints();
-                    return;
-                }
-
-                if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice).ConfigureAwait(false))
-                {
-                    matchingDevice.IsConnected = false;
-                    OnUpdatedEndpoints();
-                    return;
-                }
-
-                matchingDevice.IsConnected = true;
-                OnUpdatedEndpoints();
-                return;
             }
-        }
+        });
     }
 
     private async Task<bool> ProcessDeviceCapabilities(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
@@ -256,68 +262,80 @@ public class OSDPDriver : IHardwareDriver
 
     private void PanelOnRawCardDataReplyReceived(object sender, ControlPanel.RawCardDataReplyEventArgs eventArgs)
     {
-        var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
-            .SingleOrDefault(accessPoint => 
-                eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
-                accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
-        if (accessPoint != null)
+        Task.Run(() =>
         {
-            AccessCredentialReceived?.Invoke(this,
-                new AccessCredentialReceivedEventArgs(
-                    accessPoint, eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount));
-        }
-        else
-        {
-            _logger.LogWarning("Unable to find access point at address {EventArgsAddress} to process card read",
-                eventArgs.Address);
-        }
+            var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
+                .SingleOrDefault(accessPoint => 
+                    eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
+                    accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+            if (accessPoint != null)
+            {
+                AccessCredentialReceived?.Invoke(this,
+                    new AccessCredentialReceivedEventArgs(
+                        accessPoint, eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount));
+            }
+            else
+            {
+                _logger.LogWarning("Unable to find access point at address {EventArgsAddress} to process card read",
+                    eventArgs.Address);
+            }
+        });
     }
 
     private void PanelOnInputStatusReportReplyReceived(object sender,
         ControlPanel.InputStatusReportReplyEventArgs eventArgs)
     {
-        var monitorPoints = _endpoints.Where(endpoint => endpoint is IInput).Cast<IInput>()
-            .Where(monitorPoint =>
-                eventArgs.ConnectionId == _portMapping[monitorPoint.Id.Split(":")[0]] &&
-                monitorPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+        Task.Run(() =>
+        {        
+            var monitorPoints = _endpoints.Where(endpoint => endpoint is IInput).Cast<IInput>()
+                .Where(monitorPoint =>
+                    eventArgs.ConnectionId == _portMapping[monitorPoint.Id.Split(":")[0]] &&
+                    monitorPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
 
-        foreach (var monitorPoint in monitorPoints)
-        {
-            StateChanged?.Invoke(this,
-                new StateChangedEventArgs(monitorPoint, eventArgs.InputStatus.InputStatuses.ToArray()[
-                    short.Parse(monitorPoint.Id.Split(":").Last().TrimStart('I'))]));
-        }
+            foreach (var monitorPoint in monitorPoints)
+            {
+                StateChanged?.Invoke(this,
+                    new StateChangedEventArgs(monitorPoint, eventArgs.InputStatus.InputStatuses.ToArray()[
+                        short.Parse(monitorPoint.Id.Split(":").Last().TrimStart('I'))]));
+            }
+        });
     }
 
     private void PanelOnOutputStatusReportReplyReceived(object sender,
         ControlPanel.OutputStatusReportReplyEventArgs eventArgs)
     {
-        var controlPoints = _endpoints.Where(endpoint => endpoint is IOutput).Cast<IOutput>()
-            .Where(controlPoint =>
-                eventArgs.ConnectionId == _portMapping[controlPoint.Id.Split(":")[0]] &&
-                controlPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
-
-        foreach (var controlPoint in controlPoints)
+        Task.Run(() =>
         {
-            StateChanged?.Invoke(this,
-                new StateChangedEventArgs(controlPoint, eventArgs.OutputStatus.OutputStatuses.ToArray()[
-                    short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))]));
-        }
+            var controlPoints = _endpoints.Where(endpoint => endpoint is IOutput).Cast<IOutput>()
+                .Where(controlPoint =>
+                    eventArgs.ConnectionId == _portMapping[controlPoint.Id.Split(":")[0]] &&
+                    controlPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+
+            foreach (var controlPoint in controlPoints)
+            {
+                StateChanged?.Invoke(this,
+                    new StateChangedEventArgs(controlPoint, eventArgs.OutputStatus.OutputStatuses.ToArray()[
+                        short.Parse(controlPoint.Id.Split(":").Last().TrimStart('O'))]));
+            }
+        });
     }
     
     private void PanelOnNakReplyReceived(object sender, ControlPanel.NakReplyEventArgs eventArgs)
     {
-        if (eventArgs.Nak.ErrorCode != ErrorCode.CommunicationSecurityNotMet) return;
-        
-        var device = _configuration.Buses.First(bus => _portMapping[bus.PortName] == eventArgs.ConnectionId).Devices
-            .First(device => device.Address == eventArgs.Address);
+        Task.Run(() =>
+        {
+            if (eventArgs.Nak.ErrorCode != ErrorCode.CommunicationSecurityNotMet) return;
 
-        // Prevent repeating the same update
-        if (device.KeyMismatch) return;
-        
-        device.KeyMismatch = true;
-        
-        OnUpdatedEndpoints();
+            var device = _configuration.Buses.First(bus => _portMapping[bus.PortName] == eventArgs.ConnectionId).Devices
+                .First(device => device.Address == eventArgs.Address);
+
+            // Prevent repeating the same update
+            if (device.KeyMismatch) return;
+
+            device.KeyMismatch = true;
+
+            OnUpdatedEndpoints();
+        });
     }
 
     private void AddDevices()
