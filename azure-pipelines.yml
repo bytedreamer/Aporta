@@ -20,7 +20,7 @@ variables:
 - name: minor
   value: 2
 - name: patch
-  value: 4
+  value: 5
 - name: AssemblyVersion
   value: $(major).$(minor).$(patch)
   
