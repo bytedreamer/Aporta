@@ -24,8 +24,11 @@ public class Program
             .AddFontAwesomeIcons();
 
         builder.RootComponents.Add<App>("app");
+        
         builder.Services.AddScoped(_ => new HttpClient
             { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+
+        builder.Services.AddSingleton(_ => new AportaRuntime());
 
         await builder.Build().RunAsync();
     }

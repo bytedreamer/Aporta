@@ -54,8 +54,8 @@ public class ExtensionServiceTests
         await extensionService.Startup();
 
         // Assert
-        Assert.AreEqual(1, extensionService.GetExtensions().Count());
-        Assert.IsFalse(extensionService.GetExtensions().First().Loaded);
+        Assert.That(extensionService.GetExtensions().Count(), Is.EqualTo(1));
+        Assert.That(extensionService.GetExtensions().First().Loaded, Is.False);
             
         extensionService.Shutdown();
     }
