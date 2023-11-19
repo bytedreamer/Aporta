@@ -1,13 +1,22 @@
-using RichardSzalay.MockHttp;
-
 using Aporta.Shared.Calls;
 using Aporta.Shared.Models;
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Moq;
 
 namespace Aporta.WebClient.Tests.Pages.configuration;
 
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
 public class DriversTests : AportaTestContext
 {
+    private readonly Mock<IExtensionCalls> _mockExtensionCalls = new();
+    
+    public DriversTests()
+    {
+        Services.AddScoped<IExtensionCalls>(_ => _mockExtensionCalls.Object);
+    }
+    
     [Test]
     public void DriversComponentRendersCorrectly()
     {
@@ -22,15 +31,13 @@ public class DriversTests : AportaTestContext
     [Test]
     public void DriversComponentShowAllDrivers()
     {
-        var request = Mock.When(MockHttpClientBunitHelpers.BuildUrl(Paths.Extensions)).RespondJson(new List<Extension>
+        // Arrange
+        _mockExtensionCalls.Setup(calls => calls.GetAll()).ReturnsAsync(new[]
             { new Extension { Enabled = false, Id = Guid.NewGuid(), Name = "Test Driver" } });
 
         // Act
         var cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
-        cut.WaitForState(() => Mock.GetMatchCount(request) > 0);
-        Mock.Flush();
-        cut.WaitForState(() => cut.FindAll("th > a").Count == 1);
-        
+
         // Assert
         var rowHeaders = cut.FindAll("th > a");
         Assert.That(rowHeaders.Any(rowHeader => rowHeader.InnerHtml == "Test Driver"));

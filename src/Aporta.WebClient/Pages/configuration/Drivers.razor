@@ -10,6 +10,8 @@
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
+
+@inject IExtensionCalls ExtensionCalls;
 @inject AportaRuntime AportaRuntime;
 
 @implements IDisposable
@@ -66,7 +68,7 @@ else
 </Snackbar>
 
 @code {
-    private Extension[] _extensions;
+    private IEnumerable<Extension> _extensions;
     private HubConnection _hubConnection;
     
 #pragma warning disable 649
@@ -85,14 +87,14 @@ else
                 .Build();
             _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
             {
-                _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
+                _extensions = await ExtensionCalls.GetAll();
             
                 StateHasChanged();
             });
             await _hubConnection.StartAsync();
         }
         
-        _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
+        _extensions = await ExtensionCalls.GetAll();
     }
     
     async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)

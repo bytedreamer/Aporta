@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Aporta.Shared.Calls;
 using Blazorise;
 using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
@@ -25,6 +26,8 @@ public class Program
 
         builder.RootComponents.Add<App>("app");
         
+        builder.Services.AddScoped<IExtensionCalls, ExtensionCalls>(_ => new ExtensionCalls(new HttpClient
+            { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
         builder.Services.AddScoped(_ => new HttpClient
             { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
