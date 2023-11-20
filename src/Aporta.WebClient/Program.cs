@@ -2,6 +2,7 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Aporta.Shared.Calls;
+using Aporta.WebClient.Hubs;
 using Blazorise;
 using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
@@ -28,10 +29,10 @@ public class Program
         
         builder.Services.AddScoped<IExtensionCalls, ExtensionCalls>(_ => new ExtensionCalls(new HttpClient
             { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
+        builder.Services.AddScoped<IHubProxyFactory, HubProxyFactory>();
+        
         builder.Services.AddScoped(_ => new HttpClient
             { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-
-        builder.Services.AddSingleton(_ => new AportaRuntime());
 
         await builder.Build().RunAsync();
     }

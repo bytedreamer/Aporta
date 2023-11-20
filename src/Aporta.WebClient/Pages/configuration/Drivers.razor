@@ -2,19 +2,18 @@
 
 @using System.Dynamic
 
-@using Microsoft.AspNetCore.SignalR.Client
-
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.Shared.Models
+@using Aporta.WebClient.Hubs
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 
+@inject IHubProxyFactory HubConnectionBuilder;
 @inject IExtensionCalls ExtensionCalls;
-@inject AportaRuntime AportaRuntime;
 
-@implements IDisposable
+@implements IAsyncDisposable
 
 <Heading Size="HeadingSize.Is1">Drivers</Heading>
 <Divider />
@@ -69,34 +68,41 @@ else
 
 @code {
     private IEnumerable<Extension> _extensions;
-    private HubConnection _hubConnection;
-    
-#pragma warning disable 649
+    private IHubProxy _hubConnection;
+
     private Snackbar _snackbar;
-#pragma warning restore 649
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!AportaRuntime.IsTesting)
+        _hubConnection = HubConnectionBuilder.Create(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification));
+        _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
         {
-            _hubConnection = new HubConnectionBuilder()
-                .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
-                .WithAutomaticReconnect(new SignalRRetryPolicy())
-                .Build();
-            _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
-            {
-                _extensions = await ExtensionCalls.GetAll();
-            
-                StateHasChanged();
-            });
-            await _hubConnection.StartAsync();
-        }
-        
-        _extensions = await ExtensionCalls.GetAll();
+            await LoadExtensions();
+
+            StateHasChanged();
+        });
+        await _hubConnection.StartAsync();
+
+        await LoadExtensions();
     }
-    
+
+    async Task LoadExtensions()
+    {
+        try
+        {
+            _extensions = await ExtensionCalls.GetAll();
+        }
+        catch (Exception exception)
+        {
+            _extensions = new Extension[] { };
+            _snackbarMessage = $"Load error. {exception.Message}";
+            _snackbarColor = SnackbarColor.Danger;
+            if (_snackbar != null) await _snackbar.Show();
+        }
+    }
+
     async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)
     {
         string url = $"{Paths.Extensions}/{extensionId}";
@@ -107,12 +113,26 @@ else
             dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
             _snackbarMessage = content.detail.ToString();
             _snackbarColor = SnackbarColor.Danger;
-            await _snackbar.Show();
+            if (_snackbar != null) await _snackbar.Show();
         }
     }
-        
-    public void Dispose()
+    
+    public async ValueTask DisposeAsync()
     {
-        _ = _hubConnection.DisposeAsync();
+        try
+        {
+            if (_hubConnection != null)
+            {
+                try { await _hubConnection.StopAsync(); }
+                finally
+                {
+                    await _hubConnection.DisposeAsync();
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
     }
 }

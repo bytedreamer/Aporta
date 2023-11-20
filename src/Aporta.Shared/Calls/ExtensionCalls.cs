@@ -16,12 +16,13 @@ public class ExtensionCalls : IExtensionCalls
         _httpClient = httpClient;
     }
 
+    /// <inheritdoc />
     public async Task<IEnumerable<Extension>> GetAll()
     {
         var response  = await _httpClient.GetAsync(Paths.Extensions);
         if (!response.IsSuccessStatusCode)
         {
-            throw new Exception($"Unable to get extensions. {response.StatusCode}:{response.ReasonPhrase}");
+            throw new Exception($"Unable to get driver extensions. Return status code {(int)response.StatusCode}:{response.ReasonPhrase}");
         }
 
         return await response.Content.ReadFromJsonAsync<Extension[]>();
@@ -30,5 +31,9 @@ public class ExtensionCalls : IExtensionCalls
 
 public interface IExtensionCalls
 {
+    /// <summary>
+    /// Get all the driver extensions
+    /// </summary>
+    /// <returns>The driver extensions</returns>
     Task<IEnumerable<Extension>> GetAll();
 }

@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Aporta.WebClient;
+namespace Aporta.WebClient.Messaging;
 
 public class SignalRRetryPolicy : IRetryPolicy
 {
