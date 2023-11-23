@@ -1,6 +1,6 @@
 using System;
 
-namespace Aporta.WebClient.Hubs;
+namespace Aporta.WebClient.Messaging;
 
 public class HubProxyFactory : IHubProxyFactory
 {

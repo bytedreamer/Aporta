@@ -2,7 +2,7 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Aporta.Shared.Calls;
-using Aporta.WebClient.Hubs;
+using Aporta.WebClient.Messaging;
 using Blazorise;
 using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;

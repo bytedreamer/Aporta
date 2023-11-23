@@ -1,9 +1,8 @@
 using System;
 using System.Threading.Tasks;
-using Aporta.WebClient.Messaging;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Aporta.WebClient.Hubs;
+namespace Aporta.WebClient.Messaging;
 
 public class HubProxy : IHubProxy
 {
@@ -19,7 +18,7 @@ public class HubProxy : IHubProxy
 
     public void On<T1>(string methodName, Func<T1, Task> handler)
     {
-        _hubConnection.On<T1>(methodName, handler);
+        _hubConnection.On(methodName, handler);
     }
 
     public async Task StartAsync()

@@ -22,7 +22,7 @@ public static class BlazoriseConfig
         services.AddSingleton<IStyleProvider>( new BootstrapStyleProvider() );
         services.AddSingleton<IBehaviourProvider>( new BootstrapBehaviourProvider() );
         services.AddSingleton<IThemeGenerator>( new BootstrapThemeGenerator( new Mock<IThemeCache>().Object ) );
-        services.AddSingleton<IIconProvider>( new Mock<IIconProvider>().Object );
+        services.AddSingleton( new Mock<IIconProvider>().Object );
         services.AddSingleton<IValidationHandlerFactory, ValidationHandlerFactory>();
         services.AddSingleton<ValidatorValidationHandler>();
         services.AddSingleton<PatternValidationHandler>();
@@ -35,11 +35,12 @@ public static class BlazoriseConfig
         // Shared component context. Must be defined as scoped as we want to make it available for the user session.
         services.AddScoped<IModalSharedContext, ModalSharedContext>();
 
-        Action<BlazoriseOptions> configureOptions = ( options ) =>
+        void ConfigureOptions(BlazoriseOptions options)
         {
-        };
+            options.Immediate = true;
+        }
 
-        services.AddSingleton( configureOptions );
+        services.AddSingleton( ConfigureOptions );
         services.AddSingleton<BlazoriseOptions>();
 
 
@@ -198,7 +199,7 @@ public static class BlazoriseConfig
         }
     }
 
-    public class MockJsModule : JSModalModule
+    private class MockJsModule : JSModalModule
     {
         public MockJsModule( IJSRuntime jsRuntime, IVersionProvider versionProvider ) : base( jsRuntime, versionProvider )
         {
