@@ -1,5 +1,9 @@
 using Aporta.Shared.Calls;
+using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
+
+using Blazorise;
+using Blazorise.Snackbar;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,11 +13,12 @@ namespace Aporta.WebClient.Tests.Pages.configuration;
 public class DriversTests : AportaTestContext
 {
     private readonly Mock<IExtensionCalls> _mockExtensionCalls = new();
-    private readonly Extension[] _extensions = new[]
-    {
-        new Extension { Enabled = false, Id = Guid.NewGuid(), Name = "Test Disabled Driver" },
-        new Extension { Enabled = true, Id = Guid.NewGuid(), Name = "Test Enabled Driver" }
+    private readonly Extension[] _extensions = {
+        new() { Enabled = false, Loaded = false, Id = Guid.NewGuid(), Name = "Test Disabled Driver" },
+        new() { Enabled = true, Loaded = true, Id = Guid.NewGuid(), Name = "Test Enabled Driver" }
     };
+
+    private IRenderedComponent<WebClient.Pages.configuration.Drivers>? _cut;
     
     public DriversTests()
     {
@@ -21,55 +26,125 @@ public class DriversTests : AportaTestContext
     }
     
     [Test]
-    public async Task DriversComponentRendersCorrectly()
+    public void DriversComponentRendersCorrectly()
     {
         // Act
-        var cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
+        _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
 
         // Assert
-        string headerText = cut.Find("h1").InnerHtml;
-        Assert.That(headerText, Is.EqualTo("Drivers"));
-        
-        await cut.Instance.DisposeAsync();
+        Assert.That(_cut.FindComponent<Heading>().Nodes[0].TextContent, Is.EqualTo("Drivers"));
     }
 
     [Test]
-    public async Task DriversComponentShowAllDrivers()
+    public void DriversComponentShowAllDrivers()
     {
         // Arrange
         _mockExtensionCalls.Setup(calls => calls.GetAll()).ReturnsAsync(_extensions);
 
         // Act
-        var cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
+        _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
         
-        var rowHeaders = cut.FindAll("th > a");
+        var rowHeaders = _cut.FindComponents<TableRowHeader>();
         Assert.That(rowHeaders, Has.Count.EqualTo(2));
         Assert.Multiple(() =>
         {
-            Assert.That(rowHeaders.Any(rowHeader => rowHeader.InnerHtml == "Test Disabled Driver"));
-            Assert.That(rowHeaders.Any(rowHeader => rowHeader.InnerHtml == "Test Enabled Driver"));
+            Assert.That(rowHeaders.Any(rowHeader => rowHeader.Nodes[0].TextContent == _extensions[0].Name));
+            Assert.That(rowHeaders.Any(rowHeader => rowHeader.Nodes[0].TextContent == _extensions[1].Name));
         });
-        
-        await cut.Instance.DisposeAsync();
     }
     
     [Test]
-    public async Task DriversComponentHandleDriverLoadingProblem()
+    public void DriversComponentHandleDriverLoadingProblem()
     {
         // Arrange
         const string errorMessage = "Loading issue";
         _mockExtensionCalls.Setup(calls => calls.GetAll()).Throws(new Exception(errorMessage));
 
         // Act
-        var cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
-        cut.WaitForElement(".snackbar-body");
+        _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
+        _cut.WaitForElement(".snackbar-body");
 
-        var snackbarBody = cut.Find(".snackbar-body");
-        Assert.That(snackbarBody.InnerHtml, Contains.Substring(errorMessage));
+        // Assert
+        var snackbarBody = _cut.FindComponent<SnackbarBody>();
+        Assert.That(snackbarBody.Nodes[0].TextContent, Contains.Substring(errorMessage));
 
-        var rowHeaders = cut.FindAll("th > a");
+        var rowHeaders = _cut.FindComponents<TableRowHeader>();
         Assert.That(rowHeaders, Has.Count.EqualTo(0));
+    }
+    
+    [Test]
+    public async Task DriversComponentOnDriverConfigurationUpdate()
+    {
+        // Arrange
+        _mockExtensionCalls.Setup(calls => calls.GetAll()).ReturnsAsync(_extensions);
+        
+        Func<Guid, Task>? onMethodCallback = null;
+        HubProxyMock.Setup(connection => 
+                connection.On(Methods.ExtensionDataChanged, It.IsAny<Func<Guid, Task>>()))
+            .Callback<string, Func<Guid, Task>>((_, callback) => {
+                onMethodCallback = callback;
+            });
 
-        await cut.Instance.DisposeAsync();
+        // Act
+        _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
+
+        _extensions[0].Name += " Updated";
+
+        if (onMethodCallback != null) await onMethodCallback.Invoke(_extensions[0].Id);
+
+        // Assert
+        var rowHeaders = _cut.FindComponents<TableRowHeader>();
+        Assert.That(rowHeaders, Has.Count.EqualTo(2));
+        Assert.Multiple(() =>
+        {
+            Assert.That(rowHeaders.Any(rowHeader => rowHeader.Nodes[0].TextContent == _extensions[0].Name));
+            Assert.That(rowHeaders.Any(rowHeader => rowHeader.Nodes[0].TextContent == _extensions[1].Name));
+        });
+    }
+
+    [TestCase(true, true, ExpectedResult = IconName.Check)]
+    [TestCase(true, false, ExpectedResult = IconName.ExclamationTriangle)]
+    [TestCase(false, false, ExpectedResult = IconName.MinusCircle)]
+    public IconName DriversComponentShowTheCorrectStatusIcon(bool enabled, bool loaded)
+    {
+        // Arrange
+        _extensions[0].Enabled = enabled;
+        _extensions[0].Loaded = loaded;
+        _mockExtensionCalls.Setup(calls => calls.GetAll()).ReturnsAsync(_extensions);
+
+        // Act
+        _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
+
+        var tableRows = _cut.FindComponent<TableBody>().FindComponents<TableRow>();
+        var statusIcons = tableRows.Select(row => row.FindComponents<TableRowCell>()[0].FindComponent<Icon>());
+
+        // Assert
+        return (IconName)statusIcons.First().Instance.Name;
+    }
+    
+    [TestCase(true, true, ExpectedResult = "color: green")]
+    [TestCase(true, false, ExpectedResult = "color: orange")]
+    [TestCase(false, false, ExpectedResult = "color: red")]
+    public string DriversComponentShowTheCorrectStatusColor(bool enabled, bool loaded)
+    {
+        // Arrange
+        _extensions[0].Enabled = enabled;
+        _extensions[0].Loaded = loaded;
+        _mockExtensionCalls.Setup(calls => calls.GetAll()).ReturnsAsync(_extensions);
+
+        // Act
+        _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
+
+        var tableRows = _cut.FindComponent<TableBody>().FindComponents<TableRow>();
+        var statusIcons = tableRows.Select(row => row.FindComponents<TableRowCell>()[0].FindComponent<Icon>());
+
+        // Assert
+        return statusIcons.First().Instance.Style;
+    }
+
+    [TearDown]
+    public async Task Cleanup()
+    {
+        if (_cut != null) await _cut.Instance.DisposeAsync();
     }
 }

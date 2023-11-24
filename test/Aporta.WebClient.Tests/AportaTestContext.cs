@@ -10,7 +10,7 @@ namespace Aporta.WebClient.Tests;
 
 public class AportaTestContext : Bunit.TestContext
 {
-    private readonly Mock<IHubProxy> _hubProxyMock = new();
+    protected readonly Mock<IHubProxy> HubProxyMock = new();
     
     protected AportaTestContext()
     {
@@ -22,7 +22,7 @@ public class AportaTestContext : Bunit.TestContext
        BlazoriseConfig.JSInterop.AddUtilities(JSInterop);
         
         Mock<IHubProxyFactory> hubProxyFactoryMock = new();
-        hubProxyFactoryMock.Setup(x => x.Create(It.IsAny<Uri>())).Returns(_hubProxyMock.Object);
+        hubProxyFactoryMock.Setup(x => x.Create(It.IsAny<Uri>())).Returns(HubProxyMock.Object);
         Services.AddScoped<IHubProxyFactory>(_ => hubProxyFactoryMock.Object);
     }
 }

@@ -1,3 +1,5 @@
+using Blazorise;
+
 namespace Aporta.WebClient.Tests.Pages;
 
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
@@ -8,9 +10,8 @@ public class IndexTests : AportaTestContext
     {
         // Act
         using var cut = RenderComponent<WebClient.Pages.Index>();
-        string headerText = cut.Find("h1").InnerHtml;
-
+       
         // Assert
-        Assert.That(headerText, Is.EqualTo("Home"));
+        Assert.That(cut.FindComponent<Heading>().Nodes[0].TextContent, Is.EqualTo("Home"));
     }
 }

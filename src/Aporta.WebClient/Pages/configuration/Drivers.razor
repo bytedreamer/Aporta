@@ -24,40 +24,53 @@
 }
 else
 {
-    <Table Striped="true" Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
-        <TableHeader>
-            <TableRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Enabled</TableHeaderCell>
-                <TableHeaderCell>Loaded</TableHeaderCell>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-        @foreach (var extension in _extensions.OrderBy(extension => extension.Name))
-        {
-            <TableRow>
-                <TableRowHeader>
-                    <a href="configuration/driver/@extension.Id">
-                        @extension.Name
-                    </a>
-                </TableRowHeader>
-                <TableRowCell>
-                    <Check TValue="bool" Checked="@extension.Enabled" CheckedChanged="async checkedValue => { await ExtensionEnabledChanged(extension.Id, checkedValue); }"/>
-                </TableRowCell>
-                <TableRowCell>
-                    @if (extension.Loaded)
-                    {
-                        <Icon Name="IconName.Check" Style="color: green"/>
-                    }
-                    else
-                    {
-                        <Icon Name="IconName.MinusCircle" Style="color: red"/>
-                    }
-                </TableRowCell>
-            </TableRow>
-        }
-        </TableBody>
-    </Table>
+    <Row>
+        <Column>
+            <Card Margin="Margin.Is4.OnY">
+                <CardBody>
+                    <AportaConfigurationTable>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Status</TableHeaderCell>
+                                <TableHeaderCell>Name</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var extension in _extensions.OrderBy(extension => extension.Name))
+                            {
+                                <TableRow HoverCursor="Cursor.Pointer">
+                                    <TableRowCell Clicked="() => NavigateToDriverConfiguration(extension.Id)">
+                                        <Icon Name="@GetDriverStatusIcon(extension)" Style="@GetDriverStatusColor(extension)"/>
+                                    </TableRowCell>
+                                    <TableRowHeader Clicked="() => NavigateToDriverConfiguration(extension.Id)">
+                                        @extension.Name
+                                    </TableRowHeader>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                                <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                    Action
+                                                </DropdownToggle>
+                                                <DropdownMenu>
+                                                    @if (extension.Enabled)
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await ExtensionEnabledChanged(extension.Id, false))">Disable</DropdownItem>
+                                                    }
+                                                    else
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await ExtensionEnabledChanged(extension.Id, true))">Enable</DropdownItem>
+                                                    }
+                                                </DropdownMenu>
+                                            </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </AportaConfigurationTable>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
 }
 
 <Snackbar @ref="_snackbar" Color="@_snackbarColor"> 
@@ -81,7 +94,7 @@ else
         {
             await LoadExtensions();
 
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         });
         await _hubConnection.StartAsync();
 
@@ -116,14 +129,22 @@ else
             if (_snackbar != null) await _snackbar.Show();
         }
     }
-    
+
+    private void NavigateToDriverConfiguration(Guid extensionId)
+    {
+        NavigationManager.NavigateTo($"configuration/driver/{extensionId}");
+    }
+
     public async ValueTask DisposeAsync()
     {
         try
         {
             if (_hubConnection != null)
             {
-                try { await _hubConnection.StopAsync(); }
+                try
+                {
+                    await _hubConnection.StopAsync();
+                }
                 finally
                 {
                     await _hubConnection.DisposeAsync();
@@ -135,4 +156,25 @@ else
             // ignored
         }
     }
+
+    private IconName GetDriverStatusIcon(Extension extension)
+    {
+        return extension.Enabled switch
+        {
+            true when extension.Loaded => IconName.Check,
+            true when !extension.Loaded => IconName.ExclamationTriangle,
+            _ => IconName.MinusCircle
+            };
+    }
+
+    private string GetDriverStatusColor(Extension extension)
+    {
+        return extension.Enabled switch
+        {
+            true when extension.Loaded => "color: green",
+            true when !extension.Loaded => "color: orange",
+            _ => "color: red"
+            };
+    }
+
 }
