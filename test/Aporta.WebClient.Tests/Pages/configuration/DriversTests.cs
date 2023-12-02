@@ -4,7 +4,6 @@ using Aporta.Shared.Models;
 
 using Blazorise;
 using Blazorise.Snackbar;
-
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Aporta.WebClient.Tests.Pages.configuration;
@@ -71,26 +70,25 @@ public class DriversTests : AportaTestContext
         var rowHeaders = _cut.FindComponents<TableRowHeader>();
         Assert.That(rowHeaders, Has.Count.EqualTo(0));
     }
-    
+
     [Test]
     public async Task DriversComponentOnDriverConfigurationUpdate()
     {
         // Arrange
         _mockExtensionCalls.Setup(calls => calls.GetAll()).ReturnsAsync(_extensions);
-        
+
         Func<Guid, Task>? onMethodCallback = null;
-        HubProxyMock.Setup(connection => 
+        HubProxyMock.Setup(connection =>
                 connection.On(Methods.ExtensionDataChanged, It.IsAny<Func<Guid, Task>>()))
-            .Callback<string, Func<Guid, Task>>((_, callback) => {
-                onMethodCallback = callback;
-            });
+            .Callback<string, Func<Guid, Task>>((_, callback) => { onMethodCallback = callback; });
 
         // Act
         _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
 
         _extensions[0].Name += " Updated";
 
-        if (onMethodCallback != null) await onMethodCallback.Invoke(_extensions[0].Id);
+        if (onMethodCallback != null)
+            await _cut.InvokeAsync(async () => await onMethodCallback.Invoke(_extensions[0].Id));
 
         // Assert
         var rowHeaders = _cut.FindComponents<TableRowHeader>();
@@ -121,7 +119,7 @@ public class DriversTests : AportaTestContext
         // Assert
         return (IconName)statusIcons.First().Instance.Name;
     }
-    
+
     [TestCase(true, true, ExpectedResult = "color: green")]
     [TestCase(true, false, ExpectedResult = "color: orange")]
     [TestCase(false, false, ExpectedResult = "color: red")]
@@ -140,6 +138,44 @@ public class DriversTests : AportaTestContext
 
         // Assert
         return statusIcons.First().Instance.Style;
+    }
+
+    [Test]
+    public async Task DriversComponentEnableDriver()
+    {
+        // Arrange
+        _mockExtensionCalls.Setup(calls => calls.GetAll()).ReturnsAsync(_extensions);
+        _mockExtensionCalls.Setup(calls => calls.ChangeEnableSettings(_extensions[0].Id, true)).Verifiable();
+
+        // Act
+        _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
+
+        var disabledDriverRow = _cut.FindComponent<TableBody>().FindComponents<TableRow>()[0];
+        var enableMenuItem = disabledDriverRow.FindComponents<DropdownItem>()
+            .First(item => item.Nodes[0].TextContent == "Enable");
+        await _cut.InvokeAsync(async () => await enableMenuItem.Instance.Clicked.InvokeAsync());
+
+        // Assert
+        _mockExtensionCalls.Verify();
+    }
+    
+    [Test]
+    public async Task DriversComponentDisableDriver()
+    {
+        // Arrange
+        _mockExtensionCalls.Setup(calls => calls.GetAll()).ReturnsAsync(_extensions);
+        _mockExtensionCalls.Setup(calls => calls.ChangeEnableSettings(_extensions[1].Id, false)).Verifiable();
+
+        // Act
+        _cut = RenderComponent<WebClient.Pages.configuration.Drivers>();
+
+        var disabledDriverRow = _cut.FindComponent<TableBody>().FindComponents<TableRow>()[1];
+        var enableMenuItem = disabledDriverRow.FindComponents<DropdownItem>()
+            .First(item => item.Nodes[0].TextContent == "Disable");
+        await _cut.InvokeAsync(async () => await enableMenuItem.Instance.Clicked.InvokeAsync());
+
+        // Assert
+        _mockExtensionCalls.Verify();
     }
 
     [TearDown]

@@ -1,13 +1,10 @@
 @page "/configuration/drivers"
 
-@using System.Dynamic
-
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.Shared.Models
 @using Aporta.WebClient.Messaging
 
-@inject HttpClient Http
 @inject NavigationManager NavigationManager
 
 @inject IHubProxyFactory HubConnectionBuilder;
@@ -94,14 +91,14 @@ else
         {
             await LoadExtensions();
 
-            await InvokeAsync(StateHasChanged);
+            StateHasChanged();
         });
         await _hubConnection.StartAsync();
 
         await LoadExtensions();
     }
 
-    async Task LoadExtensions()
+    private async Task LoadExtensions()
     {
         try
         {
@@ -110,21 +107,22 @@ else
         catch (Exception exception)
         {
             _extensions = new Extension[] { };
-            _snackbarMessage = $"Load error. {exception.Message}";
+            _snackbarMessage = exception.Message;
             _snackbarColor = SnackbarColor.Danger;
             if (_snackbar != null) await _snackbar.Show();
         }
     }
 
-    async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)
+    private async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)
     {
-        string url = $"{Paths.Extensions}/{extensionId}";
-        url = QueryHelpers.AddQueryString(url, "enabled", checkedValue.ToString());
-        var response = await Http.PostAsync(url, new StringContent(string.Empty));
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
-            _snackbarMessage = content.detail.ToString();
+            await ExtensionCalls.ChangeEnableSettings(extensionId, checkedValue);
+        }
+        catch (Exception exception)
+        {
+            _extensions = new Extension[] { };
+            _snackbarMessage = exception.Message;
             _snackbarColor = SnackbarColor.Danger;
             if (_snackbar != null) await _snackbar.Show();
         }
