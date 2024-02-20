@@ -20,6 +20,8 @@ public class Device
     public bool KeyMismatch { get; set; } 
     
     public bool IdentityNotMatched { get; set; }
+    
+    public bool PKOCEnabled { get; set; }
 
     public SecureMode SecureMode
     {

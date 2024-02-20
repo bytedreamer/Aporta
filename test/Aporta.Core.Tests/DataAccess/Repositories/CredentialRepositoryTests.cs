@@ -79,9 +79,9 @@ public class CredentialRepositoryTests
         var actual = await credentialRepository.Get(credentials[1].Id);
 
         // Assert
-        Assert.AreEqual("5345234", actual.Number);
-        Assert.AreEqual( people[1].Id, actual.AssignedPersonId);
-        Assert.IsTrue(actual.Enabled);
+        Assert.That(actual.Number, Is.EqualTo("5345234"));
+        Assert.That(actual.AssignedPersonId, Is.EqualTo(people[1].Id));
+        Assert.That(actual.Enabled, Is.True);
     }
         
     [Test]
@@ -104,9 +104,9 @@ public class CredentialRepositoryTests
         var actual = await credentialRepository.Get(credentials[1].Id);
 
         // Assert
-        Assert.AreEqual("5345234", actual.Number);
-        Assert.IsNull(actual.AssignedPersonId);
-        Assert.IsNull(actual.Enabled);
+        Assert.That(actual.Number, Is.EqualTo("5345234"));
+        Assert.That(actual.AssignedPersonId, Is.Null);
+        Assert.That(actual.Enabled, Is.Null);
     }
 
     [Test]
@@ -129,10 +129,10 @@ public class CredentialRepositoryTests
         var actualCredential = await credentialRepository.Get(2);
 
         // Assert
-        Assert.AreEqual(2, credentials[1].Id);
-        Assert.AreEqual(2, actualCredential.Id);
-        Assert.AreEqual(5, actualCredential.LastEvent);
-        Assert.AreEqual("5345234", actualCredential.Number);
+        Assert.That(credentials[1].Id, Is.EqualTo(2));
+        Assert.That(actualCredential.Id, Is.EqualTo(2));
+        Assert.That(actualCredential.LastEvent, Is.EqualTo(5));
+        Assert.That(actualCredential.Number, Is.EqualTo("5345234"));
     }
         
     [Test]
@@ -176,7 +176,7 @@ public class CredentialRepositoryTests
 
         // Assert
         var actualCredentials = await credentialRepository.GetAll();
-        Assert.AreEqual(1, actualCredentials.Count());
+        Assert.That(actualCredentials.Count(), Is.EqualTo(1));
     }
         
     [Test]
@@ -199,7 +199,7 @@ public class CredentialRepositoryTests
         var actual = await credentialRepository.AssignedCredential("5345234");
 
         // Assert - Null person
-        Assert.IsNull(actual.Person);
+        Assert.That(actual.Person, Is.Null);
     }
         
     [Test]
@@ -236,9 +236,9 @@ public class CredentialRepositoryTests
         var actual = await credentialRepository.AssignedCredential("5345234");
 
         // Assert
-        Assert.AreEqual("5345234", actual.Number);
-        Assert.IsTrue(actual.Enabled);
-        Assert.AreEqual(actual.Person.Id, people[1].Id);
+        Assert.That(actual.Number, Is.EqualTo("5345234"));
+        Assert.That(actual.Enabled, Is.True);
+        Assert.That(actual.Person.Id, Is.EqualTo(people[1].Id));
     }
         
     [Test]
@@ -275,9 +275,9 @@ public class CredentialRepositoryTests
         var actual = await credentialRepository.AssignedCredential("5345234");
 
         // Assert
-        Assert.AreEqual("5345234", actual.Number);
-        Assert.IsFalse(actual.Enabled);
-        Assert.AreEqual(actual.Person.Id, people[0].Id);
+        Assert.That(actual.Number, Is.EqualTo("5345234"));
+        Assert.That(actual.Enabled, Is.False);
+        Assert.That(actual.Person.Id, Is.EqualTo(people[0].Id));
     }
         
     [Test]
@@ -314,9 +314,9 @@ public class CredentialRepositoryTests
         var actual = await credentialRepository.AssignedCredential("5345234");
 
         // Assert
-        Assert.AreEqual("5345234", actual.Number);
-        Assert.IsFalse(actual.Enabled);
-        Assert.AreEqual(actual.Person.Id, people[0].Id);
+        Assert.That(actual.Number, Is.EqualTo("5345234"));
+        Assert.That(actual.Enabled, Is.False);
+        Assert.That(actual.Person.Id, Is.EqualTo(people[0].Id));
     }
         
     [Test]
@@ -332,6 +332,6 @@ public class CredentialRepositoryTests
 
         // Assert
         var actualCredential = await credentialRepository.Get(credentialId);
-        Assert.AreEqual(5, actualCredential.LastEvent);
+        Assert.That(actualCredential.LastEvent, Is.EqualTo(5));
     }
 }

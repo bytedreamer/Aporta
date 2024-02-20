@@ -71,10 +71,10 @@ public class InputRepositoryTests
         var actualInput = await inputRepository.Get(3);
 
         // Assert
-        Assert.AreEqual(3, inputs[2].Id);
-        Assert.AreEqual(3, actualInput.Id);
-        Assert.AreEqual("Test3", actualInput.Name);
-        Assert.AreEqual(_endpointId, actualInput.EndpointId);
+        Assert.That(inputs[2].Id, Is.EqualTo(3));
+        Assert.That(actualInput.Id, Is.EqualTo(3));
+        Assert.That(actualInput.Name, Is.EqualTo("Test3"));
+        Assert.That(actualInput.EndpointId, Is.EqualTo(_endpointId));
     }
         
     [Test]
@@ -97,6 +97,6 @@ public class InputRepositoryTests
 
         // Assert
         var actualInput = await inputRepository.GetAll();
-        Assert.AreEqual(2, actualInput.Count());
+        Assert.That(2, Is.EqualTo(actualInput.Count()));
     }
 }

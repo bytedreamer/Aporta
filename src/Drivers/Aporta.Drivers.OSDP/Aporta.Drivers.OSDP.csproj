@@ -1,8 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
-
         <EnableDynamicLoading>true</EnableDynamicLoading>
 
         <LangVersion>default</LangVersion>
@@ -10,7 +8,8 @@
 
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-      <PackageReference Include="OSDP.Net" Version="4.1.6" />
+      <PackageReference Include="OSDP.Net" Version="4.1.7" />
+      <PackageReference Include="PKOC.Net" Version="0.0.1-beta" />
     </ItemGroup>
 
     <ItemGroup>

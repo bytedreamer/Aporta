@@ -73,7 +73,7 @@ public class OutputServiceTests
         await outputService.SetState(outputs[1].Id, false);
 
         // Assert
-        Assert.IsTrue(await outputService.GetState(outputs[0].Id));
-        Assert.IsFalse(await outputService.GetState(outputs[1].Id));
+        Assert.That(await outputService.GetState(outputs[0].Id), Is.True);
+        Assert.That(await outputService.GetState(outputs[1].Id), Is.False);
     }
 }

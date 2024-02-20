@@ -1,8 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
-
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <OutDir>$(SolutionDir)..\test\Aporta.Core.Tests\bin\$(Configuration)\Drivers\TestDriver</OutDir>
         <AssemblyName>Aporta.Drivers.TestDriver</AssemblyName>

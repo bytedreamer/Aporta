@@ -71,10 +71,10 @@ public class OutputRepositoryTests
         var actualOutput = await outputRepository.Get(3);
 
         // Assert
-        Assert.AreEqual(3, outputs[2].Id);
-        Assert.AreEqual(3, actualOutput.Id);
-        Assert.AreEqual("Test3", actualOutput.Name);
-        Assert.AreEqual(_endpointId, actualOutput.EndpointId);
+        Assert.That(outputs[2].Id, Is.EqualTo(3));
+        Assert.That(actualOutput.Id, Is.EqualTo(3));
+        Assert.That(actualOutput.Name, Is.EqualTo("Test3"));
+        Assert.That(actualOutput.EndpointId, Is.EqualTo(_endpointId));
     }
         
     [Test]
@@ -99,6 +99,6 @@ public class OutputRepositoryTests
 
         // Assert
         var actualOutputs = await outputRepository.GetAll();
-        Assert.AreEqual(2, actualOutputs.Count());
+        Assert.That(2, Is.EqualTo(actualOutputs.Count()));
     }
 }

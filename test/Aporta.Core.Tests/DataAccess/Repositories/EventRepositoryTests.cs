@@ -78,12 +78,12 @@ public class EventRepositoryTests
         var actualEvent = await eventRepository.Get(2);
 
         // Assert
-        Assert.AreEqual(2, events[1].Id);
-        Assert.AreEqual(2, actualEvent.Id);
-        Assert.AreEqual(_accessEndpoint2Id, actualEvent.EndpointId);
-        Assert.AreEqual(new DateTime(2024, 4, 4), actualEvent.Timestamp);
-        Assert.AreEqual(EventType.AccessGranted, actualEvent.Type);
-        Assert.AreEqual("{}", actualEvent.Data);
+        Assert.That(events[1].Id, Is.EqualTo(2));
+        Assert.That(actualEvent.Id, Is.EqualTo(2));
+        Assert.That(actualEvent.EndpointId, Is.EqualTo(_accessEndpoint2Id));
+        Assert.That(actualEvent.Timestamp, Is.EqualTo(new DateTime(2024, 4, 4)));
+        Assert.That(actualEvent.Type, Is.EqualTo(EventType.AccessGranted));
+        Assert.That(actualEvent.Data, Is.EqualTo("{}"));
     }
 
     [Test]
@@ -114,6 +114,6 @@ public class EventRepositoryTests
 
         // Assert
         var actualEvents = await eventRepository.GetAll();
-        Assert.AreEqual(1, actualEvents.Count());
+        Assert.That(1, Is.EqualTo(actualEvents.Count()));
     }
 }

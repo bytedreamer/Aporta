@@ -98,14 +98,14 @@ public class DoorRepositoryTests
         var actualDoor = await doorRepository.Get(2);
 
         // Assert
-        Assert.AreEqual(2, doors[1].Id);
-        Assert.AreEqual(2, actualDoor.Id);
-        Assert.AreEqual("DoorTest2", actualDoor.Name);
-        Assert.AreEqual(_inAccessEndpointId, actualDoor.InAccessEndpointId);
-        Assert.AreEqual(_outAccessEndpointId, actualDoor.OutAccessEndpointId);
-        Assert.AreEqual(_doorContactEndpointId, actualDoor.DoorContactEndpointId);
-        Assert.AreEqual(_requestToExitEndpointId, actualDoor.RequestToExitEndpointId);
-        Assert.AreEqual(_doorStrikeEndpointId, actualDoor.DoorStrikeEndpointId);
+        Assert.That(doors[1].Id, Is.EqualTo(2));
+        Assert.That(actualDoor.Id, Is.EqualTo(2));
+        Assert.That(actualDoor.Name, Is.EqualTo("DoorTest2"));
+        Assert.That(actualDoor.InAccessEndpointId, Is.EqualTo(_inAccessEndpointId));
+        Assert.That(actualDoor.OutAccessEndpointId, Is.EqualTo(_outAccessEndpointId));
+        Assert.That(actualDoor.DoorContactEndpointId, Is.EqualTo(_doorContactEndpointId));
+        Assert.That(actualDoor.RequestToExitEndpointId, Is.EqualTo(_requestToExitEndpointId));
+        Assert.That(actualDoor.DoorStrikeEndpointId, Is.EqualTo(_doorStrikeEndpointId));
     }
 
     [Test]
@@ -129,6 +129,6 @@ public class DoorRepositoryTests
 
         // Assert
         var actualDoors = await doorRepository.GetAll();
-        Assert.AreEqual(1, actualDoors.Count());
+        Assert.That(1, Is.EqualTo(actualDoors.Count()));
     }
 }

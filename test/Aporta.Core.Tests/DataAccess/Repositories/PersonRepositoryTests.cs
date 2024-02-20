@@ -64,11 +64,11 @@ public class PersonRepositoryTests
         var actualPerson = await personRepository.Get(2);
 
         // Assert
-        Assert.AreEqual(2, people[1].Id);
-        Assert.AreEqual(2, actualPerson.Id);
-        Assert.AreEqual("First2", actualPerson.FirstName);
-        Assert.AreEqual("Last2", actualPerson.LastName);
-        Assert.IsTrue(actualPerson.Enabled);
+        Assert.That(people[1].Id, Is.EqualTo(2));
+        Assert.That(actualPerson.Id, Is.EqualTo(2));
+        Assert.That(actualPerson.FirstName, Is.EqualTo("First2"));
+        Assert.That(actualPerson.LastName, Is.EqualTo("Last2"));
+        Assert.That(actualPerson.Enabled, Is.True);
     }
 
     [Test]
@@ -92,6 +92,6 @@ public class PersonRepositoryTests
 
         // Assert
         var actualPeople = await personRepository.GetAll();
-        Assert.AreEqual(1, actualPeople.Count());
+        Assert.That(1, Is.EqualTo(actualPeople.Count()));
     }
 }
