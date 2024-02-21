@@ -4,12 +4,12 @@ using Blazorise.Licensing;
 using Blazorise.Localization;
 using Blazorise.Modules;
 using Blazorise.Utilities;
-
+using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
+using Moq;
 
-
-namespace Aporta.WebClient.Tests;
+namespace TestWebClientConfiguration;
 
 public static class BlazoriseConfig
 {
@@ -27,7 +27,7 @@ public static class BlazoriseConfig
         services.AddSingleton<ValidatorValidationHandler>();
         services.AddSingleton<PatternValidationHandler>();
         services.AddSingleton<DataAnnotationValidationHandler>();
-         services.AddSingleton<IVersionProvider, VersionProvider>();
+        services.AddSingleton<IVersionProvider, VersionProvider>();
         services.AddScoped<ITextLocalizerService, TextLocalizerService>();
         services.AddScoped( typeof( ITextLocalizer<> ), typeof( TextLocalizer<> ) );
 

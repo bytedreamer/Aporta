@@ -5,8 +5,9 @@ using Blazorise.Icons.FontAwesome;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Moq;
 
-namespace Aporta.WebClient.Tests;
+namespace TestWebClientConfiguration;
 
 public class AportaTestContext : Bunit.TestContext
 {

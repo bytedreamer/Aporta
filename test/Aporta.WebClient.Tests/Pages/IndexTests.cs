@@ -1,4 +1,5 @@
 using Blazorise;
+using TestWebClientConfiguration;
 
 namespace Aporta.WebClient.Tests.Pages;
 

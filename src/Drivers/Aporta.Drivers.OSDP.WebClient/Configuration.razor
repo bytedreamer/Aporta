@@ -215,7 +215,7 @@
             <ModalContent Size="ModalSize.Default" Centered="true">
                 <ModalHeader>
                     <ModalTitle>
-                        @_detailsDevice.Name details
+                        @_detailsDevice?.Name details
                     </ModalTitle>
                     <CloseButton Clicked="@_deviceDetailsModal.Hide"/>
                 </ModalHeader>
@@ -337,7 +337,6 @@
 <MessageProvider />
 
 @code {
-
     [Inject]
     IMessageService MessageService { get; set; }
 
@@ -396,7 +395,7 @@
 
         _addBus = new Bus
         {
-            Devices = new List<Device>(),
+            Devices = [],
             BaudRate = 9600
         };
 
@@ -579,6 +578,8 @@
 
     private string GetConnectionStatus(Device device)
     {
+        if (device == null) return string.Empty;
+        
         if (device.IsConnected)
         {
             return $"Online ({device.SecureMode})";

@@ -1,11 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
         <IsPackable>false</IsPackable>
-
         <LangVersion>default</LangVersion>
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
@@ -20,18 +19,19 @@
         <PackageReference Include="NUnit" Version="4.0.1" />
         <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
         <PackageReference Include="NUnit.Analyzers" Version="4.0.1">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
 
-
     <ItemGroup>
-      <ProjectReference Include="..\..\src\Aporta.Core\Aporta.Core.csproj" />
-      <ProjectReference Include="..\..\src\Aporta.WebClient\Aporta.WebClient.csproj" />
-      <ProjectReference Include="..\TestWebClientConfiguration\TestWebClientConfiguration.csproj" />
+      <Content Update="Imports.razor">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </Content>
     </ItemGroup>
 
-
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\TestWebClientConfiguration\TestWebClientConfiguration.csproj" />
+    </ItemGroup>
 
 </Project>

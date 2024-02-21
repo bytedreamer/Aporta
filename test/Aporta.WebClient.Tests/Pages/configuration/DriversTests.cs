@@ -5,6 +5,7 @@ using Aporta.Shared.Models;
 using Blazorise;
 using Blazorise.Snackbar;
 using Microsoft.Extensions.DependencyInjection;
+using TestWebClientConfiguration;
 
 namespace Aporta.WebClient.Tests.Pages.configuration;
 
@@ -12,10 +13,11 @@ namespace Aporta.WebClient.Tests.Pages.configuration;
 public class DriversTests : AportaTestContext
 {
     private readonly Mock<IExtensionCalls> _mockExtensionCalls = new();
-    private readonly Extension[] _extensions = {
+    private readonly Extension[] _extensions =
+    [
         new() { Enabled = false, Loaded = false, Id = Guid.NewGuid(), Name = "Test Disabled Driver" },
         new() { Enabled = true, Loaded = true, Id = Guid.NewGuid(), Name = "Test Enabled Driver" }
-    };
+    ];
 
     private IRenderedComponent<WebClient.Pages.configuration.Drivers>? _cut;
     
