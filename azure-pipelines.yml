@@ -8,7 +8,7 @@ trigger:
 - develop
   
 pr:
-  drafts: true
+  drafts: false
 
 variables:
 - group: CodeSigning
