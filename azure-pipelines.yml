@@ -7,8 +7,7 @@ trigger:
 - main
 - develop
   
-pr:
-  drafts: false
+pr: none
 
 variables:
 - group: CodeSigning
