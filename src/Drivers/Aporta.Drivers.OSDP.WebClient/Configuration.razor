@@ -8,7 +8,7 @@
 @using Aporta.Drivers.OSDP.Shared
 @using Aporta.Drivers.OSDP.Shared.Actions
 
-@inject HttpClient Http
+@inject IDriverConfigurationCalls ConfigurationCalls;
 
 @if (_configuration == null)
     {
@@ -536,24 +536,24 @@
 
     private async Task<string> PerformAction(ActionType actionType, string parameters)
     {
-        string url = string.Format(Paths.ExtensionPerformAction, ExtensionId, actionType);
-        var response = await Http.PostAsync(url,
-            new StringContent(parameters, Encoding.UTF8, "application/json"));
-
-        if (response.IsSuccessStatusCode)
+        string responseData;
+        try
         {
-            _snackbarMessage = $"Request to perform action {actionType.GetDescription()} successfully sent";
-            _snackbarColor = SnackbarColor.Info;
-            await _snackbar.Show();
+            responseData = await ConfigurationCalls.PerformAction(ExtensionId, actionType.ToString(), parameters);
         }
-        else
+        catch (Exception exception)
         {
-            _snackbarMessage = $"Unable to perform action {actionType.GetDescription()}";
+            _snackbarMessage = $"Unable to perform action {actionType.GetDescription()}. {exception.Message}";
             _snackbarColor = SnackbarColor.Danger;
-            await _snackbar.Show();
+            if (_snackbar != null) await _snackbar.Show();
+            return string.Empty;
         }
+        
+        _snackbarMessage = $"Request to perform action {actionType.GetDescription()} successfully sent";
+        _snackbarColor = SnackbarColor.Info;
+        if (_snackbar != null) await _snackbar.Show();
 
-        return await response.Content.ReadAsStringAsync();
+        return responseData;
     }
 
     private async Task ShowDetails(Device device)
@@ -571,7 +571,7 @@
 
     private async Task RescanPorts()
     {
-        var ports = await PerformAction(ActionType.AvailablePorts, "{}");
+        string ports = await PerformAction(ActionType.AvailablePorts, "{}");
 
         _unusedPorts = JsonConvert.DeserializeObject<string[]>(ports).Except(_configuration.Buses.Select(bus => bus.PortName)).ToArray();
     }

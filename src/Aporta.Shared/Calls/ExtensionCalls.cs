@@ -9,19 +9,13 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace Aporta.Shared.Calls;
 
-public class ExtensionCalls : IExtensionCalls
+/// <inheritdoc />
+public class ExtensionCalls(HttpClient httpClient) : IExtensionCalls
 {
-    private readonly HttpClient _httpClient;
-
-    public ExtensionCalls(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-    }
-
     /// <inheritdoc />
     public async Task<IEnumerable<Extension>> GetAll()
     {
-        var response  = await _httpClient.GetAsync(Paths.Extensions);
+        var response  = await httpClient.GetAsync(Paths.Extensions);
         if (!response.IsSuccessStatusCode)
         {
             dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
@@ -31,11 +25,12 @@ public class ExtensionCalls : IExtensionCalls
         return await response.Content.ReadFromJsonAsync<Extension[]>();
     }
 
+    /// <inheritdoc />
     public async Task ChangeEnableSettings(Guid extensionId, bool enabled)
     {
         string url = $"{Paths.Extensions}/{extensionId}";
         url = QueryHelpers.AddQueryString(url, "enabled", enabled.ToString());
-        var response = await _httpClient.PostAsync(url, new StringContent(string.Empty));
+        var response = await httpClient.PostAsync(url, new StringContent(string.Empty));
         if (!response.IsSuccessStatusCode)
         {
             dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
@@ -44,13 +39,21 @@ public class ExtensionCalls : IExtensionCalls
     }
 }
 
+/// <summary>
+/// Represents a class that handles extension API calls.
+/// </summary>
 public interface IExtensionCalls
 {
     /// <summary>
-    /// Get all the driver extensions
+    /// Get all the driver extensions.
     /// </summary>
-    /// <returns>The driver extensions</returns>
+    /// <returns>A collection of driver extensions</returns>
     Task<IEnumerable<Extension>> GetAll();
-    
-    Task ChangeEnableSettings(Guid exentionId, bool enabled);
+
+    /// <summary>
+    /// Changes the enable settings of an extension.
+    /// </summary>
+    /// <param name="extensionId">The ID of the extension.</param>
+    /// <param name="enabled">True to enable the extension, false to disable it.</param>
+    Task ChangeEnableSettings(Guid extensionId, bool enabled);
 }
