@@ -318,6 +318,44 @@ public class CredentialRepositoryTests
         Assert.That(actual.Enabled, Is.False);
         Assert.That(actual.Person.Id, Is.EqualTo(people[0].Id));
     }
+    
+    [Test]
+    public async Task RevokeCredential()
+    {
+        // Arrange
+        var credentials = new[]
+        {
+            new Credential {Number = "2345342"},
+            new Credential {Number = "5345234"}
+        };
+            
+        var credentialRepository = new CredentialRepository(_dataAccess);
+        foreach (var credential in credentials)
+        {
+            await credentialRepository.Insert(credential);
+        }
+            
+        var people = new[]
+        {
+            new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
+            new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+        };
+
+        var personRepository = new PersonRepository(_dataAccess);
+        foreach (var person in people)
+        {
+            await personRepository.Insert(person);
+        }
+
+        await credentialRepository.AssignPerson(credentials[1].Id, people[1].Id);
+
+        // Act 
+        await credentialRepository.RevokePerson(credentials[1].Id, people[1].Id);
+        
+        // Assert
+        var unassignedCredentials = await credentialRepository.Unassigned();
+        Assert.That(unassignedCredentials, Has.Exactly(2).Items);
+    }
         
     [Test]
     public async Task UpdateLastEvent()
