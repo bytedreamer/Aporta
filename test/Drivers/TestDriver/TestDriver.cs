@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,7 +24,7 @@ public class TestDriver : IHardwareDriver
     private readonly List<IEndpoint> _endPoints = new();
     private readonly ConcurrentBag<NamedPipeServerStream> _serverPipes = new();
     private CancellationTokenSource _tokenSource;
-        
+
     public string Name => "Test Driver";
 
     public Guid Id => ExtensionId;
@@ -42,14 +43,14 @@ public class TestDriver : IHardwareDriver
             while (!_tokenSource.Token.IsCancellationRequested)
             {
                 await pipeServer.WaitForConnectionAsync(_tokenSource.Token);
-                    
+
                 using var reader = new StreamReader(pipeServer);
                 string bitArrayString = await reader.ReadLineAsync() ?? string.Empty;
 
-                OnAccessCredentialReceived(bitArrayString.ToBitArray(), (ushort) bitArrayString.Length);
+                OnAccessCredentialReceived(bitArrayString.ToBitArray());
             }
         }, TaskCreationOptions.LongRunning);
-            
+
         Task.Factory.StartNew(async () =>
         {
             var pipeServer =
@@ -71,14 +72,14 @@ public class TestDriver : IHardwareDriver
                 }
             }
         }, TaskCreationOptions.LongRunning);
-            
-        _endPoints.AddRange(new IEndpoint[] 
+
+        _endPoints.AddRange(new IEndpoint[]
         {
-            new TestAccess{Name="Reader 1", Id = "R1", ExtensionId = ExtensionId},
-            new TestOutput{Name="Output 1", Id = "O1", ExtensionId = ExtensionId},
-            new TestOutput{Name="Output 2", Id = "O2", ExtensionId = ExtensionId},
-            new TestInput{Name="Input 1", Id = "I1", ExtensionId = ExtensionId},
-            new TestInput{Name="Input 2", Id = "I2", ExtensionId = ExtensionId}
+            new TestAccess { Name = "Reader 1", Id = "R1", ExtensionId = ExtensionId },
+            new TestOutput { Name = "Output 1", Id = "O1", ExtensionId = ExtensionId },
+            new TestOutput { Name = "Output 2", Id = "O2", ExtensionId = ExtensionId },
+            new TestInput { Name = "Input 1", Id = "I1", ExtensionId = ExtensionId },
+            new TestInput { Name = "Input 2", Id = "I2", ExtensionId = ExtensionId }
         });
 
         OnUpdatedEndpoints();
@@ -91,6 +92,7 @@ public class TestDriver : IHardwareDriver
         {
             namedPipeServerStream?.Dispose();
         }
+
         _tokenSource?.Dispose();
     }
 
@@ -110,11 +112,11 @@ public class TestDriver : IHardwareDriver
     }
 
     public event EventHandler<EventArgs> UpdatedEndpoints;
-        
+
     public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
-        
+
     public event EventHandler<StateChangedEventArgs> StateChanged;
-        
+
     public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
 
     protected virtual void OnUpdatedEndpoints()
@@ -122,10 +124,10 @@ public class TestDriver : IHardwareDriver
         UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
     }
 
-    private void OnAccessCredentialReceived(BitArray cardData, ushort bitCount)
+    private void OnAccessCredentialReceived(BitArray cardData)
     {
         AccessCredentialReceived?.Invoke(this,
-            new AccessCredentialReceivedEventArgs((IAccess) _endPoints[0], cardData, bitCount));
+            new AccessCredentialReceivedEventArgs((IAccess)_endPoints[0], new TestCredentialReceivedHandler(cardData)));
     }
 
     protected virtual void OnStateChanged(StateChangedEventArgs e)
@@ -136,5 +138,25 @@ public class TestDriver : IHardwareDriver
     protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs e)
     {
         OnlineStatusChanged?.Invoke(this, e);
+    }
+}
+
+internal class TestCredentialReceivedHandler(BitArray cardData) : ICredentialReceivedHandler
+{
+    public bool IsValid()
+    {
+        return true;
+    }
+    public string MatchingCardData { get; } = BuildRawBitString(cardData);
+
+    private static string BuildRawBitString(BitArray cardData)
+    {
+        var cardNumberBuilder = new StringBuilder();
+        foreach (bool bit in cardData)
+        {
+            cardNumberBuilder.Append(bit ? "1" : "0");
+        }
+
+        return cardNumberBuilder.ToString();
     }
 }

@@ -1,9 +1,7 @@
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
@@ -29,6 +27,9 @@ public class AccessService
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
+    /// <summary>
+    /// Represents a service for accessing and managing system access.
+    /// </summary>
     public AccessService(IDataAccess dataAccess, ExtensionService extensionService,
         IHubContext<DataChangeNotificationHub> hubContext, ILogger<AccessService> logger)
     {
@@ -70,10 +71,6 @@ public class AccessService
     {
         try
         {
-            _logger.LogInformation(
-                "Credential with {BitCount} bits and raw data of {@CardData} received on door '{Name}'",
-                eventArgs.BitCount, BuildRawBitString(eventArgs.CardData), eventArgs.Access.Name);
-
             var endpoints = (await _endpointRepository.GetAll()).ToArray();
 
             var matchingDoor = await MatchingDoor(eventArgs.Access.Id, endpoints);
@@ -95,13 +92,12 @@ public class AccessService
                 return;
             }
 
-            if (eventArgs.CardData.Count != eventArgs.BitCount)
+            if (!eventArgs.Handler.IsValid())
             {
-                _logger.LogInformation("Door '{Name}' card read doesn't match bit count", matchingDoor.Name);
                 return;
             }
 
-            if (await IsAccessGranted(eventArgs.CardData, matchingDoor, accessPoint))
+            if (await IsAccessGranted(eventArgs.Handler.MatchingCardData, matchingDoor, accessPoint))
             {
                 await OpenDoor(eventArgs.Access, matchingDoorStrike, 3);
             }
@@ -116,11 +112,9 @@ public class AccessService
         }
     }
 
-    private async Task<bool> IsAccessGranted(BitArray cardData, Door matchingDoor, Endpoint accessPoint)
+    private async Task<bool> IsAccessGranted(string matchingCardData, Door matchingDoor, Endpoint accessPoint)
     {
-        var rawBitsString = BuildRawBitString(cardData);
-        
-        var assignedCredential = await _credentialRepository.AssignedCredential(rawBitsString);
+        var assignedCredential = await _credentialRepository.AssignedCredential(matchingCardData);
         int eventId;
         if (assignedCredential?.Person == null)
         {
@@ -140,7 +134,7 @@ public class AccessService
             if (assignedCredential == null)
             {
                 await _credentialRepository.Insert(new Credential
-                    { Number = rawBitsString, LastEvent = eventId });
+                    { Number = matchingCardData, LastEvent = eventId });
             }
             else
             {
@@ -192,17 +186,6 @@ public class AccessService
         await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
             
         return true;
-    }
-
-    private static string BuildRawBitString(BitArray cardData)
-    {
-        var cardNumberBuilder = new StringBuilder();
-        foreach (bool bit in cardData)
-        {
-            cardNumberBuilder.Append(bit ? "1" : "0");
-        }
-
-        return cardNumberBuilder.ToString();
     }
 
     private async Task OpenDoor(IAccess access, Endpoint matchingDoorStrike, int strikeTimer)

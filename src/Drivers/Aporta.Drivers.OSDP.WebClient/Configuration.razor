@@ -94,15 +94,24 @@
                                                 <DropdownMenu>
                                                     @if (device.SecureMode == SecureMode.Clear)
                                                     {
-                                                        <DropdownItem Clicked="@(async () => await ResetToInstallMode(device))">Reset To Install Mode Security</DropdownItem>
+                                                        <DropdownItem Clicked="@(async () => await ResetToInstallMode(device))">Reset Security To Install Mode</DropdownItem>
                                                     }
                                                     else
                                                     {
-                                                        <DropdownItem Clicked="@(async () => await ResetToClear(device))">Reset To Clear Text Security</DropdownItem>
+                                                        <DropdownItem Clicked="@(async () => await ResetToClear(device))">Reset Security To Clear Text</DropdownItem>
                                                     }
                                                     @if (device.SecureMode == SecureMode.Secure)
                                                     {
                                                         <DropdownItem Clicked="@(async () => await RotateKey(device))">Rotate Key</DropdownItem>
+                                                    }
+                                                    
+                                                    @if (device.PKOCEnabled)
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await DisablePKOC(device))">Disable PKOC</DropdownItem>
+                                                    }
+                                                    else
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await EnablePKOC(device))">Enable PKOC</DropdownItem>
                                                     }
                                                     <DropdownDivider/>
                                                     <DropdownItem Clicked="@(async () => await ClearDeviceIdentity(device))">Clear Identity</DropdownItem>
@@ -485,7 +494,25 @@
                 Device = clearIdentityDevice
             }));
     }
-
+    
+    private async Task DisablePKOC(Device disablePKOCOnDevice)
+    {
+        await PerformAction(ActionType.DisablePKOC,
+            JsonConvert.SerializeObject(new DeviceAction
+            {
+                Device = disablePKOCOnDevice
+            }));
+    }
+    
+    private async Task EnablePKOC(Device enablePKOCOnDevice)
+    {
+        await PerformAction(ActionType.EnablePKOC,
+            JsonConvert.SerializeObject(new DeviceAction
+            {
+                Device = enablePKOCOnDevice
+            }));
+    }
+    
     private void ShowAddDeviceDialog(string portName)
     {
         _currentBus = _configuration.Buses.First(bus => bus.PortName == portName);
@@ -632,5 +659,4 @@
             $"{_detailsDevice?.LastKeyRotation.ToLocalTime().ToShortDateString()} {_detailsDevice?.LastKeyRotation.ToLocalTime().ToShortTimeString()}"
             : "N/A";
     }
-
 }
