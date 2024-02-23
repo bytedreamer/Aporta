@@ -29,6 +29,9 @@ public class CredentialRepository : BaseRepository<Credential>
     private string SqlAssignmentInsert => @"insert into credential_assignment
                                                 (person_id, credential_id, enabled) values 
                                                 (@personId, @credentialId, @enabled)";
+    
+    private string SqlAssignmentDelete => @"delete from credential_assignment
+                                                where person_id = @personId and credential_id = @credentialId";
 
     private string SqlUpdateLastEvent => @"update credential
                                                set last_event = @lastEventId
@@ -126,7 +129,20 @@ public class CredentialRepository : BaseRepository<Credential>
                 enabled
             });
     }
-        
+    
+    public async Task UnassignPerson(int credentialId, int personId)
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+            
+        await connection.ExecuteAsync(SqlAssignmentDelete,
+            new
+            {
+                credentialId,
+                personId, 
+            });
+    }
+
     public async Task UpdateLastEvent(int credentialId, int lastEventId)
     {
         using var connection = DataAccess.CreateDbConnection();
