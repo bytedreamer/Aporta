@@ -1,16 +1,16 @@
 @page "/configuration/drivers"
 
-@using Microsoft.AspNetCore.SignalR.Client
-
+@using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.Shared.Models
-@using Aporta.Shared.Calls
-@using System.Dynamic
+@using Aporta.WebClient.Messaging
 
-@inject HttpClient Http
 @inject NavigationManager NavigationManager
 
-@implements IDisposable
+@inject IHubProxyFactory HubConnectionBuilder;
+@inject IExtensionCalls ExtensionCalls;
+
+@implements IAsyncDisposable
 
 <Heading Size="HeadingSize.Is1">Drivers</Heading>
 <Divider />
@@ -21,40 +21,53 @@
 }
 else
 {
-    <Table Striped="true" Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
-        <TableHeader>
-            <TableRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Enabled</TableHeaderCell>
-                <TableHeaderCell>Loaded</TableHeaderCell>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-        @foreach (var extension in _extensions.OrderBy(extension => extension.Name))
-        {
-            <TableRow>
-                <TableRowHeader>
-                    <a href="configuration/driver/@extension.Id">
-                        @extension.Name
-                    </a>
-                </TableRowHeader>
-                <TableRowCell>
-                    <Check TValue="bool" Checked="@extension.Enabled" CheckedChanged="async checkedValue => { await ExtensionEnabledChanged(extension.Id, checkedValue); }"/>
-                </TableRowCell>
-                <TableRowCell>
-                    @if (extension.Loaded)
-                    {
-                        <Icon Name="IconName.Check" Style="color: green"/>
-                    }
-                    else
-                    {
-                        <Icon Name="IconName.MinusCircle" Style="color: red"/>
-                    }
-                </TableRowCell>
-            </TableRow>
-        }
-        </TableBody>
-    </Table>
+    <Row>
+        <Column>
+            <Card Margin="Margin.Is4.OnY">
+                <CardBody>
+                    <AportaConfigurationTable>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Status</TableHeaderCell>
+                                <TableHeaderCell>Name</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var extension in _extensions.OrderBy(extension => extension.Name))
+                            {
+                                <TableRow HoverCursor="Cursor.Pointer">
+                                    <TableRowCell Clicked="() => NavigateToDriverConfiguration(extension.Id)">
+                                        <Icon Name="@GetDriverStatusIcon(extension)" Style="@GetDriverStatusColor(extension)"/>
+                                    </TableRowCell>
+                                    <TableRowHeader Clicked="() => NavigateToDriverConfiguration(extension.Id)">
+                                        @extension.Name
+                                    </TableRowHeader>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                                <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                    Action
+                                                </DropdownToggle>
+                                                <DropdownMenu>
+                                                    @if (extension.Enabled)
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await ExtensionEnabledChanged(extension.Id, false))">Disable</DropdownItem>
+                                                    }
+                                                    else
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await ExtensionEnabledChanged(extension.Id, true))">Enable</DropdownItem>
+                                                    }
+                                                </DropdownMenu>
+                                            </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </AportaConfigurationTable>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
 }
 
 <Snackbar @ref="_snackbar" Color="@_snackbarColor"> 
@@ -64,48 +77,102 @@ else
 </Snackbar>
 
 @code {
-    private Extension[] _extensions;
-    private HubConnection _hubConnection;
-    
-#pragma warning disable 649
+    private IEnumerable<Extension> _extensions;
+    private IHubProxy _hubConnection;
+
     private Snackbar _snackbar;
-#pragma warning restore 649
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
-            .WithAutomaticReconnect(new SignalRRetryPolicy())
-            .Build();
+        _hubConnection = HubConnectionBuilder.Create(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification));
         _hubConnection.On<Guid>(Methods.ExtensionDataChanged, async _ =>
         {
-            _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
-            
+            await LoadExtensions();
+
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
-        
-        _extensions = await Http.GetFromJsonAsync<Extension[]>(Paths.Extensions);
+
+        await LoadExtensions();
     }
-    
-    async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)
+
+    private async Task LoadExtensions()
     {
-        string url = $"{Paths.Extensions}/{extensionId}";
-        url = QueryHelpers.AddQueryString(url, "enabled", checkedValue.ToString());
-        var response = await Http.PostAsync(url, new StringContent(string.Empty));
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
-            _snackbarMessage = content.detail.ToString();
+            _extensions = await ExtensionCalls.GetAll();
+        }
+        catch (Exception exception)
+        {
+            _extensions = new Extension[] { };
+            _snackbarMessage = exception.Message;
             _snackbarColor = SnackbarColor.Danger;
-            await _snackbar.Show();
+            if (_snackbar != null) await _snackbar.Show();
         }
     }
-        
-    public void Dispose()
+
+    private async Task ExtensionEnabledChanged(Guid extensionId, bool checkedValue)
     {
-        _ = _hubConnection.DisposeAsync();
+        try
+        {
+            await ExtensionCalls.ChangeEnableSettings(extensionId, checkedValue);
+        }
+        catch (Exception exception)
+        {
+            _extensions = new Extension[] { };
+            _snackbarMessage = exception.Message;
+            _snackbarColor = SnackbarColor.Danger;
+            if (_snackbar != null) await _snackbar.Show();
+        }
     }
+
+    private void NavigateToDriverConfiguration(Guid extensionId)
+    {
+        NavigationManager.NavigateTo($"configuration/driver/{extensionId}");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_hubConnection != null)
+            {
+                try
+                {
+                    await _hubConnection.StopAsync();
+                }
+                finally
+                {
+                    await _hubConnection.DisposeAsync();
+                }
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private IconName GetDriverStatusIcon(Extension extension)
+    {
+        return extension.Enabled switch
+        {
+            true when extension.Loaded => IconName.Check,
+            true when !extension.Loaded => IconName.ExclamationTriangle,
+            _ => IconName.MinusCircle
+            };
+    }
+
+    private string GetDriverStatusColor(Extension extension)
+    {
+        return extension.Enabled switch
+        {
+            true when extension.Loaded => "color: green",
+            true when !extension.Loaded => "color: orange",
+            _ => "color: red"
+            };
+    }
+
 }

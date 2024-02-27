@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
@@ -19,6 +20,8 @@ using Aporta.Drivers.OSDP.Shared;
 using Aporta.Drivers.OSDP.Shared.Actions;
 using Aporta.Extensions;
 using OSDP.Net.Model.CommandData;
+using PKOC.Net;
+using ErrorCode = OSDP.Net.Model.ReplyData.ErrorCode;
 
 namespace Aporta.Drivers.OSDP;
 
@@ -27,10 +30,12 @@ namespace Aporta.Drivers.OSDP;
 /// </summary>
 public class OSDPDriver : IHardwareDriver
 {
-    private readonly Dictionary<string, Guid> _portMapping = new();
+    private readonly ConcurrentDictionary<string, Guid> _portMapping = new();
     private readonly List<IEndpoint> _endpoints = new();
+    private readonly ConcurrentDictionary<int, DeviceSettings> _pkocDevices = new();
         
     private ControlPanel _panel;
+    private PKOCControlPanel _pkocPanel;
     private IDataEncryption _dataEncryption;
     private ILogger<OSDPDriver> _logger;
     private Configuration _configuration = new() {Buses = new List<Bus>()};
@@ -46,12 +51,15 @@ public class OSDPDriver : IHardwareDriver
         _dataEncryption = dataEncryption;
         _logger = loggerFactory.CreateLogger<OSDPDriver>();
         _panel = new ControlPanel(loggerFactory.CreateLogger<ControlPanel>());
+        _pkocPanel = new PKOCControlPanel(_panel);
             
         _panel.ConnectionStatusChanged += PanelOnConnectionStatusChanged;
         _panel.RawCardDataReplyReceived += PanelOnRawCardDataReplyReceived;
         _panel.InputStatusReportReplyReceived += PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived += PanelOnOutputStatusReportReplyReceived;
         _panel.NakReplyReceived += PanelOnNakReplyReceived;
+        
+        _pkocPanel.CardPresented += PkocPanelOnCardPresented;
 
         ExtractConfiguration(configuration);
             
@@ -142,6 +150,22 @@ public class OSDPDriver : IHardwareDriver
 
                     matchingDevice.IsConnected = true;
                     OnUpdatedEndpoints();
+
+                    if (matchingDevice.PKOCEnabled)
+                    {
+                        var deviceSettings = new DeviceSettings(eventArgs.ConnectionId, eventArgs.Address);
+                        bool successfulInitialization = await _pkocPanel.InitializePKOC(deviceSettings);
+                        if (successfulInitialization)
+                        {
+                            _logger.LogInformation("The OSDP reader has been successfully initialized for PKOC");
+                            _pkocDevices.TryAdd(deviceSettings.GetHashCode(), deviceSettings);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("The OSDP reader has not been successfully initialized for PKOC");
+                        }
+                    }
+
                     return;
                 }
             }
@@ -265,14 +289,44 @@ public class OSDPDriver : IHardwareDriver
         Task.Run(() =>
         {
             var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
-                .SingleOrDefault(accessPoint => 
+                .SingleOrDefault(accessPoint =>
                     eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
                     accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
             if (accessPoint != null)
             {
                 AccessCredentialReceived?.Invoke(this,
                     new AccessCredentialReceivedEventArgs(
-                        accessPoint, eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount));
+                        accessPoint,
+                        new WiegandCredentialHandler(eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount,
+                            accessPoint.Name, _logger)));
+            }
+            else
+            {
+                _logger.LogWarning("Unable to find access point at address {EventArgsAddress} to process card read",
+                    eventArgs.Address);
+            }
+        });
+    }
+
+    private void PkocPanelOnCardPresented(object sender, CardPresentedEventArgs eventArgs)
+    {
+        Task.Run(async () =>
+        {
+            _logger.LogInformation("A PKOC card has been presented to the reader");
+            var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
+                .SingleOrDefault(accessPoint =>
+                    eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
+                    accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+            if (accessPoint != null)
+            {
+                var hashLookup = new DeviceSettings(eventArgs.ConnectionId, eventArgs.Address).GetHashCode();
+                var deviceSettings = _pkocDevices[hashLookup];
+                var result = await _pkocPanel.AuthenticationRequest(deviceSettings);
+
+                AccessCredentialReceived?.Invoke(this,
+                    new AccessCredentialReceivedEventArgs(
+                        accessPoint, new PKOCCredentialHandler(result, accessPoint.Name, _logger)));
+
             }
             else
             {
@@ -360,7 +414,7 @@ public class OSDPDriver : IHardwareDriver
     {
         foreach (var bus in _configuration.Buses)
         {
-            _portMapping.Add(bus.PortName,
+            _portMapping.TryAdd(bus.PortName,
                 _panel.StartConnection(new SerialPortOsdpConnection(bus.PortName, bus.BaudRate)));
         }
     }
@@ -400,6 +454,8 @@ public class OSDPDriver : IHardwareDriver
         _panel.InputStatusReportReplyReceived -= PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived -= PanelOnOutputStatusReportReplyReceived;
         _panel.NakReplyReceived -= PanelOnNakReplyReceived;
+        
+        _pkocPanel.CardPresented -= PkocPanelOnCardPresented;
     }
 
     /// <inheritdoc />
@@ -436,6 +492,8 @@ public class OSDPDriver : IHardwareDriver
             ActionType.ResetToClear => ResetToClear(parameters),
             ActionType.ResetToInstallMode => ResetToInstallMode(parameters),
             ActionType.RotateKey => await RotateKey(parameters),
+            ActionType.EnablePKOC => UpdatePKOCSetting(parameters, true),
+            ActionType.DisablePKOC => UpdatePKOCSetting(parameters, false),
             _ => await Task.FromResult(string.Empty).ConfigureAwait(false)
         };
     }
@@ -454,7 +512,7 @@ public class OSDPDriver : IHardwareDriver
 
         if (!_portMapping.ContainsKey(busAction.Bus.PortName))
         {
-            _portMapping.Add(busAction.Bus.PortName,
+            _portMapping.TryAdd(busAction.Bus.PortName,
                 _panel.StartConnection(new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate)));
         }
 
@@ -605,6 +663,24 @@ public class OSDPDriver : IHardwareDriver
                 foundDevice.Name);
         }
 
+        return string.Empty;
+    }
+    
+    private string UpdatePKOCSetting(string parameters, bool pkocEnabled)
+    {
+        var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
+        if (deviceAction == null) return string.Empty;
+        
+        var foundDevice = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName).Devices
+            .First(device => device.Address == deviceAction.Device.Address);
+        
+        _logger?.LogInformation("Setting PKOC enable on '{DeviceName}' to {PkocEnabled}", foundDevice.Name, pkocEnabled);
+
+        foundDevice.PKOCEnabled = pkocEnabled;
+        
+        _panel.RemoveDevice(_portMapping[foundDevice.PortName], foundDevice.Address);
+        AddDeviceToPanel(foundDevice);
+        
         return string.Empty;
     }
 

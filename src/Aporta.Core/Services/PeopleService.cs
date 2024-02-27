@@ -12,12 +12,14 @@ namespace Aporta.Core.Services;
 public class PeopleService
 {
     private readonly PersonRepository _personRepository;
+    private readonly CredentialRepository _credentialRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
     public PeopleService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext)
     {
         _hubContext = hubContext;
         _personRepository = new PersonRepository(dataAccess);
+        _credentialRepository = new CredentialRepository(dataAccess);
     }
     
     public async Task<IEnumerable<Person>> GetAll()
@@ -37,10 +39,16 @@ public class PeopleService
         await _hubContext.Clients.All.SendAsync(Methods.PersonInserted, person.Id);
     }
     
-    public async Task Delete(int id)
+    public async Task Delete(int personId)
     {
-        await _personRepository.Delete(id);
+        var credentialsAssignedToPerson = await _credentialRepository.CredentialsAssignedToPerson(personId);
+        foreach (var credential in credentialsAssignedToPerson)
+        {
+            await _credentialRepository.UnassignPerson(credential.Id, personId);
+        }
+        
+        await _personRepository.Delete(personId);
             
-        await _hubContext.Clients.All.SendAsync(Methods.PersonDeleted, id);
+        await _hubContext.Clients.All.SendAsync(Methods.PersonDeleted, personId);
     }
 }

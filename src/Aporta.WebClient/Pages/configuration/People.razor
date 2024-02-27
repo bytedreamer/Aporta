@@ -7,6 +7,7 @@
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.Shared.Models
+@using Aporta.WebClient.Messaging
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -51,7 +52,7 @@ else
                                         }
                                         else
                                         {
-                                            <Tooltip Text="Disabled" I`nline="true">
+                                            <Tooltip Text="Disabled" Inline="true">
                                                 <Icon Name="IconName.MinusCircle" Style="color: red"/>
                                             </Tooltip>
                                         }
@@ -119,7 +120,7 @@ else
                     </Validation>
                     <Validation Validator="@ValidationRule.IsNotEmpty" >
                         <Field>
-                            <FieldLabel>First Name</FieldLabel>
+                            <FieldLabel>Last Name</FieldLabel>
                             <FieldBody>
                                 <TextEdit @bind-Text="_addPerson.LastName">
                                     <Feedback>

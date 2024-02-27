@@ -24,15 +24,31 @@ public class ExtensionsController : ControllerBase
     }
 
     [HttpGet]
-    public IEnumerable<Extension> Get()
+    public ActionResult<IEnumerable<Extension>> Get()
     {
-        return _extensionService.GetExtensions();
+        try
+        {
+            return new ActionResult<IEnumerable<Extension>>(_extensionService.GetExtensions());
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Unable to get extensions");
+            return Problem(exception.Message);
+        }
     }
         
     [HttpGet("{extensionId:Guid}")]
-    public Extension Get(Guid extensionId)
+    public ActionResult<Extension> Get(Guid extensionId)
     {
-        return _extensionService.GetExtension(extensionId);
+        try
+        {
+            return new ActionResult<Extension>(_extensionService.GetExtension(extensionId));
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Unable to get extension {ExtensionId}", extensionId);
+            return Problem(exception.Message);
+        }
     }
 
     [HttpPost("{extensionId:Guid}")]

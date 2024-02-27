@@ -6,6 +6,8 @@
 trigger:
 - main
 - develop
+  
+pr: none
 
 variables:
 - group: CodeSigning
@@ -16,13 +18,13 @@ variables:
 - name: buildConfiguration
   value: 'Release'
 - name: major
-  value: 0
+  value: '0'
 - name: minor
-  value: 2
+  value: '2'
 - name: patch
-  value: 5
+  value: '6'
 - name: AssemblyVersion
-  value: $(major).$(minor).$(patch)
+  value: '$(major).$(minor).$(patch)'
   
 jobs:
 

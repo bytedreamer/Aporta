@@ -52,9 +52,9 @@ public class ExtensionRepositoryTests
         var actualExtension = await extensionRepository.Get(extensions[1].Id);
 
         // Assert
-        Assert.AreEqual(extensions[1].Id, actualExtension.Id);
-        Assert.AreEqual("Test2", actualExtension.Name);
-        Assert.AreEqual(true, actualExtension.Enabled);
+        Assert.That(actualExtension.Id, Is.EqualTo(extensions[1].Id));
+        Assert.That(actualExtension.Name, Is.EqualTo("Test2"));
+        Assert.That(actualExtension.Enabled, Is.True);
     }
         
     [Test]
@@ -78,7 +78,7 @@ public class ExtensionRepositoryTests
         var actualExtensions = await extensionRepository.GetAll();
 
         // Assert
-        Assert.AreEqual(3, actualExtensions.Count());
+        Assert.That(3, Is.EqualTo(actualExtensions.Count()));
     }
         
     [Test]
@@ -106,7 +106,7 @@ public class ExtensionRepositoryTests
         var actualExtension = await extensionRepository.Get(updatedExtension.Id);
 
         // Assert
-        Assert.IsTrue(actualExtension.Enabled);
-        Assert.AreEqual("TestConfigure", actualExtension.Configuration);
+        Assert.That(actualExtension.Enabled, Is.True);
+        Assert.That(actualExtension.Configuration, Is.EqualTo("TestConfigure"));
     }
 }

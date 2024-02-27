@@ -21,6 +21,11 @@ public class Device
     
     public bool IdentityNotMatched { get; set; }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether PKOC (Public Key Open Credential) is enabled for the device.
+    /// </summary>
+    public bool PKOCEnabled { get; set; }
+
     public SecureMode SecureMode
     {
         get

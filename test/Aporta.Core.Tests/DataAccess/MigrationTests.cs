@@ -34,7 +34,7 @@ public class MigrationTests
         await _dataAccess.UpdateSchema();
 
         // Assert
-        Assert.AreEqual(CurrentVersion, await _dataAccess.CurrentVersion());
+        Assert.That(CurrentVersion, Is.EqualTo(await _dataAccess.CurrentVersion()));
     }
         
     [Test]
@@ -47,6 +47,6 @@ public class MigrationTests
         await _dataAccess.UpdateSchema();
 
         // Assert
-        Assert.AreEqual(CurrentVersion, await _dataAccess.CurrentVersion());
+        Assert.That(CurrentVersion, Is.EqualTo(await _dataAccess.CurrentVersion()));
     }
 }

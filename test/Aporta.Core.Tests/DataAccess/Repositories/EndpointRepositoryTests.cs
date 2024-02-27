@@ -66,11 +66,11 @@ public class EndpointRepositoryTests
         var actualEndpoint = await endpointRepository.Get(3);
 
         // Assert
-        Assert.AreEqual(3, endpoints[2].Id);
-        Assert.AreEqual(3, actualEndpoint.Id);
-        Assert.AreEqual("Test3", actualEndpoint.Name);
-        Assert.AreEqual(EndpointType.Reader, actualEndpoint.Type);
-        Assert.AreEqual(_extensionId, actualEndpoint.ExtensionId);
+        Assert.That(endpoints[2].Id, Is.EqualTo(3));
+        Assert.That(actualEndpoint.Id, Is.EqualTo(3));
+        Assert.That(actualEndpoint.Name, Is.EqualTo("Test3"));
+        Assert.That(actualEndpoint.Type, Is.EqualTo(EndpointType.Reader));
+        Assert.That(actualEndpoint.ExtensionId, Is.EqualTo(_extensionId));
     }
         
     [Test]
@@ -95,6 +95,6 @@ public class EndpointRepositoryTests
 
         // Assert
         var actualEndpoints = await endpointRepository.GetAll();
-        Assert.AreEqual(2, actualEndpoints.Count());
+        Assert.That(2, Is.EqualTo(actualEndpoints.Count()));
     }
 }

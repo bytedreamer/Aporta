@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <IsPackable>false</IsPackable>
+        <LangVersion>default</LangVersion>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Blazorise.Bootstrap" Version="1.4.2" />
+        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.4.2" />
+        <PackageReference Include="Blazorise.Snackbar" Version="1.4.2" />
+        <PackageReference Include="bunit" Version="1.26.64" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+        <PackageReference Include="Moq" Version="4.20.70" />
+        <PackageReference Include="NUnit" Version="4.0.1" />
+        <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+        <PackageReference Include="NUnit.Analyzers" Version="4.0.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Update="Imports.razor">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\TestWebClientConfiguration\TestWebClientConfiguration.csproj" />
+    </ItemGroup>
+
+</Project>

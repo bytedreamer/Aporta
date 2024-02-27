@@ -50,7 +50,7 @@ public class GlobalSettingRepositoryTests
         string actualValue = await globalSettingRepository.Get(globalSettings[1].Name);
 
         // Assert
-        Assert.AreEqual(globalSettings[1].Value, actualValue);
+        Assert.That(globalSettings[1].Value, Is.EqualTo(actualValue));
     }
         
     [Test]
@@ -78,6 +78,6 @@ public class GlobalSettingRepositoryTests
         var actualValue = await globalSettingRepository.Get(updatedGlobalSetting.Name);
 
         // Assert
-        Assert.AreEqual("NewValue1", actualValue);
+        Assert.That("NewValue1", Is.EqualTo(actualValue));
     }
 }

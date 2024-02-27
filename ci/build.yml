@@ -3,7 +3,7 @@ steps:
   displayName: 'Install .NET Core SDK'
   inputs:
     packageType: 'sdk'
-    version: '7.x'
+    version: '8.x'
     
 - task: DotNetCoreCLI@2
   displayName: 'Build Aporta'

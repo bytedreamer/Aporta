@@ -4,22 +4,26 @@ namespace Aporta.Drivers.OSDP.Shared.Actions;
 
 public enum ActionType
 {
-    [Description("Add Serial Bus")]
+    [Description("Add serial bus")]
     AddBus,
-    [Description("Remove Serial Bus")]
+    [Description("Remove serial bus")]
     RemoveBus,
-    [Description("Add/Update OSDP Device")]
+    [Description("Add/Update OSDP device")]
     AddUpdateDevice,
-    [Description("Remove OSDP Device")]
+    [Description("Remove OSDP device")]
     RemoveDevice,
-    [Description("Rescan Available Ports")]
+    [Description("Rescan available ports")]
     AvailablePorts,
-    [Description("Clear OSDP Device Identity")]
+    [Description("Clear OSDP device Identity")]
     ClearDeviceIdentity,
-    [Description("Reset OSDP Device To Install Mode Security")]
+    [Description("Reset OSDP device security to install mode")]
     ResetToInstallMode,
-    [Description("Reset OSDP Device To Clear Text Security")]
+    [Description("Reset OSDP device security to clear text")]
     ResetToClear,
-    [Description("Rotate OSDP Device Encryption Key")]
-    RotateKey
+    [Description("Rotate OSDP device encryption key")]
+    RotateKey,
+    [Description("Disable PKOC support on OSDP device")]
+    DisablePKOC,
+    [Description("Enable PKOC support on OSDP device")]
+    EnablePKOC
 }
