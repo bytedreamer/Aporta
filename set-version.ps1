@@ -2,7 +2,7 @@
 param($newVersion)
 
 $xml=New-Object XML
-$xml.Load("Directory.Build.props")
+$xml.Load("$(Build.SourcesDirectory)/Directory.Build.props")
 
 $versionNode = $xml.Project.PropertyGroup.Version
 if ($null -eq $versionNode)
@@ -15,10 +15,9 @@ if ($null -eq $versionNode)
 $xml.Project.PropertyGroup.Version = $newVersion
 $xml.Save("Directory.Build.props")
 
-$content = [System.IO.File]::ReadAllText("setup/Linux/control-amd64").Replace("{version}",$newVersion)
-[System.IO.File]::WriteAllText("setup/Linux/control-amd64", $content)
-$content = [System.IO.File]::ReadAllText("setup/Linux/control-armhf").Replace("{version}",$newVersion)
-[System.IO.File]::WriteAllText("setup/Linux/control-armhf", $content)
-$content = [System.IO.File]::ReadAllText("setup/Linux/control-arm64").Replace("{version}",$newVersion)
-[System.IO.File]::WriteAllText("setup/Linux/control-arm64", $content)
-
+$content = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)/setup/Linux/control-amd64").Replace("{version}",$newVersion)
+[System.IO.File]::WriteAllText("$(Build.SourcesDirectory)/setup/Linux/control-amd64", $content)
+$content = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)/setup/Linux/control-armhf").Replace("{version}",$newVersion)
+[System.IO.File]::WriteAllText("$(Build.SourcesDirectory)/setup/Linux/control-armhf", $content)
+$content = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)/setup/Linux/control-arm64").Replace("{version}",$newVersion)
+[System.IO.File]::WriteAllText("$(Build.SourcesDirectory)/setup/Linux/control-arm64", $content)
