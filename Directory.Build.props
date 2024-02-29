@@ -1,9 +1,6 @@
 <Project>
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-  </PropertyGroup>
-  
-  <PropertyGroup>
     <Version>0.1.0</Version>
     <Authors>Jonathan Horvath</Authors>
     <Company>Z-bit</Company>

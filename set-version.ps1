@@ -21,4 +21,3 @@ $content = [System.IO.File]::ReadAllText("setup/Linux/control-armhf").Replace("{
 [System.IO.File]::WriteAllText("setup/Linux/control-armhf", $content)
 $content = [System.IO.File]::ReadAllText("setup/Linux/control-arm64").Replace("{version}",$newVersion)
 [System.IO.File]::WriteAllText("setup/Linux/control-arm64", $content)
-
