@@ -4,6 +4,7 @@ using Aporta.Shared.Calls;
 using Blazorise;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities;
 using Moq;
 using Newtonsoft.Json;
 using TestWebClientConfiguration;
@@ -18,7 +19,7 @@ public class ConfigurationTest : AportaTestContext
     
     private readonly Mock<IDriverConfigurationCalls> _mockConfigurationCalls = new();
 
-    private readonly Guid _extensionId = new();
+    private readonly Guid _extensionId = Guid.NewGuid();
     
     private IRenderedComponent<Configuration>? _cut;
     
@@ -57,14 +58,70 @@ public class ConfigurationTest : AportaTestContext
             .Add(p => p.RawConfiguration, TestConfiguration)
             .Add(p => p.ExtensionId, _extensionId));
 
-        var addBusButton = _cut.FindComponents<Button>().Single(button => button.Nodes[0].TextContent == "Add RS-485 Port");
+        var addBusButton = _cut.FindComponents<Button>().Single(button => button.Nodes[0].TextContent.Trim() == "Add RS-485 Port");
         await _cut.InvokeAsync(async () => await addBusButton.Instance.Clicked.InvokeAsync());
 
         var modal = _cut.FindComponents<Modal>().First(modal => modal.Instance.ClassNames.Contains("show"));
-        var modalAddButton = modal.FindComponents<Button>().Single(button => button.Nodes[0].TextContent == "Add");
+        var modalAddButton = modal.FindComponents<Button>().Single(button => button.Nodes[0].TextContent.Trim() == "Add");
         await _cut.InvokeAsync(async () => await modalAddButton.Instance.Clicked.InvokeAsync());
         
         // Assert
         _mockConfigurationCalls.Verify();
+    }
+
+    [Test]
+    public async Task ConfirmRemoveBus()
+    {
+        // Arrange
+        string busActionParameters = JsonConvert.SerializeObject(new BusAction
+        {
+            Bus = new Bus { BaudRate = 9600, PortName = "COM3" }
+        });
+
+        // Act
+        var confirmMessage = new Mock<IMessageService>();
+        confirmMessage
+            .Setup(confirm => confirm.Confirm(It.IsAny<string>(), "Delete Bus", It.IsAny<Action<MessageOptions>>()))
+            .ReturnsAsync(true);
+        Services.AddSingleton(confirmMessage.Object);
+
+        _cut = RenderComponent<Configuration>(parameters => parameters
+            .Add(p => p.RawConfiguration, TestConfiguration)
+            .Add(p => p.ExtensionId, _extensionId));
+
+        var removeBusButton = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == "COM3")
+            .FindComponents<Button>().Single(button => button.Nodes[0].TextContent.Trim() == "Remove");
+        await _cut.InvokeAsync(async () => await removeBusButton.Instance.Clicked.InvokeAsync());
+
+        // Assert
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, "RemoveBus", busActionParameters), Times.Once);
+    }
+    
+    [Test]
+    public async Task NotConfirmRemoveBus()
+    {
+        // Arrange
+        string busActionParameters = JsonConvert.SerializeObject(new BusAction
+        {
+            Bus = new Bus { BaudRate = 9600, PortName = "COM3" }
+        });
+
+        // Act
+        var confirmMessage = new Mock<IMessageService>();
+        confirmMessage
+            .Setup(confirm => confirm.Confirm(It.IsAny<string>(), "Delete Bus", It.IsAny<Action<MessageOptions>>()))
+            .ReturnsAsync(false);
+        Services.AddSingleton(confirmMessage.Object);
+
+        _cut = RenderComponent<Configuration>(parameters => parameters
+            .Add(p => p.RawConfiguration, TestConfiguration)
+            .Add(p => p.ExtensionId, _extensionId));
+
+        var removeBusButton = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == "COM3")
+            .FindComponents<Button>().Single(button => button.Nodes[0].TextContent.Trim() == "Remove");
+        await _cut.InvokeAsync(async () => await removeBusButton.Instance.Clicked.InvokeAsync());
+
+        // Assert
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, "RemoveBus", busActionParameters), Times.Never());
     }
 }

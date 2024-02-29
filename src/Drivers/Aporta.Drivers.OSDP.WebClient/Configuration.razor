@@ -36,7 +36,7 @@
         </Row>
         @foreach (var bus in _configuration.Buses)
         {
-        <Row>
+        <Row ElementId="@bus.PortName">
             <Column>
                 <Card Margin="Margin.Is4.OnY">
                     <CardTitle Margin="Margin.Is4.OnX">
@@ -47,16 +47,12 @@
                                 </Heading>
                             </Column>
                             <Column ColumnSize="ColumnSize.IsHalf">
-                                <Button Style="float: right" Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">
-                                    Remove
-                                </Button>
+                                <Button Style="float: right" Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">Remove</Button>
                             </Column>
                         </Row>
                         <Row>
                             <Column>
-                                <Button Color="Color.Primary" Clicked="@(() => ShowAddDeviceDialog(bus.PortName))">
-                                    Add Device
-                                </Button>
+                                <Button Color="Color.Primary" Clicked="@(() => ShowAddDeviceDialog(bus.PortName))">Add Device</Button>
                             </Column>
                         </Row>
                     </CardTitle>
