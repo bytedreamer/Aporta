@@ -6,6 +6,8 @@ public class EventData
     public Person Person { get; set; }
     public Door Door { get; set; }
     public Endpoint Endpoint { get; set; }
+    
+    public string? CardNumber { get; set; }
 }
 
 public enum EventReason

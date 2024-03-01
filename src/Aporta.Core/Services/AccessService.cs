@@ -127,7 +127,8 @@ public class AccessService
                 {
                     Door = matchingDoor,
                     Endpoint = accessPoint,
-                    EventReason = EventReason.CredentialNotEnrolled
+                    EventReason = EventReason.CredentialNotEnrolled,
+                    CardNumber = matchingCardData
                 })
             });
 
@@ -158,7 +159,8 @@ public class AccessService
                     Door = matchingDoor,
                     Endpoint = accessPoint,
                     Person = assignedCredential.Person,
-                    EventReason = EventReason.AccessNotAssigned
+                    EventReason = EventReason.AccessNotAssigned,
+                    CardNumber = matchingCardData
                 })
             });
             await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
@@ -178,7 +180,8 @@ public class AccessService
                 Door = matchingDoor,
                 Endpoint = accessPoint,
                 Person = assignedCredential.Person,
-                EventReason = EventReason.None
+                EventReason = EventReason.None,
+                CardNumber = matchingCardData
             })
         });
         await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
