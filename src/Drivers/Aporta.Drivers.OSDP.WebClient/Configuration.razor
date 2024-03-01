@@ -36,7 +36,7 @@
         </Row>
         @foreach (var bus in _configuration.Buses)
         {
-        <Row ElementId="@bus.PortName">
+        <Row ElementId="@("Bus:" + bus.PortName)">
             <Column>
                 <Card Margin="Margin.Is4.OnY">
                     <CardTitle Margin="Margin.Is4.OnX">
@@ -69,11 +69,12 @@
                             <TableBody>
                                 @foreach (var device in bus.Devices.OrderBy(device => device.Address))
                                 {
-                                    <TableRow>
+                                    <TableRow ElementId="@("Device:" + @device.Name)">
                                         <TableRowCell Clicked="@(async () => await ShowDetails(device))">
                                             <Tooltip Text="@GetConnectionStatus(device)" Inline="true">
                                                 <Icon Name="@GetConnectionStatusIcon(device)" Style="@GetConnectionStatusIconColor(device)" />
                                                 <Icon Name="@GetSecurityStatusIcon(device)" Style="@GetSecurityStatusIconColor(device)" />
+                                                <Icon ElementId="PKOCStatusIcon" Name="@GetPkocStatus(device)" Style="color: green" />
                                             </Tooltip>
                                         </TableRowCell>
                                         <TableRowHeader Clicked="@(async () => await ShowDetails(device))">
@@ -306,6 +307,17 @@
                                     @_detailsDevice?.Readers.Any()
                                 </TableRowCell>
                             </TableRow>
+                            @if (_detailsDevice?.Readers.Any() ?? false)
+                            {
+                                <TableRow>
+                                    <TableRowCell>
+                                        PKOC Enabled
+                                    </TableRowCell>
+                                    <TableRowCell>
+                                        @_detailsDevice.PKOCEnabled
+                                    </TableRowCell>
+                                </TableRow>
+                            }
                             <TableRow>
                                 <TableRowCell>
                                     Number of Inputs
@@ -631,6 +643,11 @@
     private IconName GetSecurityStatusIcon(Device device)
     {
         return device.SecureMode == SecureMode.Secure ? IconName.Lock : IconName.LockOpen;
+    }
+    
+    private object GetPkocStatus(Device device)
+    {
+        return device.PKOCEnabled ? IconName.Key : null;
     }
 
     private string GetConnectionStatusIconColor(Device device)

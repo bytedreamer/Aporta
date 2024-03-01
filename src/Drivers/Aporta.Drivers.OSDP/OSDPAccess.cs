@@ -14,7 +14,7 @@ public class OSDPAccess : IAccess, IDisposable, IAsyncDisposable
     private readonly Reader _reader;
     private readonly ControlPanel _panel;
     private readonly Guid _connectionId;
-    private readonly Timer _heartbeatTimer;
+    private readonly Timer _readerHeartbeatTimer;
 
     public OSDPAccess(Guid extensionId, Device device, Reader reader, ControlPanel panel, Guid connectionId)
     {
@@ -24,7 +24,7 @@ public class OSDPAccess : IAccess, IDisposable, IAsyncDisposable
         _connectionId = connectionId;
         ExtensionId = extensionId;
         
-        _heartbeatTimer = new(FlashHeartbeat , null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        _readerHeartbeatTimer = new(FlashHeartbeat , null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
     }
 
     public string Name => _reader.Name;
@@ -99,11 +99,11 @@ public class OSDPAccess : IAccess, IDisposable, IAsyncDisposable
 
     public void Dispose()
     {
-        _heartbeatTimer?.Dispose();
+        _readerHeartbeatTimer?.Dispose();
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_heartbeatTimer != null) await _heartbeatTimer.DisposeAsync().ConfigureAwait(false);
+        if (_readerHeartbeatTimer != null) await _readerHeartbeatTimer.DisposeAsync().ConfigureAwait(false);
     }
 }

@@ -4,7 +4,6 @@ using Aporta.Shared.Calls;
 using Blazorise;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities;
 using Moq;
 using Newtonsoft.Json;
 using TestWebClientConfiguration;
@@ -27,6 +26,7 @@ public class ConfigurationTest : AportaTestContext
     {
         BlazoriseConfig.JSInterop.AddTextEdit(JSInterop);
         BlazoriseConfig.JSInterop.AddButton(JSInterop);
+        BlazoriseConfig.JSInterop.AddTooltip(JSInterop);
         
         Services.AddScoped<IDriverConfigurationCalls>(_ => _mockConfigurationCalls.Object);
     }
@@ -51,8 +51,7 @@ public class ConfigurationTest : AportaTestContext
         {
             Bus = new Bus{BaudRate = 9600, PortName = "COM4"}
         });
-        _mockConfigurationCalls.Setup(calls => calls.PerformAction(_extensionId, "AddBus", busActionParameters)).Verifiable();
-        
+
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
             .Add(p => p.RawConfiguration, TestConfiguration)
@@ -66,7 +65,7 @@ public class ConfigurationTest : AportaTestContext
         await _cut.InvokeAsync(async () => await modalAddButton.Instance.Clicked.InvokeAsync());
         
         // Assert
-        _mockConfigurationCalls.Verify();
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddBus.ToString(), busActionParameters));
     }
 
     [Test]
@@ -89,12 +88,12 @@ public class ConfigurationTest : AportaTestContext
             .Add(p => p.RawConfiguration, TestConfiguration)
             .Add(p => p.ExtensionId, _extensionId));
 
-        var removeBusButton = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == "COM3")
+        var removeBusButton = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == "Bus:COM3")
             .FindComponents<Button>().Single(button => button.Nodes[0].TextContent.Trim() == "Remove");
         await _cut.InvokeAsync(async () => await removeBusButton.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, "RemoveBus", busActionParameters), Times.Once);
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveBus.ToString(), busActionParameters), Times.Once);
     }
     
     [Test]
@@ -117,11 +116,96 @@ public class ConfigurationTest : AportaTestContext
             .Add(p => p.RawConfiguration, TestConfiguration)
             .Add(p => p.ExtensionId, _extensionId));
 
-        var removeBusButton = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == "COM3")
+        var removeBusButton = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == "Bus:COM3")
             .FindComponents<Button>().Single(button => button.Nodes[0].TextContent.Trim() == "Remove");
         await _cut.InvokeAsync(async () => await removeBusButton.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, "RemoveBus", busActionParameters), Times.Never());
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveBus.ToString(), busActionParameters), Times.Never());
+    }
+    
+    [Test]
+    public async Task EnablePkoc()
+    {
+        // Arrange
+        var testDevice = new Device { Address = 0, PKOCEnabled = false, Name = "TestDevice", PortName = "COM3" };
+        
+        string deviceActionParameters = JsonConvert.SerializeObject(new DeviceAction { Device = testDevice });
+        
+        var testConfigurationWithDevice = AddDeviceToConfiguration(testDevice);
+        
+        // Act
+        _cut = RenderComponent<Configuration>(parameters => parameters
+            .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(testConfigurationWithDevice))
+            .Add(p => p.ExtensionId, _extensionId));
+        
+        var deviceTableRow = _cut.FindComponents<TableRow>().Single(row => row.Instance.ElementId == $"Device:{testDevice.Name}");
+        var enablePkocMenuItem = deviceTableRow.FindComponents<DropdownItem>()
+            .First(item => item.Nodes[0].TextContent == "Enable PKOC");
+        await _cut.InvokeAsync(async () => await enablePkocMenuItem.Instance.Clicked.InvokeAsync());
+        
+        // Assert
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.EnablePKOC.ToString(), deviceActionParameters));
+    }
+    
+    [Test]
+    public async Task DisablePkoc()
+    {
+        // Arrange
+        var testDevice = new Device { Address = 0, PKOCEnabled = true, Name = "TestDevice", PortName = "COM3" };
+        
+        string deviceActionParameters = JsonConvert.SerializeObject(new DeviceAction { Device = testDevice });
+        
+        var testConfigurationWithDevice = AddDeviceToConfiguration(testDevice);
+        
+        // Act
+        _cut = RenderComponent<Configuration>(parameters => parameters
+            .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(testConfigurationWithDevice))
+            .Add(p => p.ExtensionId, _extensionId));
+        
+        var deviceTableRow = _cut.FindComponents<TableRow>().Single(row => row.Instance.ElementId == $"Device:{testDevice.Name}");
+        var enablePkocMenuItem = deviceTableRow.FindComponents<DropdownItem>()
+            .First(item => item.Nodes[0].TextContent == "Disable PKOC");
+        await _cut.InvokeAsync(async () => await enablePkocMenuItem.Instance.Clicked.InvokeAsync());
+        
+        // Assert
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.DisablePKOC.ToString(), deviceActionParameters));
+    }
+
+
+    [TestCase(true, ExpectedResult = IconName.Key)]
+    [TestCase(false, ExpectedResult = null)]
+    public IconName? DriversComponentShowTheCorrectStatusIcon(bool pkocEnabled)
+    {
+        // Arrange
+        var testDevice = new Device { Address = 0, PKOCEnabled = pkocEnabled, Name = "TestDevice", PortName = "COM3" };
+
+        var testConfigurationWithDevice = AddDeviceToConfiguration(testDevice);
+
+        // Act
+        _cut = RenderComponent<Configuration>(parameters => parameters
+            .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(testConfigurationWithDevice))
+            .Add(p => p.ExtensionId, _extensionId));
+
+        var deviceTableRow = _cut.FindComponents<TableRow>()
+            .Single(row => row.Instance.ElementId == $"Device:{testDevice.Name}");
+        var pkocStatusIcon = deviceTableRow.FindComponents<TableRowCell>()[0].FindComponents<Icon>()
+            .FirstOrDefault(icon => icon.Instance.ElementId == "PKOCStatusIcon");
+
+        // Assert
+        return (IconName?)pkocStatusIcon?.Instance.Name;
+    }
+
+    private static Shared.Configuration? AddDeviceToConfiguration(Device testDevice)
+    {
+        var testConfigurationWithDevice = JsonConvert.DeserializeObject<Shared.Configuration>(TestConfiguration);
+        if (testConfigurationWithDevice == null)
+        {
+            Assert.Fail("Unable to deserialize test configuration data");
+            return null;
+        }
+
+        testConfigurationWithDevice.Buses.First().Devices.Add(testDevice);
+        return testConfigurationWithDevice;
     }
 }
