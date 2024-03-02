@@ -44,7 +44,7 @@ public class PeopleService
         var credentialsAssignedToPerson = await _credentialRepository.CredentialsAssignedToPerson(personId);
         foreach (var credential in credentialsAssignedToPerson)
         {
-            await _credentialRepository.UnassignPerson(credential.Id, personId);
+            await _credentialRepository.RevokePerson(credential.Id, personId);
         }
         
         await _personRepository.Delete(personId);

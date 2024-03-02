@@ -130,7 +130,7 @@ public class CredentialRepository : BaseRepository<Credential>
             });
     }
     
-    public async Task UnassignPerson(int credentialId, int personId)
+    public async Task RevokePerson(int credentialId, int personId)
     {
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();

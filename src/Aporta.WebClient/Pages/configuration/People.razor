@@ -163,7 +163,7 @@ else
                         <Select TValue="int" @bind-SelectedValue="@_enrollCredentialId">
                             @foreach (var availableCredential in _availableCredentialsForEnrollment)
                             {
-                                <SelectItem Value="availableCredential.Item1.Id">@availableCredential.Item2.Timestamp.ToLocalTime() at @availableCredential.Item3.Door.Name</SelectItem>
+                                <SelectItem Value="availableCredential.Item1.Id">@availableCredential.Item2.Timestamp.ToLocalTime() at @availableCredential.Item3?.Door?.Name</SelectItem>
                             }
                         </Select>
                     </FieldBody>
@@ -197,12 +197,39 @@ else
                     <TableBody>
                         <TableRow>
                             <TableRowCell>
+                                First name
+                            </TableRowCell>
+                            <TableRowCell>
+                                @_detailsPerson.FirstName
+                            </TableRowCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableRowCell>
+                                Last name
+                            </TableRowCell>
+                            <TableRowCell>
+                                @_detailsPerson.LastName
+                            </TableRowCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableRowCell>
                                 Badge is enrolled
                             </TableRowCell>
                             <TableRowCell>
                                 @PersonIsEnrolled(_detailsPerson.Id)
                             </TableRowCell>
                         </TableRow>
+                        @if (PersonIsEnrolled(_detailsPerson.Id))
+                        {
+                            <TableRow>
+                                <TableRowCell>
+                                    Badge number
+                                </TableRowCell>
+                                <TableRowCell>
+                                    @PersonsBadgeIdentifier(_detailsPerson.Id)
+                                </TableRowCell>
+                            </TableRow>
+                        }
                         <TableRow>
                             <TableRowCell>
                                 Person is enabled
@@ -418,4 +445,8 @@ else
         return _assigned.Any(credential => credential.AssignedPersonId == personId);
     }
     
+    private string PersonsBadgeIdentifier(int personId)
+    {
+        return _assigned.FirstOrDefault(credential => credential.AssignedPersonId == personId)?.Number ?? string.Empty;
+    }
 }

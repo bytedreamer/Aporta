@@ -1,11 +1,17 @@
+#nullable enable
 namespace Aporta.Shared.Models;
 
 public class EventData
 {
-    public EventReason EventReason { get; set; }
-    public Person Person { get; set; }
-    public Door Door { get; set; }
-    public Endpoint Endpoint { get; set; }
+    public EventReason EventReason { get; init; }
+    
+    public Person? Person { get; init; }
+    
+    public Door? Door { get; init; }
+    
+    public required Endpoint Endpoint { get; init; }
+    
+    public string? CardNumber { get; init; }
 }
 
 public enum EventReason

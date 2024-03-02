@@ -44,9 +44,11 @@ else
                         <TableRowCell>
                             @(eventItem.Type.GetDescription())
                         </TableRowCell>
-                        <TableRowCell>
-                            @(eventData.EventReason.GetDescription())
-                        </TableRowCell>
+                        <Tooltip Text="@(eventData.CardNumber ?? string.Empty)" Inline="true">
+                            <TableRowCell>
+                                @(eventData.EventReason.GetDescription())
+                            </TableRowCell>
+                        </Tooltip>
                         <TableRowCell>
                             @eventData.Endpoint?.Name
                         </TableRowCell>

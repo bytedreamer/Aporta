@@ -415,7 +415,8 @@ public class OSDPDriver : IHardwareDriver
         foreach (var bus in _configuration.Buses)
         {
             _portMapping.TryAdd(bus.PortName,
-                _panel.StartConnection(new SerialPortOsdpConnection(bus.PortName, bus.BaudRate)));
+                _panel.StartConnection(new SerialPortOsdpConnection(bus.PortName, bus.BaudRate),
+                    TimeSpan.FromMilliseconds(50), false));
         }
     }
 

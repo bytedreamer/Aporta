@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -25,12 +25,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="Imports.razor" />
-      <Content Include="Imports.razor" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\..\..\TestWebClientConfiguration\TestWebClientConfiguration.csproj" />
+        <ProjectReference Include="..\..\..\TestWebClientConfiguration\TestWebClientConfiguration.csproj" />
     </ItemGroup>
 
 </Project>

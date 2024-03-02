@@ -1,5 +1,6 @@
 using Blazorise;
 using Blazorise.Bootstrap;
+using Blazorise.Bootstrap.Modules;
 using Blazorise.Licensing;
 using Blazorise.Localization;
 using Blazorise.Modules;
@@ -195,6 +196,15 @@ public static class BlazoriseConfig
             module.SetupVoid( "initializeThrottledDragEvents", _ => true ).SetVoidResult();
             module.SetupVoid( "destroy", _ => true ).SetVoidResult();
             module.SetupVoid( "destroyThrottledDragEvents", _ => true ).SetVoidResult();
+        }
+        
+        public static void AddTooltip(BunitJSInterop jsInterop)
+        {
+            var module = jsInterop.SetupModule(new BootstrapJSTooltipModule(jsInterop.JSRuntime, new VersionProvider()).ModuleFileName);
+
+            module.SetupVoid( "initialize", _ => true ).SetVoidResult();
+            module.SetupVoid( "destroy", _ => true ).SetVoidResult();
+            module.SetupVoid( "updateContent", _ => true ).SetVoidResult();
         }
     }
 
