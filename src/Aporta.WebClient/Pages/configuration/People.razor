@@ -163,7 +163,7 @@ else
                         <Select TValue="int" @bind-SelectedValue="@_enrollCredentialId">
                             @foreach (var availableCredential in _availableCredentialsForEnrollment)
                             {
-                                <SelectItem Value="availableCredential.Item1.Id">@availableCredential.Item2.Timestamp.ToLocalTime() at @availableCredential.Item3.Door.Name</SelectItem>
+                                <SelectItem Value="availableCredential.Item1.Id">@availableCredential.Item2.Timestamp.ToLocalTime() at @availableCredential?.Item3.Door.Name</SelectItem>
                             }
                         </Select>
                     </FieldBody>
