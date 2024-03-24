@@ -57,7 +57,7 @@ Steps to install and run from Linux DEB packages
 ```shell
  sudo dpkg -i Aporta.linux-XXX.deb
  ```
-- Change directory to ```\opt\Aporta```
+- Change directory to ```/opt/Aporta```
 - The followng command will run the Aporta server
 ```shell
 sudo ./Aporta
