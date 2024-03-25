@@ -121,7 +121,6 @@ else
         }
         catch (Exception exception)
         {
-            _extensions = new Extension[] { };
             _snackbarMessage = exception.Message;
             _snackbarColor = SnackbarColor.Danger;
             if (_snackbar != null) await _snackbar.Show();

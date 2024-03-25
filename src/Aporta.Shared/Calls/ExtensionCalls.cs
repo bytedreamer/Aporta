@@ -19,7 +19,7 @@ public class ExtensionCalls(HttpClient httpClient) : IExtensionCalls
         if (!response.IsSuccessStatusCode)
         {
             dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
-            throw new Exception(content.details.ToString());
+            throw new Exception(content.detail.ToString());
         }
 
         return await response.Content.ReadFromJsonAsync<Extension[]>();
@@ -34,7 +34,7 @@ public class ExtensionCalls(HttpClient httpClient) : IExtensionCalls
         if (!response.IsSuccessStatusCode)
         {
             dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
-            throw new Exception(content.details.ToString());
+            throw new Exception(content.detail.ToString());
         }
     }
 }

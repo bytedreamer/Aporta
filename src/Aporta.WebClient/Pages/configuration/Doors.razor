@@ -32,7 +32,7 @@ else
             {
                 <Alert Color="Color.Warning" Visible="true">
                     <AlertMessage>Add Door</AlertMessage>
-                    <AlertDescription>No available access readers or inputs are configured in the drivers</AlertDescription>
+                    <AlertDescription>No available access readers or outputs are configured in the drivers</AlertDescription>
                 </Alert>
             }
         </Column>
@@ -138,18 +138,28 @@ else
                             </FieldBody>
                         </Field>
                     </Validation>
-                    <Field>
-                        <FieldLabel>Door Strike Relay</FieldLabel>
-                        <FieldBody>
-                            <Select TValue="int?" @bind-SelectedValue="@_addDoor.DoorStrikeEndpointId">
-                                <SelectItem Value="-1">None</SelectItem>
-                                @foreach (var controlPoint in _availableControlPoints)
-                                {
-                                    <SelectItem Value="@controlPoint.Id">@controlPoint.Name</SelectItem>
-                                }
-                            </Select>
-                        </FieldBody>
-                    </Field>
+                    <Validation Validator="@ValidateDoorStrikeIsSelected">
+                        <Field>
+                            <FieldLabel>Door Strike Relay</FieldLabel>
+                            <FieldBody>
+                                <Select TValue="int?" @bind-SelectedValue="@_addDoor.DoorStrikeEndpointId">
+                                    <ChildContent>
+                                        <SelectItem Value="-1">None</SelectItem>
+                                        @foreach (var controlPoint in _availableControlPoints)
+                                        {
+                                            <SelectItem Value="@controlPoint.Id">@controlPoint.Name</SelectItem>
+                                        }
+                                    </ChildContent>
+                                    
+                                    <Feedback>
+                                        <ValidationError>
+                                            Validation error
+                                        </ValidationError>
+                                    </Feedback>
+                                </Select>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
                 </Validations>
             </ModalBody>
             <ModalFooter>
@@ -285,7 +295,12 @@ else
                 ? ValidationStatus.Success : ValidationStatus.Error;
             eventArgs.ErrorText = "Either a in or out access point must be selected";
         }
-
     }
-
+    
+    private void ValidateDoorStrikeIsSelected(ValidatorEventArgs eventArgs)
+    {
+        eventArgs.Status = _addDoor.DoorStrikeEndpointId > -1
+            ? ValidationStatus.Success : ValidationStatus.Error;
+        eventArgs.ErrorText = "A door strike must be selected";
+    }
 }

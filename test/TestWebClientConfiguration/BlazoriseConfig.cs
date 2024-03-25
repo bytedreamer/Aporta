@@ -19,10 +19,6 @@ public static class BlazoriseConfig
         //services.AddSingleton<IComponentDisposer, ComponentDisposer>();
         services.AddSingleton<IIdGenerator>( new IdGenerator() );
         services.AddSingleton<IEditContextValidator>( sp => new EditContextValidator( new ValidationMessageLocalizerAttributeFinder(), sp ) );
-        services.AddSingleton<IClassProvider>( new BootstrapClassProvider() );
-        services.AddSingleton<IStyleProvider>( new BootstrapStyleProvider() );
-        services.AddSingleton<IBehaviourProvider>( new BootstrapBehaviourProvider() );
-        services.AddSingleton<IThemeGenerator>( new BootstrapThemeGenerator( new Mock<IThemeCache>().Object ) );
         services.AddSingleton( new Mock<IIconProvider>().Object );
         services.AddSingleton<IValidationHandlerFactory, ValidationHandlerFactory>();
         services.AddSingleton<ValidatorValidationHandler>();

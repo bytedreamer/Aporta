@@ -20,7 +20,7 @@ public class DriverConfigurationCalls(HttpClient httpClient) : IDriverConfigurat
         if (!response.IsSuccessStatusCode)
         {
             dynamic content = await response.Content.ReadFromJsonAsync<ExpandoObject>();
-            throw new Exception(content.details.ToString());
+            throw new Exception(content.detail.ToString());
         }
         
         return await response.Content.ReadAsStringAsync();
