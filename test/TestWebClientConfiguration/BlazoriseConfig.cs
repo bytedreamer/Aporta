@@ -1,5 +1,4 @@
 using Blazorise;
-using Blazorise.Bootstrap;
 using Blazorise.Bootstrap.Modules;
 using Blazorise.Licensing;
 using Blazorise.Localization;
