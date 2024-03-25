@@ -16,7 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.2" />
+      <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.3" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
       <PackageReference Include="NReco.Logging.File" Version="1.2.0" />
@@ -80,7 +80,7 @@
 
     <Target Name="PublishDrivers" AfterTargets="AfterPublish">
         <MakeDir Directories="$(PublishDir)\Drivers" />
-        <Copy SourceFiles="@(VirtualDriverFiles)" DestinationFiles="@(VirtualDriverFiles->'$(OutDir)\Drivers\Virtual\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
+        <Copy SourceFiles="@(VirtualDriverFiles)" DestinationFiles="@(VirtualDriverFiles->'$(PublishDir)\Drivers\Virtual\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <Copy SourceFiles="@(IonoPiDriverFiles)" DestinationFiles="@(IonoPiDriverFiles->'$(PublishDir)\Drivers\IonoPi\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <Copy SourceFiles="@(IonoPiMaxDriverFiles)" DestinationFiles="@(IonoPiMaxDriverFiles->'$(PublishDir)\Drivers\IonoPiMax\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
         <Copy SourceFiles="@(OSDPDriverFiles)" DestinationFiles="@(OSDPDriverFiles->'$(PublishDir)\Drivers\OSDP\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
