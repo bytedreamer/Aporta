@@ -9,7 +9,7 @@
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="OSDP.Net" Version="4.1.7" />
-      <PackageReference Include="PKOC.Net" Version="0.0.2-beta" />
+      <PackageReference Include="PKOC.Net" Version="0.0.4-beta" />
     </ItemGroup>
 
     <ItemGroup>

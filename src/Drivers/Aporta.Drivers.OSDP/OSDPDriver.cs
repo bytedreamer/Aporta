@@ -32,7 +32,7 @@ public class OSDPDriver : IHardwareDriver
 {
     private readonly ConcurrentDictionary<string, Guid> _portMapping = new();
     private readonly List<IEndpoint> _endpoints = new();
-    private readonly ConcurrentDictionary<int, DeviceSettings> _pkocDevices = new();
+    private readonly ConcurrentDictionary<int, PKOCDevice> _pkocDevices = new();
         
     private ControlPanel _panel;
     private PKOCControlPanel _pkocPanel;
@@ -153,12 +153,12 @@ public class OSDPDriver : IHardwareDriver
 
                     if (matchingDevice.PKOCEnabled)
                     {
-                        var deviceSettings = new DeviceSettings(eventArgs.ConnectionId, eventArgs.Address);
-                        bool successfulInitialization = await _pkocPanel.InitializePKOC(deviceSettings);
+                        var pkocDevice = new PKOCDevice(eventArgs.ConnectionId, eventArgs.Address);
+                        bool successfulInitialization = await _pkocPanel.InitializePKOC(pkocDevice);
                         if (successfulInitialization)
                         {
                             _logger.LogInformation("The OSDP reader has been successfully initialized for PKOC");
-                            _pkocDevices.TryAdd(deviceSettings.GetHashCode(), deviceSettings);
+                            _pkocDevices.TryAdd(pkocDevice.GetHashCode(), pkocDevice);
                         }
                         else
                         {
@@ -319,7 +319,7 @@ public class OSDPDriver : IHardwareDriver
                     accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
             if (accessPoint != null)
             {
-                var hashLookup = new DeviceSettings(eventArgs.ConnectionId, eventArgs.Address).GetHashCode();
+                var hashLookup = new PKOCDevice(eventArgs.ConnectionId, eventArgs.Address).GetHashCode();
                 var deviceSettings = _pkocDevices[hashLookup];
                 var result = await _pkocPanel.AuthenticationRequest(deviceSettings);
 
