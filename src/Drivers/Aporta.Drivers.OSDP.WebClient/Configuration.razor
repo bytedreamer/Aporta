@@ -1,12 +1,11 @@
-﻿@using System.Text
-
-@using Blazorise.Snackbar
+﻿@using Blazorise.Snackbar
 @using Newtonsoft.Json
 
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Models
 @using Aporta.Drivers.OSDP.Shared
 @using Aporta.Drivers.OSDP.Shared.Actions
+@using Aporta.Drivers.OSDP.WebClient.Dialogs
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 
@@ -20,7 +19,7 @@
             <Column ColumnSize="ColumnSize.IsAuto">
                 @if (_unusedPorts.Any())
                 {
-                    <Button Color="Color.Primary" Clicked="_addPortModal.Show">Add RS-485 Port</Button>
+                    <Button Color="Color.Primary" Clicked="@_addPortDialog.ShowDialog">Add RS-485 Port</Button>
                 }
                 else
                 {
@@ -31,191 +30,116 @@
                 }
             </Column>
             <Column ColumnSize="ColumnSize.IsAuto">
-                <Button Color="Color.Secondary" Clicked="@(async () => await RescanPorts())">Rescan Available RS-485 Ports</Button>
+                <Button Color="Color.Secondary" Clicked="@RescanPorts">Rescan Available RS-485 Ports</Button>
             </Column>
         </Row>
         @foreach (var bus in _configuration.Buses)
         {
-        <Row ElementId="@("Bus:" + bus.PortName)">
-            <Column>
-                <Card Margin="Margin.Is4.OnY">
-                    <CardTitle Margin="Margin.Is4.OnX">
-                        <Row Margin="Margin.Is2.OnY">
-                            <Column ColumnSize="ColumnSize.IsHalf">
-                                <Heading Size="HeadingSize.Is5">
-                                    Port @bus.PortName Devices
-                                </Heading>
-                            </Column>
-                            <Column ColumnSize="ColumnSize.IsHalf">
-                                <Button Style="float: right" Color="Color.Danger" Clicked="@(async () => await RemoveBus(bus.PortName))">Remove</Button>
-                            </Column>
-                        </Row>
-                        <Row>
-                            <Column>
-                                <Button Color="Color.Primary" Clicked="@(() => ShowAddDeviceDialog(bus.PortName))">Add Device</Button>
-                            </Column>
-                        </Row>
-                    </CardTitle>
-                    <CardBody>
-                        <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHeaderCell>Status</TableHeaderCell>
-                                    <TableHeaderCell>Name</TableHeaderCell>
-                                    <TableHeaderCell>Address</TableHeaderCell>
-                                    <TableHeaderCell></TableHeaderCell>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                @foreach (var device in bus.Devices.OrderBy(device => device.Address))
-                                {
-                                    <TableRow ElementId="@("Device:" + @device.Name)">
-                                        <TableRowCell Clicked="@(async () => await ShowDetails(device))">
-                                            <Tooltip Text="@GetConnectionStatus(device)" Inline="true">
-                                                <Icon Name="@GetConnectionStatusIcon(device)" Style="@GetConnectionStatusIconColor(device)" />
-                                                <Icon Name="@GetSecurityStatusIcon(device)" Style="@GetSecurityStatusIconColor(device)" />
-                                                <Icon ElementId="PKOCStatusIcon" Name="@GetPkocStatus(device)" Style="color: green" />
-                                            </Tooltip>
-                                        </TableRowCell>
-                                        <TableRowHeader Clicked="@(async () => await ShowDetails(device))">
-                                            @device.Name
-                                        </TableRowHeader>
-                                        <TableRowCell Clicked="@(async () => await ShowDetails(device))">
-                                            @device.Address
-                                        </TableRowCell>
-                                        <TableRowCell TextAlignment="TextAlignment.End">
-                                            <Dropdown>
-                                                <DropdownToggle Color="Color.Primary" Size="Size.Small">
-                                                    Action
-                                                </DropdownToggle>
-                                                <DropdownMenu>
-                                                    @if (device.SecureMode == SecureMode.Clear)
-                                                    {
-                                                        <DropdownItem Clicked="@(async () => await ResetToInstallMode(device))">Reset Security To Install Mode</DropdownItem>
-                                                    }
-                                                    else
-                                                    {
-                                                        <DropdownItem Clicked="@(async () => await ResetToClear(device))">Reset Security To Clear Text</DropdownItem>
-                                                    }
-                                                    @if (device.SecureMode == SecureMode.Secure)
-                                                    {
-                                                        <DropdownItem Clicked="@(async () => await RotateKey(device))">Rotate Key</DropdownItem>
-                                                    }
-                                                    
-                                                    @if (device.PKOCEnabled)
-                                                    {
-                                                        <DropdownItem Clicked="@(async () => await DisablePKOC(device))">Disable PKOC</DropdownItem>
-                                                    }
-                                                    else
-                                                    {
-                                                        <DropdownItem Clicked="@(async () => await EnablePKOC(device))">Enable PKOC</DropdownItem>
-                                                    }
-                                                    <DropdownDivider/>
-                                                    <DropdownItem Clicked="@(async () => await ClearDeviceIdentity(device))">Clear Identity</DropdownItem>
-                                                    <DropdownDivider/>
-                                                    <DropdownItem Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address, device.Name))">Delete</DropdownItem>
-                                                </DropdownMenu>
-                                            </Dropdown>
-                                        </TableRowCell>
+            <Row ElementId="@("Bus:" + bus.PortName)">
+                <Column>
+                    <Card Margin="Margin.Is4.OnY">
+                        <CardTitle Margin="Margin.Is4.OnX">
+                            <Row Margin="Margin.Is2.OnY">
+                                <Column ColumnSize="ColumnSize.IsHalf">
+                                    <Heading Size="HeadingSize.Is5">
+                                        Port @bus.PortName Devices
+                                    </Heading>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.IsHalf" TextAlignment="TextAlignment.End">
+                                    <Dropdown>
+                                        <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                            Action
+                                        </DropdownToggle>
+                                        <DropdownMenu>
+                                            <DropdownItem Clicked="@(() => ShowAddDeviceDialog(bus.PortName))">Add Device</DropdownItem>
+                                            <DropdownDivider/>
+                                            <DropdownItem Clicked="@(async () => await RemoveBus(bus.PortName))">Delete</DropdownItem>
+                                        </DropdownMenu>
+                                    </Dropdown>
+                                </Column>
+                            </Row>
+                        </CardTitle>
+                        <CardBody>
+                            <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHeaderCell>Status</TableHeaderCell>
+                                        <TableHeaderCell>Name</TableHeaderCell>
+                                        <TableHeaderCell>Address</TableHeaderCell>
+                                        <TableHeaderCell></TableHeaderCell>
                                     </TableRow>
-                                }
-                            </TableBody>
-                        </Table>
-                    </CardBody>
-                </Card>
-            </Column>
-        </Row>
+                                </TableHeader>
+                                <TableBody>
+                                    @foreach (var device in bus.Devices.OrderBy(device => device.Address))
+                                    {
+                                        <TableRow ElementId="@("Device:" + @device.Name)">
+                                            <TableRowCell Clicked="@(async () => await ShowDetails(device))">
+                                                <Tooltip Text="@GetConnectionStatus(device)" Inline="true">
+                                                    <Icon Name="@GetConnectionStatusIcon(device)" Style="@GetConnectionStatusIconColor(device)"/>
+                                                    <Icon Name="@GetSecurityStatusIcon(device)" Style="@GetSecurityStatusIconColor(device)"/>
+                                                    <Icon ElementId="PKOCStatusIcon" Name="@GetPkocStatus(device)" Style="color: green"/>
+                                                </Tooltip>
+                                            </TableRowCell>
+                                            <TableRowHeader Clicked="@(async () => await ShowDetails(device))">
+                                                @device.Name
+                                            </TableRowHeader>
+                                            <TableRowCell Clicked="@(async () => await ShowDetails(device))">
+                                                @device.Address
+                                            </TableRowCell>
+                                            <TableRowCell TextAlignment="TextAlignment.End">
+                                                <Dropdown>
+                                                    <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                        Action
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        @if (device.SecureMode == SecureMode.Clear)
+                                                        {
+                                                            <DropdownItem Clicked="@(async () => await ResetToInstallMode(device))">Reset Security To Install Mode</DropdownItem>
+                                                        }
+                                                        else
+                                                        {
+                                                            <DropdownItem Clicked="@(async () => await ResetToClear(device))">Reset Security To Clear Text</DropdownItem>
+                                                        }
+                                                        @if (device.SecureMode == SecureMode.Secure)
+                                                        {
+                                                            <DropdownItem Clicked="@(async () => await RotateKey(device))">Rotate Key</DropdownItem>
+                                                        }
+
+                                                        @if (device.PKOCEnabled)
+                                                        {
+                                                            <DropdownItem Clicked="@(async () => await DisablePKOC(device))">Disable PKOC</DropdownItem>
+                                                        }
+                                                        else
+                                                        {
+                                                            <DropdownItem Clicked="@(async () => await EnablePKOC(device))">Enable PKOC</DropdownItem>
+                                                        }
+                                                        <DropdownDivider/>
+                                                        <DropdownItem Clicked="@(async () => await ClearDeviceIdentity(device))">Clear Identity</DropdownItem>
+                                                        <DropdownDivider/>
+                                                        <DropdownItem Clicked="@(async () => await RemoveDevice(bus.PortName, device.Address, device.Name))">Delete</DropdownItem>
+                                                    </DropdownMenu>
+                                                </Dropdown>
+                                            </TableRowCell>
+                                        </TableRow>
+                                    }
+                                </TableBody>
+                            </Table>
+                        </CardBody>
+                    </Card>
+                </Column>
+            </Row>
         }
 
-        <Modal @ref="_addPortModal">
-            <ModalContent Size="ModalSize.Default" Centered="true">
-                <ModalHeader>
-                    <ModalTitle>
-                        Add RS-485 Port
-                    </ModalTitle>
-                    <CloseButton Clicked="@_addPortModal.Hide"/>
-                </ModalHeader>
-                <ModalBody>
-                    <Field>
-                        <FieldLabel>Port</FieldLabel>
-                        <FieldBody>
-                            <Select TValue="string" @bind-SelectedValue="_addBus.PortName">
-                                @foreach (var portName in _unusedPorts)
-                                {
-                                    <SelectItem Value=@portName>@portName</SelectItem>
-                                }
-                            </Select>
-                        </FieldBody>
-                    </Field>
-                    <Field>
-                        <FieldLabel>Baud Rate</FieldLabel>
-                        <FieldBody>
-                            <Select TValue="int" @bind-SelectedValue="_addBus.BaudRate">
-                                @foreach (var baudRate in _baudRates)
-                                {
-                                    <SelectItem Value=@baudRate>@baudRate</SelectItem>
-                                }
-                            </Select>
-                        </FieldBody>
-                    </Field>
-                </ModalBody>
-                <ModalFooter>
-                    <Button Color="Color.Secondary" Clicked="@_addPortModal.Hide">Cancel</Button>
-                    <Button Color="Color.Primary" Clicked="@(async () => await AddBus())">Add</Button>
-                </ModalFooter>
-            </ModalContent>
-        </Modal>
+        <AddPortDialog @ref="_addPortDialog"
+            BaudRates="@_baudRates" 
+            UnusedPorts="@_unusedPorts" 
+            BusToAdd="@_addBus" 
+            PerformAddBusAction="@AddBus" />
 
-        <Modal @ref="_addDeviceModal">
-            <ModalContent Size="ModalSize.Default" Centered="true">
-                <ModalHeader>
-                    <ModalTitle>
-                        Add Device to @_currentBus?.PortName
-                    </ModalTitle>
-                    <CloseButton Clicked="@_addDeviceModal.Hide"/>
-                </ModalHeader>
-                <ModalBody>
-                    <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addDeviceValidations">
-                        <Validation Validator="@ValidationRule.IsNotEmpty" >
-                            <Field>
-                                <FieldLabel>Name</FieldLabel>
-                                <FieldBody>
-                                    <TextEdit @bind-Text="_addDevice.Name">
-                                        <Feedback>
-                                            <ValidationError>
-                                                Please enter a name for the device
-                                            </ValidationError>
-                                        </Feedback>
-                                    </TextEdit>
-                                </FieldBody>
-                            </Field>
-                        </Validation>
-                        <Validation Validator="@ValidateDeviceAddress">
-                            <Field>
-                                <FieldLabel>Address</FieldLabel>
-                                <FieldBody>
-                                    <NumericEdit @bind-Value="_addDevice.Address" TValue="byte" Decimals="0">
-                                        <ValidationError>
-                                            Address already used by a device
-                                        </ValidationError>
-                                    </NumericEdit>
-                                </FieldBody>
-                            </Field>
-                        </Validation>
-                        <Field>
-                            <FieldBody>
-                                <Check @bind-Checked="@_addDevice.RequireSecurity" TValue="bool">Require Security Using AES-128 Encryption</Check>
-                            </FieldBody>
-                        </Field>
-                    </Validations>
-                </ModalBody>
-                <ModalFooter>
-                    <Button Color="Color.Secondary" Clicked="@_addDeviceModal.Hide">Cancel</Button>
-                    <Button Color="Color.Primary" Clicked="@(async () => await AddDevice())">Add</Button>
-                </ModalFooter>
- 
-            </ModalContent>
-        </Modal>
+        <AddDeviceDialog @ref="_addDeviceDialog"
+                         AddToBus="@_currentBus"
+                         DeviceToAdd="@_addDevice"
+                         PerformAddDeviceAction="@AddDevice"/>
         
         <Modal @ref="_deviceDetailsModal">
             <ModalContent Size="ModalSize.Default" Centered="true">
@@ -363,9 +287,8 @@
     private Device _detailsDevice;
     private string[] _unusedPorts;
 
-    private Modal _addPortModal;
-    private Modal _addDeviceModal;
-    private Validations _addDeviceValidations;
+    private AddPortDialog _addPortDialog;
+    private AddDeviceDialog _addDeviceDialog;
     private Modal _deviceDetailsModal;
 
     private Snackbar _snackbar;
@@ -388,13 +311,7 @@
     public Guid ExtensionId { get; set; }
 
     [Parameter]
-    public EventCallback<Guid> ExtensionIdChanged { get; set; }
-
-    [Parameter]
     public string RawConfiguration { get; set; }
-
-    [Parameter]
-    public EventCallback<string> RawConfigurationChanged { get; set; }
 
     protected override void OnParametersSet()
     {
@@ -423,9 +340,7 @@
 
     private async Task AddBus()
     {
-        await _addPortModal.Hide();
-
-        await PerformAction(ActionType.AddBus,
+        await PerformAction(ActionType.AddSerialBus,
             JsonConvert.SerializeObject(new BusAction
             {
                 Bus = _addBus
@@ -445,7 +360,7 @@
 
         var matchingBus = _configuration.Buses.First(bus => bus.PortName == busPortName);
 
-        await PerformAction(ActionType.RemoveBus,
+        await PerformAction(ActionType.RemoveSerialBus,
             JsonConvert.SerializeObject(new BusAction
             {
                 Bus = matchingBus
@@ -520,23 +435,16 @@
             }));
     }
     
-    private void ShowAddDeviceDialog(string portName)
+    private async Task ShowAddDeviceDialog(string portName)
     {
         _currentBus = _configuration.Buses.First(bus => bus.PortName == portName);
         _addDevice = new Device { Name = string.Empty, Address = 0, RequireSecurity = true };
 
-        _addDeviceModal.Show();
+        await _addDeviceDialog.ShowDialog();
     }
 
     private async Task AddDevice()
     {
-        if (!await _addDeviceValidations.ValidateAll())
-        {
-            return;
-        }
-
-        await _addDeviceModal.Hide();
-
         _addDevice.PortName = _currentBus.PortName;
         await PerformAction(ActionType.AddUpdateDevice,
             JsonConvert.SerializeObject(new DeviceAction
@@ -595,12 +503,6 @@
         _detailsDevice = device;
 
         await _deviceDetailsModal.Show();
-    }
-
-    private void ValidateDeviceAddress(ValidatorEventArgs eventArgs)
-    {
-        byte address = Convert.ToByte(eventArgs.Value);
-        eventArgs.Status = _currentBus.Devices.All(device => device.Address != address) ? ValidationStatus.Success : ValidationStatus.Error;
     }
 
     private async Task RescanPorts()

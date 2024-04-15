@@ -24,13 +24,7 @@ else
     public Guid ExtensionId { get; set; }
 
     [Parameter]
-    public EventCallback<Guid> ExtensionIdChanged { get; set; }
-
-    [Parameter]
     public string RawConfiguration { get; set; }
-
-    [Parameter]
-    public EventCallback<string> RawConfigurationChanged { get; set; }
     
     protected override void OnParametersSet()
     {

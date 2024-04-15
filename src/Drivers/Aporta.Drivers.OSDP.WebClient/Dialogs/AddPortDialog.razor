@@ -1,0 +1,68 @@
+@using Aporta.Drivers.OSDP.Shared
+
+<Modal @ref="_addPortModal">
+    <ModalContent Size="ModalSize.Default" Centered="true">
+        <ModalHeader>
+            <ModalTitle>
+                Add RS-485 Port
+            </ModalTitle>
+            <CloseButton Clicked="@_addPortModal.Hide"/>
+        </ModalHeader>
+        <ModalBody>
+            <Field>
+                <FieldLabel>Port</FieldLabel>
+                <FieldBody>
+                    <Select TValue="string" @bind-SelectedValue="BusToAdd.PortName">
+                        @foreach (var portName in UnusedPorts)
+                        {
+                        <SelectItem Value=@portName>@portName</SelectItem>
+                        }
+                    </Select>
+                </FieldBody>
+            </Field>
+            <Field>
+                <FieldLabel>Baud Rate</FieldLabel>
+                <FieldBody>
+                    <Select TValue="int" @bind-SelectedValue="BusToAdd.BaudRate">
+                        @foreach (var baudRate in BaudRates)
+                        {
+                        <SelectItem Value=@baudRate>@baudRate</SelectItem>
+                        }
+                    </Select>
+                </FieldBody>
+            </Field>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@_addPortModal.Hide">Cancel</Button>
+            <Button Color="Color.Primary" Clicked="@AddBus">Add</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private Modal _addPortModal;
+    
+    [Parameter]
+    public IEnumerable<int> BaudRates { get; set; }
+    
+    [Parameter]
+    public IEnumerable<string> UnusedPorts { get; set; }
+    
+    [Parameter]
+    public Bus BusToAdd { get; set; }
+    
+    [Parameter]
+    public EventCallback PerformAddBusAction { get; set; }
+
+    public async Task ShowDialog()
+    {
+        await _addPortModal.Show();
+    }
+
+    private async Task AddBus()
+    {
+        await _addPortModal.Hide();
+
+        await PerformAddBusAction.InvokeAsync();
+    }
+}
