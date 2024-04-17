@@ -3,7 +3,7 @@ steps:
   displayName: 'Publish Aporta'
   inputs:
     command: 'publish'
-    projects: 'src/Aporta.sln'
+    projects: 'src/Aporta/Aporta.csproj'
     arguments: '--configuration $(buildConfiguration) -r win-x64 --self-contained -p:PublishTrimmed=false'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
