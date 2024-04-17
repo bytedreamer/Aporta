@@ -3,7 +3,9 @@ steps:
   displayName: 'Publish Aporta'
   inputs:
     command: 'publish'
-    projects: 'src/Aporta/Aporta.csproj'
+    projects: "src/Aporta/Aporta.csproj"
+    publishWebProjects: false
+    zipAfterPublish: false
     arguments: '--configuration $(buildConfiguration) -r win-x64 --self-contained -p:PublishTrimmed=false'
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
@@ -12,11 +14,11 @@ steps:
   inputs:
     targetType: 'inline'
     pwsh: true
+    workingDirectory: 'setup\Windows\SetupProject'
     script: |
-      cd setup\Windows\SetupProject
       & "C:\Program Files (x86)\WiX Toolset v3.11\bin\Heat.exe" dir "..\..\..\src\Aporta\bin\Release\net8.0\win-x64\publish" -cg Aporta_Project -dr INSTALLFOLDER -scom -sreg -srd -var var.BasePath -gg -sfrag -t "RemovePdbs.xslt" -t "RemoveExe.xslt" -out "Aporta.wxs"
       & "C:\Program Files (x86)\WiX Toolset v3.11\bin\candle.exe" -dBasePath="..\..\..\src\Aporta\bin\Release\net8.0\win-x64\publish" -dConfiguration=Release -dOutDir="bin\Release\" -dPlatform=x86 -dProjectDir="." -dProjectExt=".wixproj" -dProjectFileName="SetupProject.wixproj" -dProjectName=SetupProject -dProjectPath="SetupProject.wixproj" -dTargetDir="bin\Release\" -dTargetExt=".msi" -dTargetFileName="Aporta.msi" -dTargetName=Aporta -dTargetPath="bin\Release\Aporta.msi" -out "obj\Release\" -arch x86 -ext "C:\Program Files (x86)\WiX Toolset v3.11\bin\WixFirewallExtension.dll" -ext "C:\Program Files (x86)\WiX Toolset v3.11\bin\\WixUtilExtension.dll" -arch x64 Aporta.wxs Product.wxs
-      & "C:\Program Files (x86)\WiX Toolset v3.11\bin\Light.exe" -out bin\Release\Aporta.msi -pdbout bin\Release\Aporta.wixpdb -cultures:null -ext "C:\Program Files (x86)\WiX Toolset v3.11\bin\WixFirewallExtension.dll" -ext "C:\Program Files (x86)\WiX Toolset v3.11\bin\\WixUtilExtension.dll" -sice:LGHT1076 -sice:ICE60 -contentsfile obj\Release\SetupProject.wixproj.BindContentsFileListnull.txt -outputsfile obj\Release\SetupProject.wixproj.BindOutputsFileListnull.txt -builtoutputsfile obj\Release\SetupProject.wixproj.BindBuiltOutputsFileListnull.txt -wixprojectfile SetupProject.wixproj obj\Release\Aporta.wixobj obj\Release\Product.wixobj
+      & "C:\Program Files (x86)\WiX Toolset v3.11\bin\Light.exe" -out $(Build.ArtifactStagingDirectory)\Aporta.msi -pdbout bin\Release\Aporta.wixpdb -cultures:null -ext "C:\Program Files (x86)\WiX Toolset v3.11\bin\WixFirewallExtension.dll" -ext "C:\Program Files (x86)\WiX Toolset v3.11\bin\\WixUtilExtension.dll" -sice:LGHT1076 -sice:ICE60 -contentsfile obj\Release\SetupProject.wixproj.BindContentsFileListnull.txt -outputsfile obj\Release\SetupProject.wixproj.BindOutputsFileListnull.txt -builtoutputsfile obj\Release\SetupProject.wixproj.BindBuiltOutputsFileListnull.txt -wixprojectfile SetupProject.wixproj obj\Release\Aporta.wixobj obj\Release\Product.wixobj
   displayName: 'Build the Windows installer'
 
 - task: PowerShell@2
