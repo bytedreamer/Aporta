@@ -22,7 +22,7 @@ variables:
 - name: minor
   value: '2'
 - name: patch
-  value: '10'
+  value: '11'
 - name: AssemblyVersion
   value: '$(major).$(minor).$(patch)'
   
@@ -30,14 +30,14 @@ jobs:
 
 - job: build
   pool:
-    vmImage: 'windows-latest'
+    name: 'windows-latest'
   steps:
     - template: ci/build.yml
       
 - job: windows_installer
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   pool:
-    vmImage: 'windows-latest'
+    vmImage: 'default'
   dependsOn:
     build
   steps:
