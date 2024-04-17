@@ -30,14 +30,14 @@ jobs:
 
 - job: build
   pool:
-    name: 'windows-latest'
+    vmImage: 'windows-latest'
   steps:
     - template: ci/build.yml
       
 - job: windows_installer
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   pool:
-    vmImage: 'default'
+    name: 'default'
   dependsOn:
     build
   steps:
