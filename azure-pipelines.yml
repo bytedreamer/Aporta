@@ -35,7 +35,7 @@ jobs:
     - template: ci/build.yml
       
 - job: windows_installer
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  #condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   pool:
     name: 'default'
   dependsOn:
