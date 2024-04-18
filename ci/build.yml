@@ -37,7 +37,7 @@ steps:
 - task: CmdLine@2
   displayName: 'Perform code inspection'
   inputs:
-    script: 'jb inspectcode src/Aporta.sln -o=$(Build.ArtifactStagingDirectory)'
+    script: 'jb inspectcode src/Aporta.sln -o=$(Build.ArtifactStagingDirectory)/Resharper.sarif'
 
 - task: PublishPipelineArtifact@1
   inputs:
