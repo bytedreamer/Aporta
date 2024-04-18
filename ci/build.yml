@@ -22,9 +22,24 @@ steps:
     projects: '**/*Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
 
-- task: ResharperCli@2
-  displayName: 'ReSharper Inspection'
+#- task: ResharperCli@2
+#  displayName: 'ReSharper Inspection'
+#  inputs:
+#    solutionOrProjectPath: 'src/Aporta.sln'
+#    failBuildLevelSelector: 'Warning'
+#    additionalArguments: '--build -f="xml"'
+
+- task: CmdLine@2
+  displayName: 'Install ReSharper Tools'
   inputs:
-    solutionOrProjectPath: 'src/Aporta.sln'
-    failBuildLevelSelector: 'Warning'
-    additionalArguments: '--build -f="xml"'
+    script: 'dotnet tool install -g JetBrains.ReSharper.GlobalTools --arch arm64'
+
+- task: CmdLine@2
+  displayName: 'Perform code inspection'
+  inputs:
+    script: 'jb inspectcode src/Aporta.sln -o=$(Build.ArtifactStagingDirectory)'
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)'
+    artifactName: CodeAnalysisLogs
