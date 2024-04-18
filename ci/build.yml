@@ -5,14 +5,14 @@ steps:
     packageType: 'sdk'
     version: '8.x'
     
-- task: DotNetCoreCLI@2
-  displayName: 'Build Aporta'
-  inputs:
-    command: 'build'
-    projects: 'src/Aporta.sln'
-    arguments: '--configuration $(buildConfiguration)'
-    versioningScheme: 'byEnvVar'
-    versionEnvVar: 'AssemblyVersion'
+#- task: DotNetCoreCLI@2
+#  displayName: 'Build Aporta'
+#  inputs:
+#    command: 'build'
+#    projects: 'src/Aporta.sln'
+#    arguments: '--configuration $(buildConfiguration)'
+#    versioningScheme: 'byEnvVar'
+#    versionEnvVar: 'AssemblyVersion'
     
 - task: DotNetCoreCLI@2
   displayName: 'Unit Test Aporta'
@@ -21,13 +21,6 @@ steps:
     nobuild: true
     projects: '**/*Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
-
-#- task: ResharperCli@2
-#  displayName: 'ReSharper Inspection'
-#  inputs:
-#    solutionOrProjectPath: 'src/Aporta.sln'
-#    failBuildLevelSelector: 'Warning'
-#    additionalArguments: '--build -f="xml"'
 
 - task: CmdLine@2
   displayName: 'Install ReSharper Tools'
