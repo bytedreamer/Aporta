@@ -84,17 +84,7 @@ public class VirtualDriver : IHardwareDriver
                 {
                     case ActionType.BadgeSwipe:
 
-                        _logger.LogInformation("A card has been presented to the reader");
-                        var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
-                            .SingleOrDefault(accessPoint =>
-                                "VR1" == accessPoint.Id);
-
-
-                        var cardID = parameters.ToBitArray();
-
-                        AccessCredentialReceived?.Invoke(this,
-                            new AccessCredentialReceivedEventArgs(
-                                accessPoint, new TestCredentialReceivedHandler(cardID)));
+                        ProcessBadgeSwipe(parameters);
 
                         break;
 
@@ -111,6 +101,26 @@ public class VirtualDriver : IHardwareDriver
         }
 
         return Task.FromResult(string.Empty);
+
+    }
+
+    private void ProcessBadgeSwipe(string parameters)
+    {
+        var badgeAction = JsonConvert.DeserializeObject<BadgeSwipeAction>(parameters);
+        if (badgeAction == null) return;
+
+        _logger.LogInformation("A card has been presented to the reader");
+        var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
+            .SingleOrDefault(accessPoint =>
+                $"VR{badgeAction.ReaderNumber}" == accessPoint.Id);
+
+
+        var cardID = badgeAction.CardData.ToBitArray();
+
+        AccessCredentialReceived?.Invoke(this,
+            new AccessCredentialReceivedEventArgs(
+                accessPoint, new TestCredentialReceivedHandler(cardID)));
+
 
     }
 

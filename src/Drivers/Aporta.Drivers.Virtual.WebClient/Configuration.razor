@@ -1,6 +1,5 @@
 ﻿@using Blazorise.Snackbar
 @using Newtonsoft.Json
-
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Models
 @using Aporta.Drivers.Virtual.Shared
@@ -37,7 +36,7 @@ else
                         @device.Number
                     </TableRowCell>
                     <TableRowCell>
-                        <Button Clicked="@(async () => await PerformAction( ActionType.BadgeSwipe, "12345" ))">Click to Simulate Badge Swipe</Button>
+                        <Button Clicked="@(async () => await SwipeBadge(device.Number, "12345" ))">Click to Simulate Badge Swipe</Button>
                     </TableRowCell>
                 </TableRow>
             }
@@ -76,11 +75,34 @@ else
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
     }
 
+
+    private async Task<string> SwipeBadge(byte readerNumber, string cardData)
+    {
+        var parameters = JsonConvert.SerializeObject(new BadgeSwipeAction
+            {
+                ReaderNumber = readerNumber,
+                CardData = cardData
+            });
+
+        return await PerformAction(ActionType.BadgeSwipe, parameters);
+    }
+
     private async Task<string> PerformAction(ActionType actionType, string parameters)
     {
         string responseData;
         try
         {
+
+
+
+            // var badgeAction = JsonSerializer.Serialize(new EventData
+            //     {
+            //         Door = matchingDoor,
+            //         Endpoint = accessPoint,
+            //         EventReason = EventReason.CredentialNotEnrolled,
+            //         CardNumber = matchingCardData
+            //     });
+
             responseData = await ConfigurationCalls.PerformAction(ExtensionId, actionType.ToString(), parameters);
         }
         catch (Exception exception)

@@ -7,10 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Actions\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\..\Aporta.Shared\Aporta.Shared.csproj" />
     </ItemGroup>
 
