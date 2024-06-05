@@ -4,6 +4,10 @@ using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Aporta.Drivers.Virtual.Shared.Actions;
+using System;
+using System.Collections;
+using System.Text;
 
 namespace Aporta.Drivers.Virtual;
 
@@ -71,7 +75,43 @@ public class VirtualDriver : IHardwareDriver
     /// <inheritdoc />
     public Task<string> PerformAction(string action, string parameters)
     {
+
+        try
+        {
+            if (Enum.TryParse(action, out ActionType actionType))
+            {
+                switch (actionType)
+                {
+                    case ActionType.BadgeSwipe:
+
+                        _logger.LogInformation("A card has been presented to the reader");
+                        var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
+                            .SingleOrDefault(accessPoint =>
+                                "VR1" == accessPoint.Id);
+
+
+                        var cardID = parameters.ToBitArray();
+
+                        AccessCredentialReceived?.Invoke(this,
+                            new AccessCredentialReceivedEventArgs(
+                                accessPoint, new TestCredentialReceivedHandler(cardID)));
+
+                        break;
+
+                    default:
+
+                        break;
+                }
+            }
+
+
+        } catch (Exception e)
+        {
+            _logger.LogError(e.ToString());
+        }
+
         return Task.FromResult(string.Empty);
+
     }
 
     /// <inheritdoc />
@@ -101,5 +141,25 @@ public class VirtualDriver : IHardwareDriver
     protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs eventArgs)
     {
         OnlineStatusChanged?.Invoke(this, eventArgs);
+    }
+
+    internal class TestCredentialReceivedHandler(BitArray cardData) : ICredentialReceivedHandler
+    {
+        public bool IsValid()
+        {
+            return true;
+        }
+        public string MatchingCardData { get; } = BuildRawBitString(cardData);
+
+        private static string BuildRawBitString(BitArray cardData)
+        {
+            var cardNumberBuilder = new StringBuilder();
+            foreach (bool bit in cardData)
+            {
+                cardNumberBuilder.Append(bit ? "1" : "0");
+            }
+
+            return cardNumberBuilder.ToString();
+        }
     }
 }
