@@ -4,8 +4,9 @@
 @using Aporta.Shared.Models
 @using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
+@using Microsoft.JSInterop;
 
-
+@* @inject IJSRuntime JSRuntime; *@
 @inject IDriverConfigurationCalls ConfigurationCalls;
 
 @if (_configuration == null)
@@ -23,6 +24,7 @@ else
                 <TableHeaderCell>Reader Name</TableHeaderCell>
                 <TableHeaderCell>Reader Number</TableHeaderCell>
                 <TableHeaderCell>Badge Number</TableHeaderCell>
+                <TableHeaderCell></TableHeaderCell>
             </TableRow>
         </TableHeader>
         <TableBody>
@@ -36,7 +38,10 @@ else
                         @device.Number
                     </TableRowCell>
                     <TableRowCell>
-                        <Button Clicked="@(async () => await SwipeBadge(device.Number, "12345" ))">Click to Simulate Badge Swipe</Button>
+                        <TextEdit ElementId="@($"txtReaderNumber{device.Number}")"></TextEdit>
+                    </TableRowCell>
+                    <TableRowCell>
+                        <Button Clicked="@(async () => await SwipeBadge(device.Number, "12345" ))">Click to Simulate Badge Swipe (12345 badge number currently hard coded)</Button>
                     </TableRowCell>
                 </TableRow>
             }
@@ -78,6 +83,11 @@ else
 
     private async Task<string> SwipeBadge(byte readerNumber, string cardData)
     {
+
+        //experiment to try to retrieve the value of the card number typed in by a user for a badge swipe...
+        //var txtCardNumber = await JSRuntime.InvokeAsync<ElementReference>("document.getElementById", $"txtReaderNumber{readerNumber}");
+        // cardData = txtCardNumber.value;
+
         var parameters = JsonConvert.SerializeObject(new BadgeSwipeAction
             {
                 ReaderNumber = readerNumber,
@@ -92,17 +102,6 @@ else
         string responseData;
         try
         {
-
-
-
-            // var badgeAction = JsonSerializer.Serialize(new EventData
-            //     {
-            //         Door = matchingDoor,
-            //         Endpoint = accessPoint,
-            //         EventReason = EventReason.CredentialNotEnrolled,
-            //         CardNumber = matchingCardData
-            //     });
-
             responseData = await ConfigurationCalls.PerformAction(ExtensionId, actionType.ToString(), parameters);
         }
         catch (Exception exception)
