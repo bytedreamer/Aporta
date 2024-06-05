@@ -16,6 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\Aporta.Shared\Aporta.Shared.csproj" />
       <ProjectReference Include="..\Aporta.Drivers.Virtual.Shared\Aporta.Drivers.Virtual.Shared.csproj" />
     </ItemGroup>
 </Project>

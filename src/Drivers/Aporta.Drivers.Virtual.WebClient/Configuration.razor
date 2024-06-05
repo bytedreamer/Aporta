@@ -1,30 +1,101 @@
-﻿@using Newtonsoft.Json
+﻿@using Blazorise.Snackbar
+@using Newtonsoft.Json
+
+@using Aporta.Shared.Calls
+@using Aporta.Shared.Models
+@using Aporta.Drivers.Virtual.Shared
+@using Aporta.Drivers.Virtual.Shared.Actions
+
+
+@inject IDriverConfigurationCalls ConfigurationCalls;
 
 @if (_configuration == null)
 {
-    <div class="spinner"></div>
+    <div class="spinner">Config Not Set</div>
 }
 else
 {
     <Text>Setup</Text>
 
-    <MessageProvider/>
+
+    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+        <TableHeader>
+            <TableRow>
+                <TableHeaderCell>Reader Name</TableHeaderCell>
+                <TableHeaderCell>Reader Number</TableHeaderCell>
+                <TableHeaderCell>Badge Number</TableHeaderCell>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @foreach (var device in _configuration.Readers)
+            {
+                <TableRow ElementId="@("Device:" + @device.Name)">
+                    <TableRowHeader>
+                        @device.Name
+                    </TableRowHeader>
+                    <TableRowCell>
+                        @device.Number
+                    </TableRowCell>
+                    <TableRowCell>
+                        <Button Clicked="@(async () => await PerformAction( ActionType.BadgeSwipe, "12345" ))">Click to Simulate Badge Swipe</Button>
+                    </TableRowCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+
+    <Snackbar @ref="_snackbar" Color="@_snackbarColor">
+        <SnackbarBody>
+            @_snackbarMessage
+        </SnackbarBody>
+    </Snackbar>
+
+    <MessageProvider />
 }
 
 @code {
-    [Inject] 
+    [Inject]
     IMessageService MessageService { get; set; }
-    
+
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
-    
+
+    private Snackbar _snackbar;
+    private SnackbarColor _snackbarColor;
+    private string _snackbarMessage = string.Empty;
+
+
+
     [Parameter]
     public Guid ExtensionId { get; set; }
 
     [Parameter]
     public string RawConfiguration { get; set; }
-    
+
     protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
     }
+
+    private async Task<string> PerformAction(ActionType actionType, string parameters)
+    {
+        string responseData;
+        try
+        {
+            responseData = await ConfigurationCalls.PerformAction(ExtensionId, actionType.ToString(), parameters);
+        }
+        catch (Exception exception)
+        {
+            _snackbarMessage = $"Unable to perform action {actionType.GetDescription()}. {exception.Message}";
+            _snackbarColor = SnackbarColor.Danger;
+            if (_snackbar != null) await _snackbar.Show();
+            return string.Empty;
+        }
+
+        _snackbarMessage = $"Request to perform action {actionType.GetDescription()} successfully sent";
+        _snackbarColor = SnackbarColor.Info;
+        if (_snackbar != null) await _snackbar.Show();
+
+        return responseData;
+    }
+
 }
