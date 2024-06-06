@@ -4,9 +4,7 @@
 @using Aporta.Shared.Models
 @using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
-@* @using Microsoft.JSInterop; *@
 
-@* @inject IJSRuntime JSRuntime; *@
 @inject IDriverConfigurationCalls ConfigurationCalls;
 
 @if (_configuration == null)
@@ -38,10 +36,10 @@ else
                         @device.Number
                     </TableRowCell>
                     <TableRowCell>
-                        <TextEdit ElementId="@($"txtReaderNumber{device.Number}")"></TextEdit>
+                        <TextEdit @bind-Text="_badgeNumbers[device.Number]"></TextEdit>
                     </TableRowCell>
                     <TableRowCell>
-                        <Button Clicked="@(async () => await SwipeBadge(device.Number, "12345" ))">Click to Simulate Badge Swipe (12345 badge number currently hard coded)</Button>
+                        <Button Clicked="@(async () => await SwipeBadge(device.Number))">Click to Simulate Badge Swipe</Button>
                     </TableRowCell>
                 </TableRow>
             }
@@ -67,7 +65,7 @@ else
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
 
-
+    private Dictionary<byte, string> _badgeNumbers;
 
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -78,20 +76,27 @@ else
     protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
+
+        _badgeNumbers = new Dictionary<byte, string>();
+
+        LoadBadgeNumberBindings();
     }
 
 
-    private async Task<string> SwipeBadge(byte readerNumber, string cardData)
+    private void LoadBadgeNumberBindings()
     {
+        foreach (var device in _configuration.Readers)
+        {
+            _badgeNumbers.Add(device.Number, string.Empty);
+        }
+    }
 
-        //experiment to try to retrieve the value of the card number typed in by a user for a badge swipe...
-        //var txtCardNumber = await JSRuntime.InvokeAsync<ElementReference>("document.getElementById", $"txtReaderNumber{readerNumber}");
-        // cardData = txtCardNumber.value;
-
+    private async Task<string> SwipeBadge(byte readerNumber)
+    {
         var parameters = JsonConvert.SerializeObject(new BadgeSwipeAction
             {
                 ReaderNumber = readerNumber,
-                CardData = cardData
+                CardData = _badgeNumbers[readerNumber]
             });
 
         return await PerformAction(ActionType.BadgeSwipe, parameters);
