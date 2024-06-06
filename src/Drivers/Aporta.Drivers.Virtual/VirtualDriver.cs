@@ -4,6 +4,10 @@ using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Aporta.Drivers.Virtual.Shared.Actions;
+using System;
+using System.Collections;
+using System.Text;
 
 namespace Aporta.Drivers.Virtual;
 
@@ -29,6 +33,8 @@ public class VirtualDriver : IHardwareDriver
         _logger = loggerFactory.CreateLogger<VirtualDriver>();
         
         _configuration.Readers.Add(new Reader{Name = "Virtual Reader 1", Number = 1});
+        _configuration.Readers.Add(new Reader { Name = "Virtual Reader 2", Number = 2 });
+        _configuration.Readers.Add(new Reader { Name = "Virtual Reader 3", Number = 3 });
         foreach (var reader in _configuration.Readers)
         {
             _endpoints.Add(new VirtualReader(reader.Name, Id, $"VR{reader.Number}"));
@@ -41,7 +47,6 @@ public class VirtualDriver : IHardwareDriver
         }
         
         _configuration.Inputs.Add(new Input{Name = "Virtual Input 1", Number = 1});
-        _configuration.Inputs.Add(new Input{Name = "Virtual Input 1", Number = 2});
         foreach (var input in _configuration.Inputs)
         {
             _endpoints.Add(new VirtualInput(input.Name, Id, $"VI{input.Number}"));
@@ -71,7 +76,50 @@ public class VirtualDriver : IHardwareDriver
     /// <inheritdoc />
     public Task<string> PerformAction(string action, string parameters)
     {
+
+        try
+        {
+            if (Enum.TryParse(action, out ActionType actionType))
+            {
+                switch (actionType)
+                {
+                    case ActionType.BadgeSwipe:
+
+                        ProcessBadgeSwipe(parameters);
+
+                        break;
+
+                    default:
+
+                        break;
+                }
+            }
+
+
+        } catch (Exception e)
+        {
+            _logger.LogError(e.ToString());
+        }
+
         return Task.FromResult(string.Empty);
+
+    }
+
+    private void ProcessBadgeSwipe(string parameters)
+    {
+        var badgeAction = JsonConvert.DeserializeObject<BadgeSwipeAction>(parameters);
+        if (badgeAction == null) return;
+
+        _logger.LogInformation("A card has been presented to the reader");
+        var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
+            .SingleOrDefault(accessPoint =>
+                $"VR{badgeAction.ReaderNumber}" == accessPoint.Id);
+
+        AccessCredentialReceived?.Invoke(this,
+            new AccessCredentialReceivedEventArgs(
+                accessPoint, new VirtualCredentialReceivedHandler(badgeAction.CardData.ToBitArray())));
+
+
     }
 
     /// <inheritdoc />
@@ -101,5 +149,25 @@ public class VirtualDriver : IHardwareDriver
     protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs eventArgs)
     {
         OnlineStatusChanged?.Invoke(this, eventArgs);
+    }
+
+    internal class VirtualCredentialReceivedHandler(BitArray cardData) : ICredentialReceivedHandler
+    {
+        public bool IsValid()
+        {
+            return true;
+        }
+        public string MatchingCardData { get; } = BuildRawBitString(cardData);
+
+        private static string BuildRawBitString(BitArray cardData)
+        {
+            var cardNumberBuilder = new StringBuilder();
+            foreach (bool bit in cardData)
+            {
+                cardNumberBuilder.Append(bit ? "1" : "0");
+            }
+
+            return cardNumberBuilder.ToString();
+        }
     }
 }
