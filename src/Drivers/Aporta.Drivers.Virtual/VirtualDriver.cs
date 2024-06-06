@@ -33,6 +33,8 @@ public class VirtualDriver : IHardwareDriver
         _logger = loggerFactory.CreateLogger<VirtualDriver>();
         
         _configuration.Readers.Add(new Reader{Name = "Virtual Reader 1", Number = 1});
+        _configuration.Readers.Add(new Reader { Name = "Virtual Reader 2", Number = 2 });
+        _configuration.Readers.Add(new Reader { Name = "Virtual Reader 3", Number = 3 });
         foreach (var reader in _configuration.Readers)
         {
             _endpoints.Add(new VirtualReader(reader.Name, Id, $"VR{reader.Number}"));
@@ -45,7 +47,6 @@ public class VirtualDriver : IHardwareDriver
         }
         
         _configuration.Inputs.Add(new Input{Name = "Virtual Input 1", Number = 1});
-        _configuration.Inputs.Add(new Input{Name = "Virtual Input 1", Number = 2});
         foreach (var input in _configuration.Inputs)
         {
             _endpoints.Add(new VirtualInput(input.Name, Id, $"VI{input.Number}"));

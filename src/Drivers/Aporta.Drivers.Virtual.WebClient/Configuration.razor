@@ -36,10 +36,10 @@ else
                         @device.Number
                     </TableRowCell>
                     <TableRowCell>
-                        <TextEdit @bind-Text="_badgeNumbers[device.Number]"></TextEdit>
+                        <TextEdit Width="Width.Px(300)" @bind-Text="_badgeNumbers[device.Number]"></TextEdit>
                     </TableRowCell>
                     <TableRowCell>
-                        <Button Clicked="@(async () => await SwipeBadge(device.Number))">Click to Simulate Badge Swipe</Button>
+                        <Button Color="Color.Primary" Clicked="@(async () => await SwipeBadge(device.Number))">Click to Simulate Badge Swipe</Button>
                     </TableRowCell>
                 </TableRow>
             }
