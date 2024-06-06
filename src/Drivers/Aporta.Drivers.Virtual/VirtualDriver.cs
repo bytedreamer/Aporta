@@ -114,12 +114,9 @@ public class VirtualDriver : IHardwareDriver
             .SingleOrDefault(accessPoint =>
                 $"VR{badgeAction.ReaderNumber}" == accessPoint.Id);
 
-
-        var cardID = badgeAction.CardData.ToBitArray();
-
         AccessCredentialReceived?.Invoke(this,
             new AccessCredentialReceivedEventArgs(
-                accessPoint, new TestCredentialReceivedHandler(cardID)));
+                accessPoint, new VirtualCredentialReceivedHandler(badgeAction.CardData.ToBitArray())));
 
 
     }
@@ -153,7 +150,7 @@ public class VirtualDriver : IHardwareDriver
         OnlineStatusChanged?.Invoke(this, eventArgs);
     }
 
-    internal class TestCredentialReceivedHandler(BitArray cardData) : ICredentialReceivedHandler
+    internal class VirtualCredentialReceivedHandler(BitArray cardData) : ICredentialReceivedHandler
     {
         public bool IsValid()
         {
