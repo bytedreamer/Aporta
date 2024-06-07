@@ -21,6 +21,7 @@ public class PersonRepository : BaseRepository<Person>
                                                 (first_name, last_name, enabled) values 
                                                 (@firstName, @lastName, @enabled)";
 
+    // ReSharper disable once UnassignedGetOnlyAutoProperty
     protected override string SqlUpdate { get; }
 
     protected override string SqlDelete => @"delete from person where id = @id";
