@@ -1,4 +1,7 @@
+using Aporta.Shared.Calls;
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using TestWebClientConfiguration;
 
 namespace Aporta.Drivers.Virtual.WebClient.Tests;
@@ -8,12 +11,16 @@ public class ConfigurationTest : AportaTestContext
 {
     private const string EmptyConfiguration = "{\"Readers\":[],\"Outputs\":[],\"Inputs\":[]}";
     
+    private readonly Mock<IDriverConfigurationCalls> _mockConfigurationCalls = new();
+    
     private IRenderedComponent<Configuration>? _cut;
     
     public ConfigurationTest()
     {
         BlazoriseConfig.JSInterop.AddTextEdit(JSInterop);
         BlazoriseConfig.JSInterop.AddButton(JSInterop);
+        
+        Services.AddScoped<IDriverConfigurationCalls>(_ => _mockConfigurationCalls.Object);
     }
 
     [Test]
