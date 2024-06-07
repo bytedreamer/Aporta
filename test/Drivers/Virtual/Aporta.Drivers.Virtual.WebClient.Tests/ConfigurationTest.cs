@@ -31,7 +31,9 @@ public class ConfigurationTest : AportaTestContext
             .Add(p => p.RawConfiguration, EmptyConfiguration));
 
         // Assert
-        Assert.That(_cut.Nodes[0].TextContent, Is.EqualTo("Setup"));
+        Assert.That(_cut.Nodes[0].TextContent, Does.Not.Contain("Setup"));
+        Assert.That(_cut.Nodes[0].TextContent, Contains.Substring("Reader Name")); 
+
     }
   
 }
