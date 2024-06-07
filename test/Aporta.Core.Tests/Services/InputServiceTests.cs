@@ -46,8 +46,19 @@ public class InputServiceTests
             _loggerFactory){CurrentDirectory = Environment.CurrentDirectory};
         await _extensionService.Startup();
         await _extensionService.EnableExtension(_extensionId, true);
-        Assert.That(() => _extensionService.GetExtensions().First().Loaded,
-            Is.True.After(1000, 100));
+
+        // Wait for endpoints to be inserted
+        var endpointRepository = new EndpointRepository(_dataAccess);
+        using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while ((await endpointRepository.GetAll()).Count() != 5 && !cancellationTokenSource.Token.IsCancellationRequested)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSource.Token);
+        }
+            
+        if(cancellationTokenSource.Token.IsCancellationRequested) 
+        {
+            Assert.Fail("Timeout waiting for endpoints to be inserted");
+        }
     }
 
     [TearDown]
