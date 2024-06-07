@@ -20,6 +20,8 @@ public class InputRepository : BaseRepository<Input>
                                                 (endpoint_id, name) values 
                                                 (@endpointId, @name)";
 
+    protected override string SqlUpdate =>throw new System.NotImplementedException();
+
     protected override string SqlDelete => @"delete from input where id = @id";
     
     protected override string SqlRowCount => @"select count(*) from input";
@@ -42,6 +44,11 @@ public class InputRepository : BaseRepository<Input>
             endpointId = input.EndpointId,
             name = input.Name
         };
+    }
+
+    protected override object UpdateParameters(Input record)
+    {
+        throw new System.NotImplementedException();
     }
 
     protected override void InsertId(Input input, int id)

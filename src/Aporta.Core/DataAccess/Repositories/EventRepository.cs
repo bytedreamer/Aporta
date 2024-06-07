@@ -21,7 +21,9 @@ public class EventRepository : BaseRepository<Event>
     protected override string SqlInsert => @"insert into event
                                                 (endpoint_id, timestamp, event_type, data) values 
                                                 (@endpointId, @timestamp, @type, @data)";
-        
+
+    protected override string SqlUpdate { get; }
+
     protected override string SqlDelete => @"delete from event where id = @id";
 
     protected override string SqlRowCount => @"select count(*) from event";
@@ -35,6 +37,11 @@ public class EventRepository : BaseRepository<Event>
             type = @event.Type,
             data = @event.Data
         };
+    }
+
+    protected override object UpdateParameters(Event record)
+    {
+        throw new System.NotImplementedException();
     }
 
     protected override void InsertId(Event @event, int id)

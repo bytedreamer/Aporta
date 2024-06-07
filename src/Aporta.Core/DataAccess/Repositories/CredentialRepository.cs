@@ -25,7 +25,9 @@ public class CredentialRepository : BaseRepository<Credential>
     protected override string SqlInsert => @"insert into credential
                                                 (number, last_event) values 
                                                 (@number, @lastEvent)";
-        
+
+    protected override string SqlUpdate { get; }
+
     private string SqlAssignmentInsert => @"insert into credential_assignment
                                                 (person_id, credential_id, enabled) values 
                                                 (@personId, @credentialId, @enabled)";
@@ -51,6 +53,11 @@ public class CredentialRepository : BaseRepository<Credential>
             number = credential.Number,
             lastEvent = credential.LastEvent
         };
+    }
+
+    protected override object UpdateParameters(Credential record)
+    {
+        throw new System.NotImplementedException();
     }
 
     protected override void InsertId(Credential credential, int id)
