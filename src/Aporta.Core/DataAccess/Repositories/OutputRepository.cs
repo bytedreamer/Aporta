@@ -20,6 +20,8 @@ public class OutputRepository : BaseRepository<Output>
                                                 (endpoint_id, name) values 
                                                 (@endpointId, @name)";
 
+    protected override string SqlUpdate { get; }
+
     protected override string SqlDelete => @"delete from output where id = @id";
     
     protected override string SqlRowCount => @"select count(*) from output";
@@ -42,6 +44,11 @@ public class OutputRepository : BaseRepository<Output>
             endpointId = output.EndpointId,
             name = output.Name
         };
+    }
+
+    protected override object UpdateParameters(Output record)
+    {
+        throw new System.NotImplementedException();
     }
 
     protected override void InsertId(Output output, int id)

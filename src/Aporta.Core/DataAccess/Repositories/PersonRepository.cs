@@ -20,7 +20,9 @@ public class PersonRepository : BaseRepository<Person>
     protected override string SqlInsert => @"insert into person
                                                 (first_name, last_name, enabled) values 
                                                 (@firstName, @lastName, @enabled)";
-        
+
+    protected override string SqlUpdate { get; }
+
     protected override string SqlDelete => @"delete from person where id = @id";
     
     protected override string SqlRowCount => @"select count(*) from person";
@@ -33,6 +35,11 @@ public class PersonRepository : BaseRepository<Person>
             lastName = person.LastName,
             enabled = person.Enabled
         };
+    }
+
+    protected override object UpdateParameters(Person record)
+    {
+        throw new System.NotImplementedException();
     }
 
     protected override void InsertId(Person person, int id)

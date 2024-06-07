@@ -245,45 +245,65 @@ public class ExtensionService
         }
     }
 
-    private async void DriverOnUpdatedEndpoints(object sender, EventArgs eventArgs)
+    private void DriverOnUpdatedEndpoints(object sender, EventArgs eventArgs)
     {
-        if (!(sender is IHardwareDriver driver)) return;
-            
-        await EndpointUpdateSemaphore.WaitAsync();
+        if (sender is not IHardwareDriver driver) return;
 
-        try
+        Task.Run(async () =>
         {
-            var existingEndpoints = (await _endpointRepository.GetForExtension(driver.Id)).ToArray();
-            foreach (var endpoint in EndpointsToBeInserted(driver, existingEndpoints))
+            await EndpointUpdateSemaphore.WaitAsync();
+
+            try
             {
-                var insertEndpoint = new Endpoint
+                var existingEndpoints = (await _endpointRepository.GetForExtension(driver.Id)).ToArray();
+                foreach (var endpoint in EndpointsToBeInserted(driver, existingEndpoints))
                 {
-                    DriverEndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
-                    Type = endpoint switch
+                    var insertEndpoint = new Endpoint
                     {
-                        IOutput _ => EndpointType.Output,
-                        IInput _ => EndpointType.Input,
-                        IAccess _ => EndpointType.Reader,
-                        _ => throw new Exception("Invalid endpoint type")
-                    }
-                };
+                        DriverEndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
+                        Type = endpoint switch
+                        {
+                            IOutput _ => EndpointType.Output,
+                            IInput _ => EndpointType.Input,
+                            IAccess _ => EndpointType.Reader,
+                            _ => throw new Exception("Invalid endpoint type")
+                        }
+                    };
 
-                await _endpointRepository.Insert(insertEndpoint);
+                    await _endpointRepository.Insert(insertEndpoint);
+                }
+
+                foreach (var endpoint in EndpointsToBeUpdated(driver, existingEndpoints))
+                {
+                    var updateEndpoint = new Endpoint
+                    {
+                        DriverEndpointId = endpoint.Id, ExtensionId = driver.Id, Name = endpoint.Name,
+                        Type = endpoint switch
+                        {
+                            IOutput _ => EndpointType.Output,
+                            IInput _ => EndpointType.Input,
+                            IAccess _ => EndpointType.Reader,
+                            _ => throw new Exception("Invalid endpoint type")
+                        }
+                    };
+
+                    await _endpointRepository.Update(updateEndpoint);
+                }
+
+                foreach (var endpoint in EndpointsToBeDeleted(driver, existingEndpoints))
+                {
+                    await _endpointRepository.Delete(endpoint.Id);
+                }
+
+                await SaveCurrentConfiguration(MatchingExtensionHost(driver.Id));
             }
-
-            foreach (var endpoint in EndpointsToBeDeleted(driver, existingEndpoints))
+            finally
             {
-                await _endpointRepository.Delete(endpoint.Id);
+                EndpointUpdateSemaphore.Release();
             }
-
-            await SaveCurrentConfiguration(MatchingExtensionHost(driver.Id));
-        }
-        finally
-        {
-            EndpointUpdateSemaphore.Release();
-        }
+        });
     }
-        
+
     private void DriverOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
     {
         AccessCredentialReceived?.Invoke(this, eventArgs);
@@ -299,6 +319,13 @@ public class ExtensionService
     {
         return driver.Endpoints.Where(endpoint =>
             endpoint.ExtensionId == driver.Id && !existingEndpoints
+                .Select(existingEndpoint => existingEndpoint.DriverEndpointId).Contains(endpoint.Id));
+    }
+    
+    private static IEnumerable<IEndpoint> EndpointsToBeUpdated(IHardwareDriver driver, Endpoint[] existingEndpoints)
+    {
+        return driver.Endpoints.Where(endpoint =>
+            endpoint.ExtensionId == driver.Id && existingEndpoints
                 .Select(existingEndpoint => existingEndpoint.DriverEndpointId).Contains(endpoint.Id));
     }
 

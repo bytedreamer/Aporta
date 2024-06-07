@@ -93,6 +93,9 @@ public class OSDPDriver : IHardwareDriver
                 {
                     _endpoints.Add(new OSDPAccess(Id, device, reader, _panel, _portMapping[bus.PortName]));
                 }
+
+                device.IsConnected = false;
+                device.IdentityNotMatched = false;
             }
         }
     }
