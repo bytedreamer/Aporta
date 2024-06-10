@@ -5,9 +5,6 @@ using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Aporta.Drivers.Virtual.Shared.Actions;
-using System;
-using System.Collections;
-using System.Text;
 
 namespace Aporta.Drivers.Virtual;
 
@@ -76,33 +73,17 @@ public class VirtualDriver : IHardwareDriver
     /// <inheritdoc />
     public Task<string> PerformAction(string action, string parameters)
     {
-
-        try
+        if (Enum.TryParse(action, out ActionType actionType))
         {
-            if (Enum.TryParse(action, out ActionType actionType))
+            switch (actionType)
             {
-                switch (actionType)
-                {
-                    case ActionType.BadgeSwipe:
-
-                        ProcessBadgeSwipe(parameters);
-
-                        break;
-
-                    default:
-
-                        break;
-                }
+                case ActionType.BadgeSwipe:
+                    ProcessBadgeSwipe(parameters);
+                    break;
             }
-
-
-        } catch (Exception e)
-        {
-            _logger.LogError(e.ToString());
         }
 
         return Task.FromResult(string.Empty);
-
     }
 
     private void ProcessBadgeSwipe(string parameters)
@@ -110,16 +91,13 @@ public class VirtualDriver : IHardwareDriver
         var badgeAction = JsonConvert.DeserializeObject<BadgeSwipeAction>(parameters);
         if (badgeAction == null) return;
 
-        _logger.LogInformation("A card has been presented to the reader");
+        _logger?.LogInformation("A card has been presented to the reader");
         var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
             .SingleOrDefault(accessPoint =>
                 $"VR{badgeAction.ReaderNumber}" == accessPoint.Id);
 
-        AccessCredentialReceived?.Invoke(this,
-            new AccessCredentialReceivedEventArgs(
-                accessPoint, new VirtualCredentialReceivedHandler(badgeAction.CardData.ToBitArray())));
-
-
+        AccessCredentialReceived?.Invoke(this, new AccessCredentialReceivedEventArgs(
+                accessPoint, new VirtualCredentialReceivedHandler(badgeAction.CardData)));
     }
 
     /// <inheritdoc />
@@ -151,23 +129,12 @@ public class VirtualDriver : IHardwareDriver
         OnlineStatusChanged?.Invoke(this, eventArgs);
     }
 
-    internal class VirtualCredentialReceivedHandler(BitArray cardData) : ICredentialReceivedHandler
+    private class VirtualCredentialReceivedHandler(string cardData) : ICredentialReceivedHandler
     {
         public bool IsValid()
         {
             return true;
         }
-        public string MatchingCardData { get; } = BuildRawBitString(cardData);
-
-        private static string BuildRawBitString(BitArray cardData)
-        {
-            var cardNumberBuilder = new StringBuilder();
-            foreach (bool bit in cardData)
-            {
-                cardNumberBuilder.Append(bit ? "1" : "0");
-            }
-
-            return cardNumberBuilder.ToString();
-        }
+        public string MatchingCardData { get; } = cardData;
     }
 }

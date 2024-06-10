@@ -1,5 +1,7 @@
 using System;
 using System.Data;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -38,6 +40,19 @@ public class OutputServiceTests
             _loggerFactory) {CurrentDirectory = Environment.CurrentDirectory};
         await _extensionService.Startup();
         await _extensionService.EnableExtension(_extensionId, true);
+
+        // Wait for endpoints to be inserted
+        var endpointRepository = new EndpointRepository(_dataAccess);
+        using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while ((await endpointRepository.GetAll()).Count() != 5 && !cancellationTokenSource.Token.IsCancellationRequested)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSource.Token);
+        }
+            
+        if(cancellationTokenSource.Token.IsCancellationRequested) 
+        {
+            Assert.Fail("Timeout waiting for endpoints to be inserted");
+        }
     }
 
     [TearDown]
@@ -56,12 +71,12 @@ public class OutputServiceTests
         var outputService = new OutputService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
             _extensionService);
+        
         var outputs = new[]
         {
             new Output {Name = "TestOutput1", EndpointId = 2},
             new Output {Name = "TestOutput2", EndpointId = 3}
         };
-
         var outputRepository = new OutputRepository(_dataAccess);
         foreach (var output in outputs)
         {
