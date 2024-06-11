@@ -13,9 +13,6 @@
 }
 else
 {
-    <Text>Setup</Text>
-
-
     <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
         <TableHeader>
             <TableRow>
@@ -36,7 +33,7 @@ else
                         @device.Number
                     </TableRowCell>
                     <TableRowCell>
-                        <TextEdit Width="Width.Px(300)" @bind-Text="_badgeNumbers[device.Number]"></TextEdit>
+                        <TextEdit Width="Width.Px(300)" @bind-Text="BadgeNumbers[device.Number]"></TextEdit>
                     </TableRowCell>
                     <TableRowCell>
                         <Button Color="Color.Primary" Clicked="@(async () => await SwipeBadge(device.Number))">Click to Simulate Badge Swipe</Button>
@@ -65,7 +62,8 @@ else
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
 
-    private Dictionary<byte, string> _badgeNumbers;
+    [Parameter]
+    public Dictionary<byte, string> BadgeNumbers { get; set; }
 
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -77,17 +75,18 @@ else
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
 
-        _badgeNumbers = new Dictionary<byte, string>();
-
-        LoadBadgeNumberBindings();
+        if (BadgeNumbers == null)
+        {
+            BadgeNumbers = new Dictionary<byte, string>();
+            LoadBadgeNumberBindings();
+        }
     }
-
 
     private void LoadBadgeNumberBindings()
     {
         foreach (var device in _configuration.Readers)
         {
-            _badgeNumbers.Add(device.Number, string.Empty);
+            BadgeNumbers.Add(device.Number, string.Empty);
         }
     }
 
@@ -96,7 +95,7 @@ else
         var parameters = JsonConvert.SerializeObject(new BadgeSwipeAction
             {
                 ReaderNumber = readerNumber,
-                CardData = _badgeNumbers[readerNumber]
+                CardData = BadgeNumbers[readerNumber]
             });
 
         return await PerformAction(ActionType.BadgeSwipe, parameters);
