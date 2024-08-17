@@ -1,9 +1,6 @@
 # Aporta Housekeeping - Project Setup
 
-<video width="500" width="282" controls>
-  <source src="AportaHousekeeping.mp4" type="video/mp4">
-Your browser does not support the video tag. Use the link to download the video.
-</video>
+[AportaHousekeeping](AportaHousekeeping.mp4)
 
 ## Startup Project
 Set Aporta as the startup project. 
