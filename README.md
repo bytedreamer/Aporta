@@ -64,7 +64,7 @@ sudo ./Aporta
 ```
 ## Aporta Housekeeping
 
-General information about configuring and setting up the Aporta project for development.
+General information about configuring and setting up the Aporta project for development and running locally.
 
 [Aporta HouseKeeping](docs/AportaHouseKeeping.md)
 

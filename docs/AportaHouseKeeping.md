@@ -1,5 +1,15 @@
-# Aporta HouseKeeping - Project Setup
+# Aporta Housekeeping - Project Setup
 
+## Startup Project
+Set Aporta as the startup project. 
+
+![](images/AportaStartupProject.JPG)
+
+## Running the Project
+
+To run the Aporta project, switch from IIS Express to Aporta
+
+![](images/RunningAporta.JPG)
 
 ## Configuration
 The Aporta Configuration file is located in the **Aporta** Project. 
@@ -28,8 +38,5 @@ The configuration file is appsettings.json
 }
 ```
 
-## Startup Project
-Set Aporta.WebClient as the startup project. 
 
-![](images/AportaSolutionStructure.JPG)
 
