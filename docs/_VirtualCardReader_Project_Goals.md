@@ -1,13 +1,19 @@
-## Goals
+# Virtual Reader Project Goals
 
+## 1. add, edit and remove 
 User can add, edit and remove the virtual card readers. Similar format as other areas of UI.
 
-### how to see the Virtual Readers
+### How to Navigate to the Virtual Readers - Video
 
-[Aporta_NavToVirtualReaders.mp4](Aporta_NavToVirtualReaders.mp4)
+[![](images/VirtualReader.JPG)](Aporta_NavToVirtualReaders.mp4)
 
+### Scope - add, edit and remove
+
+
+
+## 2. Logic Permissions checks for deletes
 Add logic to handle/prevent removing virtual reader from existing door assignment. 
 
-Logic reused for physical hardware assigned to doors
+## 3. Logic reused for physical hardware assigned to doors
 
-Create UI unit tests
+## 4. Create UI unit tests

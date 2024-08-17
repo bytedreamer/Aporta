@@ -1,6 +1,7 @@
 # Aporta Housekeeping - Project Setup
 
-[AportaHousekeeping](AportaHousekeeping.mp4)
+## Quick Start Video
+[![](images/AportaHouseKeeping_RunTheProject.JPG)](AportaHousekeeping.mp4)
 
 ## Startup Project
 Set Aporta as the startup project. 
