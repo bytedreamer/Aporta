@@ -11,7 +11,7 @@ User can add, edit and remove the virtual card readers. Similar format as other 
 
 
 
-## 2. Logic Permissions checks for deletes
+## 2. Permission checks for deletes
 Add logic to handle/prevent removing virtual reader from existing door assignment. 
 
 ## 3. Logic reused for physical hardware assigned to doors
