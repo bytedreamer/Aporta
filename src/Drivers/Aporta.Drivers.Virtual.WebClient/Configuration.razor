@@ -215,6 +215,12 @@ else
     private async Task AddReader()
     {
 
+        if (!await _addReaderValidations.ValidateAll())
+        {
+            return;
+        }
+        await _addVirtualReaderModal.Hide();
+
         var newReader = new Reader
             {
                 Name = _addReader.Name,
@@ -228,6 +234,12 @@ else
         var readerToAddSerialized = JsonConvert.SerializeObject(_addReader);
 
         await PerformAction(ActionType.AddReader, readerToAddSerialized);
+
+        BadgeNumbers = new Dictionary<byte, string>();
+        LoadBadgeNumberBindings();
+
+        StateHasChanged();
+
     }
 
 }

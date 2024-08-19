@@ -90,7 +90,8 @@ public class VirtualDriver : IHardwareDriver
 
                 case ActionType.RemoveReader:
 
-                    var readerToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
+                    var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
+                    var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
                     _configuration.Readers.Remove(readerToRemove);
 
                     break;
