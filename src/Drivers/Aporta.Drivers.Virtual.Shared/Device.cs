@@ -17,6 +17,6 @@ public class Output
 public class Reader
 {
     public string Name { get; init; } = string.Empty;
-        
+
     public byte Number { get; init; }
 }

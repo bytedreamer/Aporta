@@ -80,6 +80,20 @@ public class VirtualDriver : IHardwareDriver
                 case ActionType.BadgeSwipe:
                     ProcessBadgeSwipe(parameters);
                     break;
+
+                case ActionType.AddReader:
+
+                    var readerToAdd = JsonConvert.DeserializeObject<Reader>(parameters);
+                    _configuration.Readers.Add(readerToAdd);
+
+                    break;
+
+                case ActionType.RemoveReader:
+
+                    var readerToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
+                    _configuration.Readers.Remove(readerToRemove);
+
+                    break;
             }
         }
 
