@@ -114,6 +114,8 @@ else
     [Inject]
     IMessageService MessageService { get; set; }
 
+    //private HubConnection _hubConnection;
+
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
     private Snackbar _snackbar;
@@ -142,6 +144,36 @@ else
             BadgeNumbers = new Dictionary<byte, string>();
             LoadBadgeNumberBindings();
         }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        // _hubConnection = new HubConnectionBuilder()
+        //     .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+        //     .WithAutomaticReconnect(new SignalRRetryPolicy())
+        //     .Build();
+        // _hubConnection.On<int>(Methods.DoorInserted, async doorId =>
+        // {
+        //     _doors.Add(await Http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
+
+        //     await InitializedAvailableEndpoints();
+
+        //     StateHasChanged();
+        // });
+        // _hubConnection.On<int>(Methods.DoorDeleted, async doorId =>
+        // {
+        //     var door = _doors.FirstOrDefault(o => o.Id == doorId);
+        //     if (door == null) return;
+
+        //     _doors.Remove(door);
+
+        //     await InitializedAvailableEndpoints();
+
+        //     StateHasChanged();
+        // });
+        // await _hubConnection.StartAsync();
+
     }
 
     private void LoadBadgeNumberBindings()
@@ -205,6 +237,9 @@ else
 
         _configuration.Readers.Remove(readerToRemove);
 
+        BadgeNumbers = new Dictionary<byte, string>();
+        LoadBadgeNumberBindings();
+
         //var updatedConfiguration = JsonConvert.SerializeObject(_configuration);
         var readerToRemoveSerialized = JsonConvert.SerializeObject(readerToRemove);
 
@@ -229,16 +264,18 @@ else
 
         _configuration.Readers.Add(newReader);
 
+        BadgeNumbers = new Dictionary<byte, string>();
+        LoadBadgeNumberBindings();
+
         //var updatedConfiguration = JsonConvert.SerializeObject(_configuration);
 
         var readerToAddSerialized = JsonConvert.SerializeObject(_addReader);
 
         await PerformAction(ActionType.AddReader, readerToAddSerialized);
 
-        BadgeNumbers = new Dictionary<byte, string>();
-        LoadBadgeNumberBindings();
 
-        StateHasChanged();
+
+
 
     }
 
