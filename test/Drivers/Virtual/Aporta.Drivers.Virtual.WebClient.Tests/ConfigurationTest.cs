@@ -18,6 +18,8 @@ public class ConfigurationTest : AportaTestContext
     private const string EmptyConfiguration = "{\"Readers\":[],\"Outputs\":[],\"Inputs\":[]}";
 
     private readonly Mock<IDriverConfigurationCalls> _mockConfigurationCalls = new();
+    private readonly Mock<HttpClient> _mockHttpClient = new();
+
 
     private readonly Guid _extensionId = Guid.NewGuid();
 
@@ -29,6 +31,10 @@ public class ConfigurationTest : AportaTestContext
         BlazoriseConfig.JSInterop.AddButton(JSInterop);
 
         Services.AddScoped<IDriverConfigurationCalls>(_ => _mockConfigurationCalls.Object);
+
+        Services.AddScoped(_ => new HttpClient
+        { BaseAddress = new Uri("https://localhost:5001/") });
+
     }
 
     private Shared.Configuration SetUpDeviceConfiguration(byte readerNumber)
@@ -91,5 +97,37 @@ public class ConfigurationTest : AportaTestContext
         Assert.That(_cut.Nodes[0].TextContent, Contains.Substring("Reader Name")); 
 
     }
-  
+
+    [Test]
+    public async Task AddReader()
+    {
+        // Arrange
+        byte readerNumber = 1;
+        var testConfiguration = JsonConvert.SerializeObject(SetUpDeviceConfiguration(readerNumber));
+
+        Dictionary<byte, string> badgeNumbers = new Dictionary<byte, string>() {
+            {readerNumber, "2468" }
+         };
+
+        string addReaderParameters = JsonConvert.SerializeObject(new Reader
+        {
+            Name = "New Reader",
+            Number = 4
+        });
+
+        // Act
+        _cut = RenderComponent<Configuration>(parameters => parameters
+            .Add(p => p.RawConfiguration, testConfiguration)
+            .Add(p => p.ExtensionId, _extensionId)
+            .Add(p => p.BadgeNumbers, badgeNumbers));
+
+        var badgeSwipeButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add Virtual Reader");
+
+        await _cut.InvokeAsync(async () => await badgeSwipeButton.Instance.Clicked.InvokeAsync());
+
+        // Assert
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), addReaderParameters));
+    }
+
+
 }
