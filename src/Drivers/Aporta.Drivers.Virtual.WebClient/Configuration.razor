@@ -309,7 +309,6 @@ else
 
     private bool IsReaderAvailableForDelete(Reader reader)
     {
-
         return _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
     }
 
