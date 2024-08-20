@@ -1,11 +1,16 @@
 ﻿@using Blazorise.Snackbar
 @using Newtonsoft.Json
+@using System.Net.Http.Json
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Models
+@using Aporta.Shared.Messaging
 @using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
+@using Microsoft.AspNetCore.SignalR.Client
+@using Aporta.Extensions.Endpoint;
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
+@inject HttpClient Http;
 
 @if (_configuration == null)
 {
@@ -28,25 +33,34 @@ else
             </TableRow>
         </TableHeader>
         <TableBody>
-            @foreach (var device in _configuration.Readers)
+            @foreach (var reader in _configuration.Readers)
             {
-                <TableRow ElementId="@("Device:" + @device.Name)">
+                <TableRow ElementId="@("Reader:" + @reader.Name)">
                     <TableRowHeader>
-                        @device.Name
+                        @reader.Name
                     </TableRowHeader>
                     <TableRowCell>
-                        @device.Number
+                        @reader.Number
                     </TableRowCell>
                     <TableRowCell>
-                        <TextEdit Width="Width.Px(300)" @bind-Text="BadgeNumbers[device.Number]"></TextEdit>
-                    </TableRowCell>
-                    <TableRowCell>
-                        <Button Color="Color.Primary" Clicked="@(async () => await SwipeBadge(device.Number))">Click to Simulate Badge Swipe</Button>
+                        <TextEdit Width="Width.Px(300)" @bind-Text="BadgeNumbers[reader.Number]"></TextEdit>
                     </TableRowCell>
                     <TableRowCell TextAlignment="TextAlignment.End">
-                        <Button Clicked="@(async () => await RemoveReader(device))">
-                            <Icon Name="IconName.Delete" Style="color: red" />
-                        </Button>
+                        <Dropdown>
+                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                Action
+                            </DropdownToggle>
+                            <DropdownMenu>
+                                @if (IsReaderAvailableForDelete(reader))
+                                {
+                                    <DropdownItem Clicked="@(async () => await RemoveReader(reader))">Delete</DropdownItem>
+                                    <DropdownDivider />
+                                }
+
+                                <DropdownItem Clicked="@(async () => await SwipeBadge(reader.Number))">Click to Simulate Badge Swipe</DropdownItem>
+                                
+                            </DropdownMenu>
+                        </Dropdown>
                     </TableRowCell>
                 </TableRow>
             }
@@ -114,7 +128,7 @@ else
     [Inject]
     IMessageService MessageService { get; set; }
 
-    //private HubConnection _hubConnection;
+    private HubConnection _hubConnection;
 
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
@@ -125,6 +139,9 @@ else
     private Modal _addVirtualReaderModal;
     private Aporta.Shared.Models.VirtualReader _addReader;
     private Validations _addReaderValidations;
+
+    private Endpoint[] _availableAccessPoints;
+    //public IEnumerable<IEndpoint> _availableAccessPoints;
 
     [Parameter]
     public Dictionary<byte, string> BadgeNumbers { get; set; }
@@ -145,17 +162,19 @@ else
             LoadBadgeNumberBindings();
         }
     }
+    //availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
 
     protected override async Task OnInitializedAsync()
     {
-        
+
+        await InitializedAvailableEndpoints();
+
         // _hubConnection = new HubConnectionBuilder()
         //     .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
         //     .WithAutomaticReconnect(new SignalRRetryPolicy())
         //     .Build();
         // _hubConnection.On<int>(Methods.DoorInserted, async doorId =>
         // {
-        //     _doors.Add(await Http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
 
         //     await InitializedAvailableEndpoints();
 
@@ -163,16 +182,25 @@ else
         // });
         // _hubConnection.On<int>(Methods.DoorDeleted, async doorId =>
         // {
-        //     var door = _doors.FirstOrDefault(o => o.Id == doorId);
-        //     if (door == null) return;
 
-        //     _doors.Remove(door);
+        //     await InitializedAvailableEndpoints();
+
+        //     StateHasChanged();
+        // });
+        // _hubConnection.On<int>(Methods.ExtensionDataChanged, async _ =>
+        // {
+
 
         //     await InitializedAvailableEndpoints();
 
         //     StateHasChanged();
         // });
         // await _hubConnection.StartAsync();
+    }
+
+    private async Task InitializedAvailableEndpoints()
+    {
+        _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
 
     }
 
@@ -273,10 +301,12 @@ else
 
         await PerformAction(ActionType.AddReader, readerToAddSerialized);
 
+    }
 
+    private bool IsReaderAvailableForDelete(Reader reader)
+    {
 
-
-
+        return _availableAccessPoints.Count(endpoint => endpoint.Id == reader.Number) > 0;
     }
 
 }

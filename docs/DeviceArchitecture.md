@@ -12,3 +12,7 @@ Each driver in turn has configuration.
 
 Endpoints are the bridge between Aporta and the driver.
 
+## Code
+When a new reader is added to the Virtual Device, the reader is added to the devices configuration and end point collection.
+
+![](images/AddingReaderstoConfigurationAndEndPoints.JPG)
