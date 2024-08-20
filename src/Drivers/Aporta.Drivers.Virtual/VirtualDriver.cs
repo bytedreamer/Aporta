@@ -85,6 +85,8 @@ public class VirtualDriver : IHardwareDriver
 
                     var readerToAdd = JsonConvert.DeserializeObject<Reader>(parameters);
                     _configuration.Readers.Add(readerToAdd);
+                    _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
+                    OnUpdatedEndpoints();
 
                     break;
 
@@ -93,6 +95,11 @@ public class VirtualDriver : IHardwareDriver
                     var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
                     var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
                     _configuration.Readers.Remove(readerToRemove);
+
+                    var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VR{readerToRemove.Number}");
+                    _endpoints.Remove(endPointToRemove);
+
+                    OnUpdatedEndpoints();
 
                     break;
             }

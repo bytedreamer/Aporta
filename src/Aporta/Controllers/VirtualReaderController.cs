@@ -4,6 +4,7 @@ using Aporta.Shared.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System.Threading.Tasks;
 
 namespace Aporta.Controllers
@@ -16,21 +17,24 @@ namespace Aporta.Controllers
         private readonly ILogger<ExtensionsController> _logger;
         private readonly ExtensionService _extensionService;
 
-        public VirtualReaderController(ExtensionService extensionService)
+        public VirtualReaderController(ExtensionService extensionService, ILogger<ExtensionsController> logger)
         {
             _extensionService = extensionService;
+            _logger = logger;
         }
 
         [HttpPut]
-        public async Task Put([FromBody] Reader reader)
+        public async Task Put([FromBody] Reader readerToAdd)
         {
-            //_extensionService.PerformAction()
+            var readerToRemoveSerialized = JsonConvert.SerializeObject(readerToAdd);
+            //await _extensionService.PerformAction();
             //await _doorConfigurationService.Insert(door);
         }
 
-        [HttpDelete("{doorId:int}")]
-        public async Task Delete(int doorId)
+        [HttpDelete]
+        public async Task Delete([FromBody] Reader readerToRemove)
         {
+            var readerToRemoveSerialized = JsonConvert.SerializeObject(readerToRemove);
             //await _doorConfigurationService.Delete(doorId);
         }
 
