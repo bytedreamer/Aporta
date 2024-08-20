@@ -20,7 +20,7 @@ else
 {
 
     <Row>
-        <Button Color="Color.Primary" Clicked="ShowAddReaderModel">Add Virtual Reader</Button>
+        <Button Color="Color.Primary" Clicked="ShowAddReaderModal">Add Virtual Reader</Button>
     </Row>
 
     <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
@@ -91,21 +91,6 @@ else
                             </FieldBody>
                         </Field>
                     </Validation>
-                    <Validation Validator="@ValidationRule.IsNotEmpty">
-                        <Field>
-                            <FieldLabel>Reader Number</FieldLabel>
-                            <FieldBody>
-                                <TextEdit @bind-Text="_addReader.Number">
-                                    <Feedback>
-                                        <ValidationError>
-                                            Please enter a number for the virtual reader
-                                        </ValidationError>
-                                    </Feedback>
-                                </TextEdit>
-                            </FieldBody>
-                        </Field>
-                    </Validation>
-
                 </Validations>
             </ModalBody>
             <ModalFooter>
@@ -152,15 +137,15 @@ else
     [Parameter]
     public string RawConfiguration { get; set; }
 
-    protected override void OnParametersSet()
+    protected async override void OnParametersSet()
     {
+        _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
+
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
 
-        if (BadgeNumbers == null)
-        {
-            BadgeNumbers = new Dictionary<byte, string>();
-            LoadBadgeNumberBindings();
-        }
+        BadgeNumbers = new Dictionary<byte, string>();
+        LoadBadgeNumberBindings();
+
     }
     //availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
 
@@ -202,6 +187,16 @@ else
     {
         _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
 
+
+        var extension = await Http.GetFromJsonAsync<Extension>($"{Paths.Extensions}/{ExtensionId}");
+
+        _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(extension.Configuration);
+
+        BadgeNumbers = new Dictionary<byte, string>();
+        LoadBadgeNumberBindings();
+
+        StateHasChanged();
+
     }
 
     private void LoadBadgeNumberBindings()
@@ -212,7 +207,7 @@ else
         }
     }
 
-    private async Task<string> SwipeBadge(byte readerNumber)
+    private async Task SwipeBadge(byte readerNumber)
     {
         var parameters = JsonConvert.SerializeObject(new BadgeSwipeAction
             {
@@ -220,10 +215,10 @@ else
                 CardData = BadgeNumbers[readerNumber]
             });
 
-        return await PerformAction(ActionType.BadgeSwipe, parameters);
+        await PerformAction(ActionType.BadgeSwipe, parameters);
     }
 
-    private async Task<string> PerformAction(ActionType actionType, string parameters)
+    private async Task<bool> PerformAction(ActionType actionType, string parameters)
     {
         string responseData;
         try
@@ -235,18 +230,18 @@ else
             _snackbarMessage = $"Unable to perform action {actionType.GetDescription()}. {exception.Message}";
             _snackbarColor = SnackbarColor.Danger;
             if (_snackbar != null) await _snackbar.Show();
-            return string.Empty;
+            return false;
         }
 
         _snackbarMessage = $"Request to perform action {actionType.GetDescription()} successfully sent";
         _snackbarColor = SnackbarColor.Info;
         if (_snackbar != null) await _snackbar.Show();
 
-        return responseData;
+        return true;
     }
 
 
-    private async Task ShowAddReaderModel()
+    private async Task ShowAddReaderModal()
     {
         _addReader = new Aporta.Shared.Models.VirtualReader();
         _addVirtualReaderModal.Show();
@@ -263,16 +258,18 @@ else
             return;
         }
 
-        _configuration.Readers.Remove(readerToRemove);
 
-        BadgeNumbers = new Dictionary<byte, string>();
-        LoadBadgeNumberBindings();
 
         //var updatedConfiguration = JsonConvert.SerializeObject(_configuration);
         var readerToRemoveSerialized = JsonConvert.SerializeObject(readerToRemove);
 
 
-        await PerformAction(ActionType.RemoveReader, readerToRemoveSerialized);
+        if (await PerformAction(ActionType.RemoveReader, readerToRemoveSerialized))
+        {
+
+            await InitializedAvailableEndpoints();
+ 
+        }
     }
 
     private async Task AddReader()
@@ -287,26 +284,33 @@ else
         var newReader = new Reader
             {
                 Name = _addReader.Name,
-                Number = byte.Parse(_addReader.Number)
+                Number = (byte)GetNextReaderNumber()
             };
 
-        _configuration.Readers.Add(newReader);
 
-        BadgeNumbers = new Dictionary<byte, string>();
-        LoadBadgeNumberBindings();
 
         //var updatedConfiguration = JsonConvert.SerializeObject(_configuration);
 
-        var readerToAddSerialized = JsonConvert.SerializeObject(_addReader);
+        var readerToAddSerialized = JsonConvert.SerializeObject(newReader);
 
-        await PerformAction(ActionType.AddReader, readerToAddSerialized);
+        if (await PerformAction(ActionType.AddReader, readerToAddSerialized))
+        {
+            await InitializedAvailableEndpoints(); 
+        }
 
+    }
+
+
+    private int GetNextReaderNumber()
+    {
+        var nextReaderNumber = _configuration.Readers.MaxBy(reader => reader.Number);
+        return nextReaderNumber.Number + 1;
     }
 
     private bool IsReaderAvailableForDelete(Reader reader)
     {
 
-        return _availableAccessPoints.Count(endpoint => endpoint.Id == reader.Number) > 0;
+        return _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
     }
 
 }
