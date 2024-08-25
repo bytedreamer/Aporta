@@ -99,8 +99,6 @@ public class VirtualDriver : IHardwareDriver
                         OnUpdatedEndpoints();
                     }
 
-                    
-
                     break;
             }
         }
@@ -108,10 +106,11 @@ public class VirtualDriver : IHardwareDriver
         return Task.FromResult(string.Empty);
     }
 
-    public bool AddReader(Reader readerToAdd)
+    public bool AddReader(Reader requestedReaderToAdd)
     {
         try
         {
+            var readerToAdd = new Reader() { Name = requestedReaderToAdd.Name, Number = (byte) (_configuration.Readers.Count + 1) };
             _configuration.Readers.Add(readerToAdd);
             _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
         } catch (Exception ex)

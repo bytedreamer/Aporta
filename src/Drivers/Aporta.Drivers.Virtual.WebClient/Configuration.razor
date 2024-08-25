@@ -150,11 +150,11 @@ else
 
     private Modal _badgeSwipeModal;
     private Validations _badgeSwipeValidations;
-    BadgeSwipeAction _badgeSwipeAction;
+    private BadgeSwipeAction _badgeSwipeAction;
 
     private Modal _addVirtualReaderModal;
-    private Aporta.Shared.Models.VirtualReader _addReader;
     private Validations _addReaderValidations;
+    private Aporta.Shared.Models.VirtualReader _addReader;
 
     private Endpoint[] _availableAccessPoints;
     //public IEnumerable<IEndpoint> _availableAccessPoints;
@@ -169,7 +169,7 @@ else
     {
         // _availableAccessPoints = await doorCalls.GetAvailableEndpoints();
 
-        // _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
+        //_configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
 
         // BadgeNumbers = new Dictionary<byte, string>();
         // LoadBadgeNumberBindings();
@@ -178,8 +178,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _badgeSwipeAction = new BadgeSwipeAction();
-        _addReader = new VirtualReader();
+
 
         await InitializedAvailableEndpoints();
 
@@ -281,10 +280,8 @@ else
         var newReader = new Reader
             {
                 Name = _addReader.Name,
-                Number = (byte)GetNextReaderNumber()
+                Number = 0
             };
-
-        //var updatedConfiguration = JsonConvert.SerializeObject(_configuration);
 
         var readerToAddSerialized = JsonConvert.SerializeObject(newReader);
 
@@ -295,11 +292,11 @@ else
 
     }
 
-    private int GetNextReaderNumber()
-    {
-        var nextReaderNumber = _configuration.Readers.MaxBy(reader => reader.Number);
-        return nextReaderNumber.Number + 1;
-    }
+    // private int GetNextReaderNumber()
+    // {
+    //     var nextReaderNumber = _configuration.Readers.MaxBy(reader => reader.Number);
+    //     return nextReaderNumber.Number + 1;
+    // }
 
     private bool IsReaderAvailableForDelete(Reader reader)
     {

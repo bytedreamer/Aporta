@@ -65,24 +65,35 @@ public class ConfigurationTest : AportaTestContext
         var cardData = "2468";
         var testConfiguration = JsonConvert.SerializeObject(SetUpDeviceConfiguration(readerNumber));
 
-        string badgeSwipeParameters = JsonConvert.SerializeObject(new BadgeSwipeAction
-        {            
+        var badgeSwipeParams = new BadgeSwipeAction
+        {
             ReaderNumber = readerNumber,
             CardData = cardData
 
-        });
+        };
+
+        var newReader = new Reader
+        {
+            Name = "New Reader",
+            Number = 0
+        };
+
+        string badgeSwipeParamsSerialized = JsonConvert.SerializeObject(badgeSwipeParams);
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
             .Add(p => p.RawConfiguration, testConfiguration)
-            .Add(p => p.ExtensionId, _extensionId));
+            .Add(p => p.ExtensionId, _extensionId)
+            //.Add(p => p.BadgeSwipeActionSerialized, JsonConvert.SerializeObject(badgeSwipeParams))
+            //.Add(p => p.ReaderToAddSerialized, JsonConvert.SerializeObject(newReader))
+            );
 
         var badgeSwipeButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Click to Simulate Badge Swipe");
 
         await _cut.InvokeAsync(async () => await badgeSwipeButton.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.BadgeSwipe.ToString(), badgeSwipeParameters));
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.BadgeSwipe.ToString(), JsonConvert.SerializeObject(badgeSwipeParams)));
     }
 
     [Test]
@@ -107,25 +118,40 @@ public class ConfigurationTest : AportaTestContext
     {
         // Arrange
         byte readerNumber = 1;
-        var testConfiguration = JsonConvert.SerializeObject(SetUpDeviceConfiguration(readerNumber));
+        var config = SetUpDeviceConfiguration(readerNumber);
+        var cardData = "2468";
 
-        string addReaderParameters = JsonConvert.SerializeObject(new Reader
+        var newReader = new Reader
         {
             Name = "New Reader",
-            Number = 4
-        });
+            Number = 0
+        };
+
+        var badgeSwipeParams = new BadgeSwipeAction
+        {
+            ReaderNumber = readerNumber,
+            CardData = cardData
+
+        };
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
-            .Add(p => p.RawConfiguration, testConfiguration)
-            .Add(p => p.ExtensionId, _extensionId));
+            .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(config))
+            .Add(p => p.ExtensionId, _extensionId)
+            //.Add(p => p.BadgeSwipeActionSerialized, JsonConvert.SerializeObject(badgeSwipeParams))
+            //.Add(p => p.ReaderToAddSerialized, JsonConvert.SerializeObject(newReader))
+            );
 
         var addReaderButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add Virtual Reader");
 
         await _cut.InvokeAsync(async () => await addReaderButton.Instance.Clicked.InvokeAsync());
 
+        var modalAddReaderButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
+
+        await _cut.InvokeAsync(async () => await modalAddReaderButton.Instance.Clicked.InvokeAsync());
+
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), addReaderParameters));
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), JsonConvert.SerializeObject(newReader)));
     }
 
 
