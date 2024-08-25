@@ -179,7 +179,6 @@ else
     protected override async Task OnInitializedAsync()
     {
 
-
         await InitializedAvailableEndpoints();
 
     }
@@ -291,12 +290,6 @@ else
         }
 
     }
-
-    // private int GetNextReaderNumber()
-    // {
-    //     var nextReaderNumber = _configuration.Readers.MaxBy(reader => reader.Number);
-    //     return nextReaderNumber.Number + 1;
-    // }
 
     private bool IsReaderAvailableForDelete(Reader reader)
     {
