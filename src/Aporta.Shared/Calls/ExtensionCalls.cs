@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.WebUtilities;
+using static System.Net.WebRequestMethods;
 
 namespace Aporta.Shared.Calls;
 
@@ -23,6 +24,12 @@ public class ExtensionCalls(HttpClient httpClient) : IExtensionCalls
         }
 
         return await response.Content.ReadFromJsonAsync<Extension[]>();
+    }
+
+    /// <inheritdoc />
+    public async Task<Extension> GetExtension(Guid extensionId)
+    {
+        return await httpClient.GetFromJsonAsync<Extension>($"{Paths.Extensions}/{extensionId}");
     }
 
     /// <inheritdoc />
@@ -56,4 +63,11 @@ public interface IExtensionCalls
     /// <param name="extensionId">The ID of the extension.</param>
     /// <param name="enabled">True to enable the extension, false to disable it.</param>
     Task ChangeEnableSettings(Guid extensionId, bool enabled);
+
+    /// <summary>
+    /// Return the requested driver extension.
+    /// </summary>
+    /// <param name="extensionId">The ID of the extension.</param>
+    public Task<Extension> GetExtension(Guid extensionId);
+
 }

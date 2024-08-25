@@ -84,9 +84,10 @@ public class VirtualDriver : IHardwareDriver
                 case ActionType.AddReader:
 
                     var readerToAdd = JsonConvert.DeserializeObject<Reader>(parameters);
-                    _configuration.Readers.Add(readerToAdd);
-                    _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
-                    OnUpdatedEndpoints();
+                    if (AddReader(readerToAdd))
+                    {
+                        OnUpdatedEndpoints();
+                    }
 
                     break;
 
@@ -94,18 +95,53 @@ public class VirtualDriver : IHardwareDriver
 
                     var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
                     var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
-                    _configuration.Readers.Remove(readerToRemove);
+                    if (RemoveReader(readerToRemove)) {
+                        OnUpdatedEndpoints();
+                    }
 
-                    var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VR{readerToRemove.Number}");
-                    _endpoints.Remove(endPointToRemove);
-
-                    OnUpdatedEndpoints();
+                    
 
                     break;
             }
         }
 
         return Task.FromResult(string.Empty);
+    }
+
+    public bool AddReader(Reader readerToAdd)
+    {
+        try
+        {
+            _configuration.Readers.Add(readerToAdd);
+            _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
+        } catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception occurred adding a new reader");
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool RemoveReader(Reader readerToRemove)
+    {
+
+        try
+        {
+
+            _configuration.Readers.Remove(readerToRemove);
+
+            var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VR{readerToRemove.Number}");
+            _endpoints.Remove(endPointToRemove);
+
+        } catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception occurred removing a reader");
+            return false;
+        }
+
+        return true;
+
     }
 
     private void ProcessBadgeSwipe(string parameters)

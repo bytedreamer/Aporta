@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Newtonsoft.Json;
 using TestWebClientConfiguration;
+using Aporta.Shared.Models;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using AngleSharp.Diffing.Extensions;
 
@@ -18,7 +19,10 @@ public class ConfigurationTest : AportaTestContext
     private const string EmptyConfiguration = "{\"Readers\":[],\"Outputs\":[],\"Inputs\":[]}";
 
     private readonly Mock<IDriverConfigurationCalls> _mockConfigurationCalls = new();
-    private readonly Mock<HttpClient> _mockHttpClient = new();
+    private readonly Mock<IDoorCalls> _mockDoorCalls = new();
+
+    
+    private readonly Mock<IExtensionCalls> _mockExtensionCalls = new();
 
 
     private readonly Guid _extensionId = Guid.NewGuid();
@@ -31,10 +35,15 @@ public class ConfigurationTest : AportaTestContext
         BlazoriseConfig.JSInterop.AddButton(JSInterop);
 
         Services.AddScoped<IDriverConfigurationCalls>(_ => _mockConfigurationCalls.Object);
+        Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
 
-        Services.AddScoped(_ => new HttpClient
-        { BaseAddress = new Uri("https://localhost:5001/") });
+        byte readerNumber = 1;
+        var cardData = "2468";
+        var testConfiguration = JsonConvert.SerializeObject(SetUpDeviceConfiguration(readerNumber));
 
+        _mockExtensionCalls.Setup(calls => calls.GetExtension(_extensionId)).ReturnsAsync(new Extension() { Id = _extensionId, Configuration = testConfiguration });
+
+        Services.AddScoped<IExtensionCalls>(_ => _mockExtensionCalls.Object);
     }
 
     private Shared.Configuration SetUpDeviceConfiguration(byte readerNumber)
@@ -42,8 +51,8 @@ public class ConfigurationTest : AportaTestContext
         var config = new Shared.Configuration();
 
         config.Readers.Add(new Reader { Name = "Virtual Reader 1", Number = readerNumber });
-        config.Outputs.Add(new Output { Name = "Virtual Output 1", Number = readerNumber });
-        config.Inputs.Add(new Input { Name = "Virtual Input 1", Number = readerNumber });
+        config.Outputs.Add(new Shared.Output { Name = "Virtual Output 1", Number = readerNumber });
+        config.Inputs.Add(new Shared.Input { Name = "Virtual Input 1", Number = readerNumber });
 
         return config;
     }
@@ -56,22 +65,17 @@ public class ConfigurationTest : AportaTestContext
         var cardData = "2468";
         var testConfiguration = JsonConvert.SerializeObject(SetUpDeviceConfiguration(readerNumber));
 
-        Dictionary<byte, string> badgeNumbers = new Dictionary<byte, string>() {
-            {readerNumber, cardData }
-         };
-
         string badgeSwipeParameters = JsonConvert.SerializeObject(new BadgeSwipeAction
         {            
             ReaderNumber = readerNumber,
-            CardData = badgeNumbers[readerNumber]
-            
+            CardData = cardData
+
         });
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
             .Add(p => p.RawConfiguration, testConfiguration)
-            .Add(p => p.ExtensionId, _extensionId)
-            .Add(p => p.BadgeNumbers, badgeNumbers));
+            .Add(p => p.ExtensionId, _extensionId));
 
         var badgeSwipeButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Click to Simulate Badge Swipe");
 
@@ -105,10 +109,6 @@ public class ConfigurationTest : AportaTestContext
         byte readerNumber = 1;
         var testConfiguration = JsonConvert.SerializeObject(SetUpDeviceConfiguration(readerNumber));
 
-        Dictionary<byte, string> badgeNumbers = new Dictionary<byte, string>() {
-            {readerNumber, "2468" }
-         };
-
         string addReaderParameters = JsonConvert.SerializeObject(new Reader
         {
             Name = "New Reader",
@@ -118,12 +118,11 @@ public class ConfigurationTest : AportaTestContext
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
             .Add(p => p.RawConfiguration, testConfiguration)
-            .Add(p => p.ExtensionId, _extensionId)
-            .Add(p => p.BadgeNumbers, badgeNumbers));
+            .Add(p => p.ExtensionId, _extensionId));
 
-        var badgeSwipeButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add Virtual Reader");
+        var addReaderButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add Virtual Reader");
 
-        await _cut.InvokeAsync(async () => await badgeSwipeButton.Instance.Clicked.InvokeAsync());
+        await _cut.InvokeAsync(async () => await addReaderButton.Instance.Clicked.InvokeAsync());
 
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), addReaderParameters));

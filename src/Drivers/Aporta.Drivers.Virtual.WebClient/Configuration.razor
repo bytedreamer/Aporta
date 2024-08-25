@@ -1,16 +1,16 @@
 ﻿@using Blazorise.Snackbar
 @using Newtonsoft.Json
-@using System.Net.Http.Json
+
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Models
 @using Aporta.Shared.Messaging
 @using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
-@using Microsoft.AspNetCore.SignalR.Client
 @using Aporta.Extensions.Endpoint;
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
-@inject HttpClient Http;
+@inject IDoorCalls doorCalls;
+@inject IExtensionCalls extensionCalls;
 
 @if (_configuration == null)
 {
@@ -28,7 +28,6 @@ else
             <TableRow>
                 <TableHeaderCell>Reader Name</TableHeaderCell>
                 <TableHeaderCell>Reader Number</TableHeaderCell>
-                <TableHeaderCell>Badge Number</TableHeaderCell>
                 <TableHeaderCell></TableHeaderCell>
             </TableRow>
         </TableHeader>
@@ -42,9 +41,6 @@ else
                     <TableRowCell>
                         @reader.Number
                     </TableRowCell>
-                    <TableRowCell>
-                        <TextEdit Width="Width.Px(300)" @bind-Text="BadgeNumbers[reader.Number]"></TextEdit>
-                    </TableRowCell>
                     <TableRowCell TextAlignment="TextAlignment.End">
                         <Dropdown>
                             <DropdownToggle Color="Color.Primary" Size="Size.Small">
@@ -57,7 +53,7 @@ else
                                     <DropdownDivider />
                                 }
 
-                                <DropdownItem Clicked="@(async () => await SwipeBadge(reader.Number))">Click to Simulate Badge Swipe</DropdownItem>
+                                <DropdownItem Clicked="@(async () => await ShowSwipeBadgeModal(reader.Number))">Swipe Badge</DropdownItem>
                                 
                             </DropdownMenu>
                         </Dropdown>
@@ -100,6 +96,40 @@ else
         </ModalContent>
     </Modal>
 
+    <Modal @ref="_badgeSwipeModal">
+        <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    Simulation of a Badge Swipe
+                </ModalTitle>
+                <CloseButton Clicked="@_badgeSwipeModal.Hide" />
+            </ModalHeader>
+            <ModalBody>
+                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_badgeSwipeValidations">
+                    <Validation Validator="@ValidationRule.IsNotEmpty">
+                        <Field>
+                            <FieldLabel>Enter Badge Number</FieldLabel>
+                            <FieldBody>
+                                <TextEdit @bind-Text="_badgeSwipeAction.CardData">
+                                    <Feedback>
+                                        <ValidationError>
+                                            Please enter the badge number on the card
+                                        </ValidationError>
+                                    </Feedback>
+                                </TextEdit>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@_badgeSwipeModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await SwipeBadge())">Swipe the badge</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
+
+
     <Snackbar @ref="_snackbar" Color="@_snackbarColor">
         <SnackbarBody>
             @_snackbarMessage
@@ -112,14 +142,15 @@ else
 @code {
     [Inject]
     IMessageService MessageService { get; set; }
-
-    private HubConnection _hubConnection;
-
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
+
+    private Modal _badgeSwipeModal;
+    private Validations _badgeSwipeValidations;
+    BadgeSwipeAction _badgeSwipeAction;
 
     private Modal _addVirtualReaderModal;
     private Aporta.Shared.Models.VirtualReader _addReader;
@@ -129,9 +160,6 @@ else
     //public IEnumerable<IEndpoint> _availableAccessPoints;
 
     [Parameter]
-    public Dictionary<byte, string> BadgeNumbers { get; set; }
-
-    [Parameter]
     public Guid ExtensionId { get; set; }
 
     [Parameter]
@@ -139,83 +167,34 @@ else
 
     protected async override void OnParametersSet()
     {
-        _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
+        // _availableAccessPoints = await doorCalls.GetAvailableEndpoints();
 
-        _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
+        // _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
 
-        BadgeNumbers = new Dictionary<byte, string>();
-        LoadBadgeNumberBindings();
+        // BadgeNumbers = new Dictionary<byte, string>();
+        // LoadBadgeNumberBindings();
 
     }
-    //availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
 
     protected override async Task OnInitializedAsync()
     {
+        _badgeSwipeAction = new BadgeSwipeAction();
+        _addReader = new VirtualReader();
 
         await InitializedAvailableEndpoints();
 
-        // _hubConnection = new HubConnectionBuilder()
-        //     .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
-        //     .WithAutomaticReconnect(new SignalRRetryPolicy())
-        //     .Build();
-        // _hubConnection.On<int>(Methods.DoorInserted, async doorId =>
-        // {
-
-        //     await InitializedAvailableEndpoints();
-
-        //     StateHasChanged();
-        // });
-        // _hubConnection.On<int>(Methods.DoorDeleted, async doorId =>
-        // {
-
-        //     await InitializedAvailableEndpoints();
-
-        //     StateHasChanged();
-        // });
-        // _hubConnection.On<int>(Methods.ExtensionDataChanged, async _ =>
-        // {
-
-
-        //     await InitializedAvailableEndpoints();
-
-        //     StateHasChanged();
-        // });
-        // await _hubConnection.StartAsync();
     }
 
     private async Task InitializedAvailableEndpoints()
     {
-        _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
+        _availableAccessPoints = await doorCalls.GetAvailableEndpoints();
 
-
-        var extension = await Http.GetFromJsonAsync<Extension>($"{Paths.Extensions}/{ExtensionId}");
+        var extension = await extensionCalls.GetExtension(ExtensionId);
 
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(extension.Configuration);
 
-        BadgeNumbers = new Dictionary<byte, string>();
-        LoadBadgeNumberBindings();
-
         StateHasChanged();
 
-    }
-
-    private void LoadBadgeNumberBindings()
-    {
-        foreach (var device in _configuration.Readers)
-        {
-            BadgeNumbers.Add(device.Number, string.Empty);
-        }
-    }
-
-    private async Task SwipeBadge(byte readerNumber)
-    {
-        var parameters = JsonConvert.SerializeObject(new BadgeSwipeAction
-            {
-                ReaderNumber = readerNumber,
-                CardData = BadgeNumbers[readerNumber]
-            });
-
-        await PerformAction(ActionType.BadgeSwipe, parameters);
     }
 
     private async Task<bool> PerformAction(ActionType actionType, string parameters)
@@ -240,6 +219,29 @@ else
         return true;
     }
 
+    private async Task ShowSwipeBadgeModal(byte readerNumber)
+    {
+        _badgeSwipeAction = new BadgeSwipeAction() { ReaderNumber = readerNumber };
+        _badgeSwipeModal.Show();
+    }
+
+    private async Task SwipeBadge()
+    {
+
+        if (!await _badgeSwipeValidations.ValidateAll())
+        {
+            return;
+        }
+        await _badgeSwipeModal.Hide();
+
+        var parameters = JsonConvert.SerializeObject(new BadgeSwipeAction
+            {
+                ReaderNumber = _badgeSwipeAction.ReaderNumber,
+                CardData = _badgeSwipeAction.CardData
+            });
+
+        await PerformAction(ActionType.BadgeSwipe, parameters);
+    }
 
     private async Task ShowAddReaderModal()
     {
@@ -258,17 +260,12 @@ else
             return;
         }
 
-
-
         //var updatedConfiguration = JsonConvert.SerializeObject(_configuration);
         var readerToRemoveSerialized = JsonConvert.SerializeObject(readerToRemove);
 
-
         if (await PerformAction(ActionType.RemoveReader, readerToRemoveSerialized))
         {
-
-            await InitializedAvailableEndpoints();
- 
+            await InitializedAvailableEndpoints(); 
         }
     }
 
@@ -287,8 +284,6 @@ else
                 Number = (byte)GetNextReaderNumber()
             };
 
-
-
         //var updatedConfiguration = JsonConvert.SerializeObject(_configuration);
 
         var readerToAddSerialized = JsonConvert.SerializeObject(newReader);
@@ -299,7 +294,6 @@ else
         }
 
     }
-
 
     private int GetNextReaderNumber()
     {
