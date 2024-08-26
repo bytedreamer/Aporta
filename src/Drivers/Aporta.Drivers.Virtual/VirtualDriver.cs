@@ -110,7 +110,7 @@ public class VirtualDriver : IHardwareDriver
     {
         try
         {
-            var readerToAdd = new Reader() { Name = requestedReaderToAdd.Name, Number = (byte) (_configuration.Readers.Count + 1) };
+            var readerToAdd = new Reader() { Name = requestedReaderToAdd.Name, Number = GetNextReaderNumber()};
             _configuration.Readers.Add(readerToAdd);
             _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
         } catch (Exception ex)
@@ -122,11 +122,19 @@ public class VirtualDriver : IHardwareDriver
         return true;
     }
 
+
+    public byte GetNextReaderNumber()
+    {
+        if (_configuration.Readers.Count == 0) {  return 1; }
+        return (byte)(_configuration.Readers.MaxBy(x => x.Number).Number + 1);
+    }
+
     public bool RemoveReader(Reader readerToRemove)
     {
 
         try
         {
+            if (readerToRemove == null) return false;   
 
             _configuration.Readers.Remove(readerToRemove);
 

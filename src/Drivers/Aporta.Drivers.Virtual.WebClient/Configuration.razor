@@ -8,6 +8,8 @@
 @using Aporta.Drivers.Virtual.Shared.Actions
 @using Aporta.Extensions.Endpoint;
 
+@using Microsoft.AspNetCore.SignalR.Client;
+
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls doorCalls;
 @inject IExtensionCalls extensionCalls;
@@ -140,6 +142,8 @@ else
 }
 
 @code {
+
+
     [Inject]
     IMessageService MessageService { get; set; }
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
@@ -165,6 +169,8 @@ else
     [Parameter]
     public string RawConfiguration { get; set; }
 
+    private HubConnection _hubConnection;
+
     protected async override void OnParametersSet()
     {
         // _availableAccessPoints = await doorCalls.GetAvailableEndpoints();
@@ -180,6 +186,40 @@ else
     {
 
         await InitializedAvailableEndpoints();
+
+
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .Build();
+            
+        // _hubConnection.On<int>(Methods.DoorInserted, async doorId =>
+        // {
+        //     _doors.Add(await Http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
+
+        //     await InitializedAvailableEndpoints();
+
+        //     StateHasChanged();
+        // });
+        // _hubConnection.On<int>(Methods.DoorDeleted, async doorId =>
+        // {
+        //     var door = _doors.FirstOrDefault(o => o.Id == doorId);
+        //     if (door == null) return;
+
+        //     _doors.Remove(door);
+
+        //     await InitializedAvailableEndpoints();
+
+        //     StateHasChanged();
+        // });
+        _hubConnection.On<int>(Methods.ExtensionDataChanged, async _ =>
+        {
+
+
+            await InitializedAvailableEndpoints();
+
+        });
+        await _hubConnection.StartAsync();
 
     }
 
@@ -293,7 +333,7 @@ else
 
     private bool IsReaderAvailableForDelete(Reader reader)
     {
-        return _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
+        return  _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
     }
 
 }

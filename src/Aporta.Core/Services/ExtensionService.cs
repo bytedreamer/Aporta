@@ -20,6 +20,7 @@ using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
+using System.Net;
 
 namespace Aporta.Core.Services;
 
@@ -34,6 +35,7 @@ public class ExtensionService
     private readonly ILogger<ExtensionService> _logger;
     private readonly ExtensionRepository _extensionRepository;
     private readonly EndpointRepository _endpointRepository;
+    private readonly DoorRepository _doorRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private readonly IDataEncryption _dataEncryption;
     private readonly List<ExtensionHost> _extensions = new();
@@ -48,6 +50,7 @@ public class ExtensionService
         _loggerFactory = loggerFactory;
         _endpointRepository = new EndpointRepository(dataAccess);
         _extensionRepository = new ExtensionRepository(dataAccess);
+        _doorRepository = new DoorRepository(dataAccess);
     }
         
     public string CurrentDirectory { get; init; }
@@ -104,7 +107,7 @@ public class ExtensionService
 
         _logger.LogInformation("Saving configuration for extension {Name}", matchingExtension.Name);
 
-        await SaveCurrentConfiguration(matchingExtension);
+        //await SaveCurrentConfiguration(matchingExtension);
 
         return result;
     }
@@ -290,9 +293,24 @@ public class ExtensionService
                     await _endpointRepository.Update(updateEndpoint);
                 }
 
+                var okToSave = true;
+                var allEndPoints = await _endpointRepository.GetAll();
+                var doors = (await _doorRepository.GetAll()).ToArray();
                 foreach (var endpoint in EndpointsToBeDeleted(driver, existingEndpoints))
                 {
-                    await _endpointRepository.Delete(endpoint.Id);
+
+                    var isAvailable = IsEndPointAvailableForDelete(endpoint, doors, allEndPoints);
+
+                    if (isAvailable)
+                    {
+                        await _endpointRepository.Delete(endpoint.Id);
+                    } else
+                    {
+                        okToSave = false;
+                        //throw new Exception($"Endpoint {endpoint.Name} not available for delete.");
+                        //Add the endpoint back if it is not
+                    }
+                    
                 }
 
                 await SaveCurrentConfiguration(MatchingExtensionHost(driver.Id));
@@ -302,6 +320,27 @@ public class ExtensionService
                 EndpointUpdateSemaphore.Release();
             }
         });
+    }
+
+
+    private bool IsEndPointAvailableForDelete(Endpoint endpointToDelete, Door[] doors, IEnumerable<Endpoint> endpoints)
+    {
+
+        var availableEndPoints = endpoints.Where(endpoint =>
+            endpoint.Type == EndpointType.Reader &&
+            !doors.Select(door => door.InAccessEndpointId).Contains(endpoint.Id) &&
+            !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id));
+
+        return availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == endpointToDelete.DriverEndpointId) > 0;
+    }
+
+    private bool IsEndPointAssignedToDoorPrev(Endpoint endpointToDelete, Door[] doors)
+    {
+
+        var count = (doors.Select(door => door.InAccessEndpointId == endpointToDelete.Id || door.OutAccessEndpointId == endpointToDelete.Id)).Count();
+
+        return (doors.Select(door => door.InAccessEndpointId == endpointToDelete.Id || door.OutAccessEndpointId == endpointToDelete.Id)).Count() > 0;
+
     }
 
     private void DriverOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
