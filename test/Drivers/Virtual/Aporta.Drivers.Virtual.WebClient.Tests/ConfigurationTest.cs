@@ -150,6 +150,14 @@ public class ConfigurationTest : AportaTestContext
 
         await _cut.InvokeAsync(async () => await modalAddReaderButton.Instance.Clicked.InvokeAsync());
 
+        var textEdit = _cut.FindComponents<TextEdit>().First(text => text != null).Instance;
+
+        textEdit.Text = "New Reader";
+
+        //_cut.SetParametersAndRender<TextEdit>()
+
+        
+
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), JsonConvert.SerializeObject(newReader)));
     }
