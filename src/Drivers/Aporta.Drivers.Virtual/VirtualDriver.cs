@@ -13,7 +13,7 @@ public class VirtualDriver : IHardwareDriver
     private readonly List<IEndpoint> _endpoints = new();
     private readonly Configuration _configuration = new();
     
-    private ILogger<VirtualDriver>? _logger;
+    private ILogger<VirtualDriver> _logger;
     
     /// <inheritdoc />
     public string Name => "Virtual";

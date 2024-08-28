@@ -10,11 +10,10 @@
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls doorCalls;
-@inject IExtensionCalls extensionCalls;
 
 @if (_configuration == null)
 {
-    <div class="spinner">Config Not Set</div>
+    <div class="spinner"></div>
 }
 else
 {
@@ -77,7 +76,7 @@ else
                         <Field>
                             <FieldLabel>Name</FieldLabel>
                             <FieldBody>
-                                <TextEdit @bind-Text="_addReader.Name">
+                                <TextEdit @bind-Text="_addReader.Name" id="AddReaderTextEdit">
                                     <Feedback>
                                         <ValidationError>
                                             Please enter a name for the virtual reader
@@ -156,7 +155,7 @@ else
 
     private Modal _addVirtualReaderModal;
     private Validations _addReaderValidations;
-    private Aporta.Shared.Models.VirtualReader _addReader;
+    private VirtualReader _addReader;
 
     private Endpoint[] _availableAccessPoints;
     //public IEnumerable<IEndpoint> _availableAccessPoints;
@@ -167,19 +166,19 @@ else
     [Parameter]
     public string RawConfiguration { get; set; }
 
-    protected async override void OnParametersSet()
+
+    protected override void OnParametersSet()
     {
-        // _availableAccessPoints = await doorCalls.GetAvailableEndpoints();
 
-        //_configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
+        _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
 
-        // BadgeNumbers = new Dictionary<byte, string>();
-        // LoadBadgeNumberBindings();
 
     }
 
     protected override async Task OnInitializedAsync()
     {
+        _addReader = new VirtualReader();
+        _badgeSwipeAction = new BadgeSwipeAction();
 
         await InitializedAvailableEndpoints();
 
@@ -188,10 +187,6 @@ else
     private async Task InitializedAvailableEndpoints()
     {
         _availableAccessPoints = await doorCalls.GetAvailableEndpoints();
-
-        var extension = await extensionCalls.GetExtension(ExtensionId);
-
-        _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(extension.Configuration);
 
         StateHasChanged();
 
@@ -222,7 +217,7 @@ else
     private async Task ShowSwipeBadgeModal(byte readerNumber)
     {
         _badgeSwipeAction = new BadgeSwipeAction() { ReaderNumber = readerNumber };
-        _badgeSwipeModal.Show();
+        await _badgeSwipeModal.Show();
     }
 
     private async Task SwipeBadge()
@@ -246,7 +241,7 @@ else
     private async Task ShowAddReaderModal()
     {
         _addReader = new Aporta.Shared.Models.VirtualReader();
-        _addVirtualReaderModal.Show();
+        await _addVirtualReaderModal.Show();
     }
 
     private async Task RemoveReader(Reader readerToRemove)
