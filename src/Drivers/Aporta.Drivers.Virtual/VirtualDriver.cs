@@ -83,8 +83,8 @@ public class VirtualDriver : IHardwareDriver
 
                 case ActionType.AddReader:
 
-                    var readerToAdd = JsonConvert.DeserializeObject<Reader>(parameters);
-                    if (readerToAdd!=null && AddReader(readerToAdd))
+                    var readerName = parameters;
+                    if (string.IsNullOrWhiteSpace(readerName) && AddReader(readerName))
                     {
                         OnUpdatedEndpoints();
                     }
@@ -111,11 +111,11 @@ public class VirtualDriver : IHardwareDriver
         return Task.FromResult(string.Empty);
     }
 
-    public bool AddReader(Reader requestedReaderToAdd)
+    public bool AddReader(string nameOfReaderToAdd)
     {
         try
         {
-            var readerToAdd = new Reader() { Name = requestedReaderToAdd.Name, Number = GetNextReaderNumber()};
+            var readerToAdd = new Reader() { Name = nameOfReaderToAdd, Number = GetNextReaderNumber()};
             _configuration.Readers.Add(readerToAdd);
             _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
         } catch (Exception ex)

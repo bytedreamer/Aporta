@@ -66,20 +66,16 @@ public class ConfigurationTest : AportaTestContext
 
     private void SetUpDoorMock()
     {
-
         Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
-
     }
 
     private void SetUpDoorMock(Endpoint[] endpoints)
-    {
-        
+    {        
         List<IEndpoint> _Iendpoints = new();
 
         _mockDoorCalls.Setup(calls => calls.GetAvailableEndpoints()).ReturnsAsync(endpoints);
 
         Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
-
     }
 
     [Test]
@@ -148,11 +144,7 @@ public class ConfigurationTest : AportaTestContext
         var config = SetUpDeviceConfiguration(readerNumber);
         var cardData = "2468";
 
-        var newReader = new Shared.Reader
-        {
-            Name = "New Reader",
-            Number = 0
-        };
+        var newReaderName = "New Reader";
 
         var badgeSwipeParams = new BadgeSwipeAction
         {
@@ -171,15 +163,14 @@ public class ConfigurationTest : AportaTestContext
         await _cut.InvokeAsync(async () => await addReaderButton.Instance.Clicked.InvokeAsync());
 
         var textEdit = _cut.Find("#AddReaderTextEdit");
-        textEdit.Input(newReader.Name);
+        textEdit.Input(newReaderName);
 
         var modalAddReaderButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
 
         await _cut.InvokeAsync(async () => await modalAddReaderButton.Instance.Clicked.InvokeAsync());
 
-
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), JsonConvert.SerializeObject(newReader)));
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), newReaderName));
     }
 
     [Test]
