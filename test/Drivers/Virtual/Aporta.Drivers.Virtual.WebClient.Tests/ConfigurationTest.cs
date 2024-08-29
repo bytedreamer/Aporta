@@ -144,7 +144,7 @@ public class ConfigurationTest : AportaTestContext
         var config = SetUpDeviceConfiguration(readerNumber);
         var cardData = "2468";
 
-        var newReaderName = "New Reader";
+        var newReader = new Shared.AddReaderParameter { Name = "New Reader" };
 
         var badgeSwipeParams = new BadgeSwipeAction
         {
@@ -163,14 +163,14 @@ public class ConfigurationTest : AportaTestContext
         await _cut.InvokeAsync(async () => await addReaderButton.Instance.Clicked.InvokeAsync());
 
         var textEdit = _cut.Find("#AddReaderTextEdit");
-        textEdit.Input(newReaderName);
+        textEdit.Input(newReader.Name);
 
         var modalAddReaderButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
 
         await _cut.InvokeAsync(async () => await modalAddReaderButton.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), newReaderName));
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddReader.ToString(), JsonConvert.SerializeObject(newReader)));
     }
 
     [Test]

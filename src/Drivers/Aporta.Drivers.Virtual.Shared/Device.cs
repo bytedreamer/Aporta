@@ -20,3 +20,8 @@ public class Reader
 
     public byte Number { get; init; }
 }
+
+public class AddReaderParameter
+{
+    public string Name { get; set; } = string.Empty;
+}

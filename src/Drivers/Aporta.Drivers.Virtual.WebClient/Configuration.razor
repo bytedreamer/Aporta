@@ -76,7 +76,7 @@ else
                         <Field>
                             <FieldLabel>Name</FieldLabel>
                             <FieldBody>
-                                <TextEdit @bind-Text="_nameOfReaderToAdd" id="AddReaderTextEdit">
+                                <TextEdit @bind-Text="_readerToAdd.Name" id="AddReaderTextEdit">
                                     <Feedback>
                                         <ValidationError>
                                             Please enter a name for the virtual reader
@@ -154,7 +154,7 @@ else
 
     private Modal _addVirtualReaderModal;
     private Validations _addReaderValidations;
-    private string _nameOfReaderToAdd;
+    private Shared.AddReaderParameter _readerToAdd;
 
     private Endpoint[] _availableAccessPoints;
 
@@ -172,7 +172,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _nameOfReaderToAdd = string.Empty;
+        _readerToAdd = new Shared.AddReaderParameter();
         _badgeSwipeAction = new BadgeSwipeAction();
 
         await InitializedAvailableEndpoints();
@@ -235,7 +235,7 @@ else
 
     private async Task ShowAddReaderModal()
     {
-        _nameOfReaderToAdd = string.Empty;
+        _readerToAdd = new Shared.AddReaderParameter();
         await _addVirtualReaderModal.Show();
     }
 
@@ -268,7 +268,7 @@ else
         }
         await _addVirtualReaderModal.Hide();
 
-        if (await PerformAction(ActionType.AddReader, _nameOfReaderToAdd))
+        if (await PerformAction(ActionType.AddReader, JsonConvert.SerializeObject(_readerToAdd)))
         {
             await InitializedAvailableEndpoints(); 
         }
