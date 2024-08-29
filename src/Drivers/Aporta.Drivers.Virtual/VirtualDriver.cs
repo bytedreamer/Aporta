@@ -131,7 +131,8 @@ public class VirtualDriver : IHardwareDriver
     public byte GetNextReaderNumber()
     {
         if (_configuration.Readers.Count == 0) {  return 1; }
-        return (byte)(_configuration.Readers.MaxBy(x => x.Number).Number + 1);
+        var maxReader = _configuration.Readers.MaxBy(x => x.Number);
+        return (maxReader == null) ? (byte) 1 : (byte)(maxReader.Number + 1);
     }
 
     public bool RemoveReader(Reader readerToRemove)
