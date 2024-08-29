@@ -292,23 +292,13 @@ public class ExtensionService
 
                     await _endpointRepository.Update(updateEndpoint);
                 }
-
-                var okToSave = true;
                 var allEndPoints = await _endpointRepository.GetAll();
                 var doors = (await _doorRepository.GetAll()).ToArray();
                 foreach (var endpoint in EndpointsToBeDeleted(driver, existingEndpoints))
                 {
-
-                    var isAvailable = IsEndPointAvailableForDelete(endpoint, doors, allEndPoints);
-
-                    if (isAvailable)
+                    if (IsEndPointAvailableForDelete(endpoint, doors, allEndPoints))
                     {
                         await _endpointRepository.Delete(endpoint.Id);
-                    } else
-                    {
-                        okToSave = false;
-                        //throw new Exception($"Endpoint {endpoint.Name} not available for delete.");
-                        //Add the endpoint back if it is not
                     }
                     
                 }

@@ -13,7 +13,7 @@ public class VirtualDriver : IHardwareDriver
     private readonly List<IEndpoint> _endpoints = new();
     private readonly Configuration _configuration = new();
     
-    private ILogger<VirtualDriver> _logger;
+    private ILogger<VirtualDriver>? _logger;
     
     /// <inheritdoc />
     public string Name => "Virtual";
@@ -84,7 +84,7 @@ public class VirtualDriver : IHardwareDriver
                 case ActionType.AddReader:
 
                     var readerToAdd = JsonConvert.DeserializeObject<Reader>(parameters);
-                    if (AddReader(readerToAdd))
+                    if (readerToAdd!=null && AddReader(readerToAdd))
                     {
                         OnUpdatedEndpoints();
                     }
@@ -94,10 +94,15 @@ public class VirtualDriver : IHardwareDriver
                 case ActionType.RemoveReader:
 
                     var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
-                    var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
-                    if (RemoveReader(readerToRemove)) {
-                        OnUpdatedEndpoints();
+                    if (requestedReaderToRemove != null)
+                    {
+                        var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
+                        if (readerToRemove != null && RemoveReader(readerToRemove))
+                        {
+                            OnUpdatedEndpoints();
+                        }
                     }
+
 
                     break;
             }
@@ -115,7 +120,7 @@ public class VirtualDriver : IHardwareDriver
             _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
         } catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception occurred adding a new reader");
+            _logger?.LogError(ex, "Exception occurred adding a new reader");
             return false;
         }
 
@@ -139,11 +144,14 @@ public class VirtualDriver : IHardwareDriver
             _configuration.Readers.Remove(readerToRemove);
 
             var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VR{readerToRemove.Number}");
-            _endpoints.Remove(endPointToRemove);
+            if (endPointToRemove != null)
+            {
+                _endpoints.Remove(endPointToRemove);
+            }
 
         } catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception occurred removing a reader");
+            _logger?.LogError(ex, "Exception occurred removing a reader");
             return false;
         }
 

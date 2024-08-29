@@ -109,7 +109,7 @@ else
                         <Field>
                             <FieldLabel>Enter Badge Number</FieldLabel>
                             <FieldBody>
-                                <TextEdit @bind-Text="_badgeSwipeAction.CardData">
+                                <TextEdit @bind-Text="_badgeSwipeAction.CardData" id="SwipeBadgeTextEdit">
                                     <Feedback>
                                         <ValidationError>
                                             Please enter the badge number on the card
@@ -140,7 +140,6 @@ else
 
 @code {
 
-
     [Inject]
     IMessageService MessageService { get; set; }
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
@@ -158,7 +157,6 @@ else
     private VirtualReader _addReader;
 
     private Endpoint[] _availableAccessPoints;
-    //public IEnumerable<IEndpoint> _availableAccessPoints;
 
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -169,10 +167,7 @@ else
 
     protected override void OnParametersSet()
     {
-
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
-
-
     }
 
     protected override async Task OnInitializedAsync()
