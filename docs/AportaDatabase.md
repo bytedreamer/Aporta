@@ -44,24 +44,7 @@ Here is the configuration for the Virtual Device Driver:
 
 ```
 
-![Aporta Drivers](images/AportaDrivers.jpg)
 
 
 
-# Miscellaneous SQL
 
-``` SQL
-
-insert into door
-    (in_access_endpoint_id, out_access_endpoint_id, 
-     door_contact_endpoint_id, request_to_exit_endpoint_id, 
-     door_strike_endpoint_id, name) values 
-    (@inAccessEndpointId, @outAccessEndpointId, @doorContactEndpointId, 
-     @requestToExitEndpointId, @doorStrikeEndpointId, @name)
-
-
-
-insert into input
-    (endpoint_id, name) values 
-    (@endpointId, @name)
-```
