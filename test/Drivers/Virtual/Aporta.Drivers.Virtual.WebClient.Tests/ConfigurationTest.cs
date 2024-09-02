@@ -1,5 +1,4 @@
 using Aporta.Drivers.Virtual.Shared.Actions;
-using Aporta.Drivers.Virtual.Shared;
 using Aporta.Shared.Calls;
 using Blazorise;
 using Bunit;
@@ -8,14 +7,6 @@ using Moq;
 using Newtonsoft.Json;
 using TestWebClientConfiguration;
 using Aporta.Shared.Models;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
-using AngleSharp.Diffing.Extensions;
-using AngleSharp.Dom;
-using Aporta.Extensions.Endpoint;
-using Aporta.Drivers.OSDP.Shared;
-using System.Reflection.PortableExecutable;
-using System.Runtime.CompilerServices;
-using Microsoft.Extensions.Options;
 
 namespace Aporta.Drivers.Virtual.WebClient.Tests;
 
@@ -71,8 +62,6 @@ public class ConfigurationTest : AportaTestContext
 
     private void SetUpDoorMock(Endpoint[] endpoints)
     {        
-        List<IEndpoint> _Iendpoints = new();
-
         _mockDoorCalls.Setup(calls => calls.GetAvailableEndpoints()).ReturnsAsync(endpoints);
 
         Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
@@ -94,8 +83,6 @@ public class ConfigurationTest : AportaTestContext
             ReaderNumber = readerNumber,
             CardData = cardData
         };
-
-        string badgeSwipeParamsSerialized = JsonConvert.SerializeObject(badgeSwipeParams);
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
@@ -142,16 +129,8 @@ public class ConfigurationTest : AportaTestContext
 
         byte readerNumber = 1;
         var config = SetUpDeviceConfiguration(readerNumber);
-        var cardData = "2468";
 
         var newReader = new Shared.AddReaderParameter { Name = "New Reader" };
-
-        var badgeSwipeParams = new BadgeSwipeAction
-        {
-            ReaderNumber = readerNumber,
-            CardData = cardData
-
-        };
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
@@ -186,8 +165,8 @@ public class ConfigurationTest : AportaTestContext
 
 
         Endpoint[] availableEndPoints = {
-            new Endpoint{ ExtensionId = _extensionId, Type = EndpointType.Reader, DriverEndpointId = $"VR{readersOnRazorPage[1].Number}", Id = readersOnRazorPage[1].Number },
-            new Endpoint{ ExtensionId = _extensionId, Type = EndpointType.Reader, DriverEndpointId = $"VR{readersOnRazorPage[2].Number}", Id = readersOnRazorPage[2].Number }
+            new() { ExtensionId = _extensionId, Type = EndpointType.Reader, DriverEndpointId = $"VR{readersOnRazorPage[1].Number}", Id = readersOnRazorPage[1].Number },
+            new() { ExtensionId = _extensionId, Type = EndpointType.Reader, DriverEndpointId = $"VR{readersOnRazorPage[2].Number}", Id = readersOnRazorPage[2].Number }
 
         };
 
@@ -215,6 +194,4 @@ public class ConfigurationTest : AportaTestContext
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveReader.ToString(), JsonConvert.SerializeObject(readerToRemove)));
     }
-
-
 }

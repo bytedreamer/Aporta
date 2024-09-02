@@ -17,25 +17,4 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\Aporta.Core\Aporta.Core.csproj" />
     </ItemGroup>
-
-    <ItemGroup>
-        <DriverFiles Include="bin\$(Configuration)\Drivers\**" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Compile Remove="bin\**" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <EmbeddedResource Remove="bin\**" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Remove="bin\**" />
-    </ItemGroup>
-
-    <Target Name="CopyDrivers" AfterTargets="AfterBuild">
-        <Copy SourceFiles="@(DriverFiles)" DestinationFiles="@(DriverFiles->'$(OutDir)\Drivers\%(RecursiveDir)%(Filename)%(Extension)')" />
-    </Target>
-
 </Project>

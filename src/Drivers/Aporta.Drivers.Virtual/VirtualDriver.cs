@@ -135,13 +135,10 @@ public class VirtualDriver : IHardwareDriver
         return (maxReader == null) ? (byte) 1 : (byte)(maxReader.Number + 1);
     }
 
-    public bool RemoveReader(Reader readerToRemove)
+    private bool RemoveReader(Reader readerToRemove)
     {
-
         try
         {
-            if (readerToRemove == null) return false;   
-
             _configuration.Readers.Remove(readerToRemove);
 
             var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VR{readerToRemove.Number}");
@@ -150,9 +147,9 @@ public class VirtualDriver : IHardwareDriver
                 _endpoints.Remove(endPointToRemove);
             }
 
-        } catch (Exception ex)
+        } catch (Exception exception)
         {
-            _logger?.LogError(ex, "Exception occurred removing a reader");
+            _logger?.LogError(exception, "Exception occurred removing a reader");
             return false;
         }
 
@@ -163,7 +160,7 @@ public class VirtualDriver : IHardwareDriver
     private void ProcessBadgeSwipe(string parameters)
     {
         var badgeAction = JsonConvert.DeserializeObject<BadgeSwipeAction>(parameters);
-        if (badgeAction == null) return;
+        if (badgeAction == null || badgeAction.CardData == null) return;
 
         _logger?.LogInformation("A card has been presented to the reader");
         var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()

@@ -1,3 +1,4 @@
+using System;
 using Aporta.Shared.Models;
 
 namespace Aporta.Core.DataAccess.Repositories;
@@ -22,7 +23,7 @@ public class EventRepository : BaseRepository<Event>
                                                 (endpoint_id, timestamp, event_type, data) values 
                                                 (@endpointId, @timestamp, @type, @data)";
 
-    protected override string SqlUpdate { get; }
+    protected override string SqlUpdate => throw new NotImplementedException();
 
     protected override string SqlDelete => @"delete from event where id = @id";
 

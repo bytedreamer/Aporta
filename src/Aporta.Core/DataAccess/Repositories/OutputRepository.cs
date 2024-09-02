@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
@@ -20,7 +21,7 @@ public class OutputRepository : BaseRepository<Output>
                                                 (endpoint_id, name) values 
                                                 (@endpointId, @name)";
 
-    protected override string SqlUpdate { get; }
+    protected override string SqlUpdate => throw new NotImplementedException();
 
     protected override string SqlDelete => @"delete from output where id = @id";
     

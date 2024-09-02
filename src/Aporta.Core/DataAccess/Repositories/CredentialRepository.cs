@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
@@ -26,7 +27,7 @@ public class CredentialRepository : BaseRepository<Credential>
                                                 (number, last_event) values 
                                                 (@number, @lastEvent)";
 
-    protected override string SqlUpdate { get; }
+    protected override string SqlUpdate => throw new NotImplementedException();
 
     private string SqlAssignmentInsert => @"insert into credential_assignment
                                                 (person_id, credential_id, enabled) values 

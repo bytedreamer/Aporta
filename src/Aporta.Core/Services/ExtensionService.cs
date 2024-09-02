@@ -20,44 +20,32 @@ using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
-using System.Net;
 
 namespace Aporta.Core.Services;
 
 /// <summary>
 /// 
 /// </summary>
-public class ExtensionService
+public class ExtensionService(
+    IDataAccess dataAccess,
+    IHubContext<DataChangeNotificationHub> hubContext,
+    IDataEncryption dataEncryption,
+    ILogger<ExtensionService> logger,
+    ILoggerFactory loggerFactory)
 {
     private static readonly SemaphoreSlim EndpointUpdateSemaphore = new(1, 1);
 
-    private readonly ILoggerFactory _loggerFactory;
-    private readonly ILogger<ExtensionService> _logger;
-    private readonly ExtensionRepository _extensionRepository;
-    private readonly EndpointRepository _endpointRepository;
-    private readonly DoorRepository _doorRepository;
-    private readonly IHubContext<DataChangeNotificationHub> _hubContext;
-    private readonly IDataEncryption _dataEncryption;
+    private readonly ExtensionRepository _extensionRepository = new(dataAccess);
+    private readonly EndpointRepository _endpointRepository = new(dataAccess);
+    private readonly DoorRepository _doorRepository = new(dataAccess);
     private readonly List<ExtensionHost> _extensions = new();
     private readonly object _extensionLock = new ();
 
-    public ExtensionService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext, 
-        IDataEncryption dataEncryption, ILogger<ExtensionService> logger, ILoggerFactory loggerFactory)
-    {
-        _hubContext = hubContext;
-        _dataEncryption = dataEncryption;
-        _logger = logger;
-        _loggerFactory = loggerFactory;
-        _endpointRepository = new EndpointRepository(dataAccess);
-        _extensionRepository = new ExtensionRepository(dataAccess);
-        _doorRepository = new DoorRepository(dataAccess);
-    }
-        
     public string CurrentDirectory { get; init; }
 
     public async Task Startup()
     {
-        _logger.LogInformation("Starting extension service");
+        logger.LogInformation("Starting extension service");
 
         await DiscoverExtensions();
 
@@ -66,7 +54,7 @@ public class ExtensionService
 
     public void Shutdown()
     {
-        _logger.LogInformation("Shutting down extension service");
+        logger.LogInformation("Shutting down extension service");
 
         UnloadExtensions();
     }
@@ -77,7 +65,7 @@ public class ExtensionService
         {
             var matchingExtension = _extensions.First(extension => extension.Id == extensionId);
 
-            _logger.LogInformation("{Enabled} extension {Name}", enabled ? "Enabling" : "Disabling", matchingExtension.Name);
+            logger.LogInformation("{Enabled} extension {Name}", enabled ? "Enabling" : "Disabling", matchingExtension.Name);
 
             matchingExtension.Enabled = enabled;
             await _extensionRepository.Update(matchingExtension);
@@ -93,7 +81,7 @@ public class ExtensionService
         }
         finally
         {
-            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
+            await hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extensionId);
         }
     }
 
@@ -101,11 +89,11 @@ public class ExtensionService
     {
         var matchingExtension = MatchingExtensionHost(extensionId);
 
-        _logger.LogInformation("Performing {Action} for extension {Name}", action, matchingExtension.Name);
+        logger.LogInformation("Performing {Action} for extension {Name}", action, matchingExtension.Name);
 
         string result = await matchingExtension.Driver.PerformAction(action, parameters);
 
-        _logger.LogInformation("Saving configuration for extension {Name}", matchingExtension.Name);
+        logger.LogInformation("Saving configuration for extension {Name}", matchingExtension.Name);
 
         //await SaveCurrentConfiguration(matchingExtension);
 
@@ -169,7 +157,7 @@ public class ExtensionService
             extensionFinder.FindAssembliesWithPlugins(
                 Path.Combine(CurrentDirectory ??
                              Path.GetDirectoryName(CurrentDirectory ?? Assembly.GetEntryAssembly()?.Location) ?? Environment.CurrentDirectory,
-                    "Drivers"), _loggerFactory.CreateLogger<Finder<IHardwareDriver>>());
+                    "Drivers"), loggerFactory.CreateLogger<Finder<IHardwareDriver>>());
 
         foreach (string assemblyPath in assemblyPaths)
         {
@@ -179,7 +167,7 @@ public class ExtensionService
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Unable to discover assembly {AssemblyPath}", assemblyPath);
+                logger.LogError(exception, "Unable to discover assembly {AssemblyPath}", assemblyPath);
             }
         }
     }
@@ -219,7 +207,7 @@ public class ExtensionService
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Unable to load extension {Name}", extension.Name);
+                logger.LogError(exception, "Unable to load extension {Name}", extension.Name);
             }
         }
     }
@@ -241,7 +229,7 @@ public class ExtensionService
             extension.Driver.AccessCredentialReceived += DriverOnAccessCredentialReceived;
             extension.Driver.StateChanged += DriverOnStateChanged;
 
-            extension.Driver.Load(extension.Configuration, _dataEncryption, _loggerFactory);
+            extension.Driver.Load(extension.Configuration, dataEncryption, loggerFactory);
             extension.Configuration = extension.Driver.CurrentConfiguration();
 
             extension.Loaded = true;
@@ -292,7 +280,7 @@ public class ExtensionService
 
                     await _endpointRepository.Update(updateEndpoint);
                 }
-                var allEndPoints = await _endpointRepository.GetAll();
+                var allEndPoints = (await _endpointRepository.GetAll()).ToArray();
                 var doors = (await _doorRepository.GetAll()).ToArray();
                 foreach (var endpoint in EndpointsToBeDeleted(driver, existingEndpoints))
                 {
@@ -322,15 +310,6 @@ public class ExtensionService
             !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id));
 
         return availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == endpointToDelete.DriverEndpointId) > 0;
-    }
-
-    private bool IsEndPointAssignedToDoorPrev(Endpoint endpointToDelete, Door[] doors)
-    {
-
-        var count = (doors.Select(door => door.InAccessEndpointId == endpointToDelete.Id || door.OutAccessEndpointId == endpointToDelete.Id)).Count();
-
-        return (doors.Select(door => door.InAccessEndpointId == endpointToDelete.Id || door.OutAccessEndpointId == endpointToDelete.Id)).Count() > 0;
-
     }
 
     private void DriverOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
@@ -375,7 +354,7 @@ public class ExtensionService
         }
         finally
         {
-            await _hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extension.Id);
+            await hubContext.Clients.All.SendAsync(Methods.ExtensionDataChanged, extension.Id);
         }
     }
 
@@ -389,7 +368,7 @@ public class ExtensionService
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Unable to unload extension {Name}", extension.Name);
+                logger.LogError(exception, "Unable to unload extension {Name}", extension.Name);
             }
         }
 

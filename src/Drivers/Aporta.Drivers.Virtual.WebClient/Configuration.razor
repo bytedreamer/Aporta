@@ -3,13 +3,11 @@
 
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Models
-@using Aporta.Shared.Messaging
 @using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
-@using Aporta.Extensions.Endpoint;
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
-@inject IDoorCalls doorCalls;
+@inject IDoorCalls DoorCalls;
 
 @if (_configuration == null)
 {
@@ -181,7 +179,7 @@ else
 
     private async Task InitializedAvailableEndpoints()
     {
-        _availableAccessPoints = await doorCalls.GetAvailableEndpoints();
+        _availableAccessPoints = await DoorCalls.GetAvailableEndpoints();
 
         StateHasChanged();
 
@@ -189,10 +187,9 @@ else
 
     private async Task<bool> PerformAction(ActionType actionType, string parameters)
     {
-        string responseData;
         try
         {
-            responseData = await ConfigurationCalls.PerformAction(ExtensionId, actionType.ToString(), parameters);
+            await ConfigurationCalls.PerformAction(ExtensionId, actionType.ToString(), parameters);
         }
         catch (Exception exception)
         {
@@ -211,7 +208,7 @@ else
 
     private async Task ShowSwipeBadgeModal(byte readerNumber)
     {
-        _badgeSwipeAction = new BadgeSwipeAction() { ReaderNumber = readerNumber };
+        _badgeSwipeAction = new BadgeSwipeAction { ReaderNumber = readerNumber };
         await _badgeSwipeModal.Show();
     }
 

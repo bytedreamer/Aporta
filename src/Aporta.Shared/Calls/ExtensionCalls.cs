@@ -6,7 +6,6 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.WebUtilities;
-using static System.Net.WebRequestMethods;
 
 namespace Aporta.Shared.Calls;
 

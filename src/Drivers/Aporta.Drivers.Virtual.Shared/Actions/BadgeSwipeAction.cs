@@ -2,7 +2,8 @@
 
 public class BadgeSwipeAction
 {
-    public byte ReaderNumber { get; set; }
-    public string CardData { get; set; }
+    public byte ReaderNumber { get; init; }
+    
+    public string? CardData { get; set; }
 }
 
