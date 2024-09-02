@@ -17,4 +17,12 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\Aporta.Core\Aporta.Core.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+        <DriverFiles Include="bin\$(Configuration)\Drivers\**" />
+    </ItemGroup>
+
+    <Target Name="CopyDrivers" AfterTargets="AfterBuild">
+        <Copy SourceFiles="@(DriverFiles)" DestinationFiles="@(DriverFiles->'$(OutDir)\Drivers\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
 </Project>
