@@ -42,7 +42,7 @@ public class EventRepository : BaseRepository<Event>
 
     protected override object UpdateParameters(Event record)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     protected override void InsertId(Event @event, int id)

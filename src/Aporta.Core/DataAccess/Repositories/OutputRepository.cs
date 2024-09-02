@@ -49,7 +49,7 @@ public class OutputRepository : BaseRepository<Output>
 
     protected override object UpdateParameters(Output record)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     protected override void InsertId(Output output, int id)

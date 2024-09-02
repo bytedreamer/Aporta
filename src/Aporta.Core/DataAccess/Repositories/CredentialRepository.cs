@@ -58,7 +58,7 @@ public class CredentialRepository : BaseRepository<Credential>
 
     protected override object UpdateParameters(Credential record)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     protected override void InsertId(Credential credential, int id)

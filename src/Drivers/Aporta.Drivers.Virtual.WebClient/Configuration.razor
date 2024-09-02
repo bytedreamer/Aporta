@@ -5,6 +5,7 @@
 @using Aporta.Shared.Models
 @using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
+@using Aporta.Drivers.Virtual.WebClient.Dialogs
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls DoorCalls;
@@ -15,50 +16,66 @@
 }
 else
 {
-
     <Row>
-        <Button Color="Color.Primary" Clicked="ShowAddReaderModal">Add Virtual Reader</Button>
+        <Column ColumnSize="ColumnSize.IsFull">
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    <Row Margin="Margin.Is2.OnY">
+                        <Column>
+                            <Heading>Virtual Readers</Heading>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column>
+                            <Button Color="Color.Primary" Clicked="ShowAddReaderModal">Add Virtual Reader</Button>
+                        </Column>
+                    </Row>
+                </CardTitle>
+                <CardBody>
+                    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Reader Name</TableHeaderCell>
+                                <TableHeaderCell>Reader Number</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var reader in _configuration.Readers)
+                            {
+                                <TableRow ElementId="@("Reader:" + @reader.Name)">
+                                    <TableRowHeader>
+                                        @reader.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @reader.Number
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                Action
+                                            </DropdownToggle>
+                                            <DropdownMenu>
+                                                @if (IsReaderAvailableForDelete(reader))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await RemoveReader(reader))">Delete</DropdownItem>
+                                                    <DropdownDivider/>
+                                                }
+                                                <DropdownItem Clicked="@(async () => await ShowSwipeBadgeModal(reader.Number))">Swipe Badge</DropdownItem>
+                                            </DropdownMenu>
+                                        </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
     </Row>
-
-    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
-        <TableHeader>
-            <TableRow>
-                <TableHeaderCell>Reader Name</TableHeaderCell>
-                <TableHeaderCell>Reader Number</TableHeaderCell>
-                <TableHeaderCell></TableHeaderCell>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-            @foreach (var reader in _configuration.Readers)
-            {
-                <TableRow ElementId="@("Reader:" + @reader.Name)">
-                    <TableRowHeader>
-                        @reader.Name
-                    </TableRowHeader>
-                    <TableRowCell>
-                        @reader.Number
-                    </TableRowCell>
-                    <TableRowCell TextAlignment="TextAlignment.End">
-                        <Dropdown>
-                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
-                                Action
-                            </DropdownToggle>
-                            <DropdownMenu>
-                                @if (IsReaderAvailableForDelete(reader))
-                                {
-                                    <DropdownItem Clicked="@(async () => await RemoveReader(reader))">Delete</DropdownItem>
-                                    <DropdownDivider />
-                                }
-
-                                <DropdownItem Clicked="@(async () => await ShowSwipeBadgeModal(reader.Number))">Swipe Badge</DropdownItem>
-                                
-                            </DropdownMenu>
-                        </Dropdown>
-                    </TableRowCell>
-                </TableRow>
-            }
-        </TableBody>
-    </Table>
+    
+    <BadgeSwipeDialog @ref="_badgeSwipeDialog"
+                   PerformSwipeBadgeAction="@BadgeSwipe" />
 
     <Modal @ref="_addVirtualReaderModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
@@ -93,40 +110,6 @@ else
         </ModalContent>
     </Modal>
 
-    <Modal @ref="_badgeSwipeModal">
-        <ModalContent Size="ModalSize.Default" Centered="true">
-            <ModalHeader>
-                <ModalTitle>
-                    Simulation of a Badge Swipe
-                </ModalTitle>
-                <CloseButton Clicked="@_badgeSwipeModal.Hide" />
-            </ModalHeader>
-            <ModalBody>
-                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_badgeSwipeValidations">
-                    <Validation Validator="@ValidationRule.IsNotEmpty">
-                        <Field>
-                            <FieldLabel>Enter Badge Number</FieldLabel>
-                            <FieldBody>
-                                <TextEdit @bind-Text="_badgeSwipeAction.CardData" id="SwipeBadgeTextEdit">
-                                    <Feedback>
-                                        <ValidationError>
-                                            Please enter the badge number on the card
-                                        </ValidationError>
-                                    </Feedback>
-                                </TextEdit>
-                            </FieldBody>
-                        </Field>
-                    </Validation>
-                </Validations>
-            </ModalBody>
-            <ModalFooter>
-                <Button Color="Color.Secondary" Clicked="@_badgeSwipeModal.Hide">Cancel</Button>
-                <Button Color="Color.Primary" Clicked="@(async () => await SwipeBadge())">Swipe the badge</Button>
-            </ModalFooter>
-        </ModalContent>
-    </Modal>
-
-
     <Snackbar @ref="_snackbar" Color="@_snackbarColor">
         <SnackbarBody>
             @_snackbarMessage
@@ -137,31 +120,28 @@ else
 }
 
 @code {
-
     [Inject]
     IMessageService MessageService { get; set; }
-    private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
 
-    private Modal _badgeSwipeModal;
-    private Validations _badgeSwipeValidations;
-    private BadgeSwipeAction _badgeSwipeAction;
-
     private Modal _addVirtualReaderModal;
     private Validations _addReaderValidations;
     private Shared.AddReaderParameter _readerToAdd;
 
+    private BadgeSwipeDialog _badgeSwipeDialog;
+
     private Endpoint[] _availableAccessPoints;
+    
+    private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
     [Parameter]
     public Guid ExtensionId { get; set; }
 
     [Parameter]
     public string RawConfiguration { get; set; }
-
 
     protected override void OnParametersSet()
     {
@@ -171,10 +151,8 @@ else
     protected override async Task OnInitializedAsync()
     {
         _readerToAdd = new Shared.AddReaderParameter();
-        _badgeSwipeAction = new BadgeSwipeAction();
 
         await InitializedAvailableEndpoints();
-
     }
 
     private async Task InitializedAvailableEndpoints()
@@ -182,7 +160,6 @@ else
         _availableAccessPoints = await DoorCalls.GetAvailableEndpoints();
 
         StateHasChanged();
-
     }
 
     private async Task<bool> PerformAction(ActionType actionType, string parameters)
@@ -205,35 +182,26 @@ else
 
         return true;
     }
-
+    
     private async Task ShowSwipeBadgeModal(byte readerNumber)
     {
-        _badgeSwipeAction = new BadgeSwipeAction { ReaderNumber = readerNumber };
-        await _badgeSwipeModal.Show();
+        _badgeSwipeDialog.ReaderNumberToSwipe = readerNumber;
+        await _badgeSwipeDialog.ShowDialog();
     }
-
-    private async Task SwipeBadge()
-    {
-
-        if (!await _badgeSwipeValidations.ValidateAll())
-        {
-            return;
-        }
-        await _badgeSwipeModal.Hide();
-
-        var parameters = JsonConvert.SerializeObject(new BadgeSwipeAction
-            {
-                ReaderNumber = _badgeSwipeAction.ReaderNumber,
-                CardData = _badgeSwipeAction.CardData
-            });
-
-        await PerformAction(ActionType.BadgeSwipe, parameters);
-    }
-
+    
     private async Task ShowAddReaderModal()
     {
         _readerToAdd = new Shared.AddReaderParameter();
         await _addVirtualReaderModal.Show();
+    }
+    
+    private async Task BadgeSwipe()
+    {
+        await PerformAction(ActionType.BadgeSwipe, JsonConvert.SerializeObject(new BadgeSwipeAction
+        {
+            ReaderNumber = _badgeSwipeDialog.ReaderNumberToSwipe,
+            CardData = _badgeSwipeDialog.CardDataToSwipe
+        }));
     }
 
     private async Task RemoveReader(Reader readerToRemove)
@@ -247,7 +215,6 @@ else
             return;
         }
 
-        //var updatedConfiguration = JsonConvert.SerializeObject(_configuration);
         var readerToRemoveSerialized = JsonConvert.SerializeObject(readerToRemove);
 
         if (await PerformAction(ActionType.RemoveReader, readerToRemoveSerialized))
@@ -258,7 +225,6 @@ else
 
     private async Task AddReader()
     {
-
         if (!await _addReaderValidations.ValidateAll())
         {
             return;
@@ -269,12 +235,10 @@ else
         {
             await InitializedAvailableEndpoints(); 
         }
-
     }
 
     private bool IsReaderAvailableForDelete(Reader reader)
     {
         return  _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
     }
-
 }

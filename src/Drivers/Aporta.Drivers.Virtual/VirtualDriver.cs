@@ -111,7 +111,7 @@ public class VirtualDriver : IHardwareDriver
         return Task.FromResult(string.Empty);
     }
 
-    public bool AddReader(AddReaderParameter requestedReaderToAdd)
+    private bool AddReader(AddReaderParameter requestedReaderToAdd)
     {
         try
         {
@@ -127,8 +127,7 @@ public class VirtualDriver : IHardwareDriver
         return true;
     }
 
-
-    public byte GetNextReaderNumber()
+    private byte GetNextReaderNumber()
     {
         if (_configuration.Readers.Count == 0) {  return 1; }
         var maxReader = _configuration.Readers.MaxBy(x => x.Number);

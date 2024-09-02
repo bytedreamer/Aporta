@@ -1,0 +1,61 @@
+<Modal @ref="_badgeSwipeModal">
+    <ModalContent Size="ModalSize.Default" Centered="true">
+        <ModalHeader>
+            <ModalTitle>
+                Simulation of a Badge Swipe
+            </ModalTitle>
+            <CloseButton Clicked="@_badgeSwipeModal.Hide" />
+        </ModalHeader>
+        <ModalBody>
+            <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_badgeSwipeValidations">
+                <Validation Validator="@ValidationRule.IsNotEmpty">
+                    <Field>
+                        <FieldLabel>Enter Badge Number</FieldLabel>
+                        <FieldBody>
+                            <TextEdit @bind-Text="CardDataToSwipe" id="SwipeBadgeTextEdit">
+                                <Feedback>
+                                    <ValidationError>
+                                        Please enter the badge number on the card
+                                    </ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+            </Validations>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@_badgeSwipeModal.Hide">Cancel</Button>
+            <Button Color="Color.Primary" Clicked="@(async () => await SwipeBadge())">Swipe the badge</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private Modal _badgeSwipeModal;
+    private Validations _badgeSwipeValidations;
+    
+    public byte ReaderNumberToSwipe { get; set; }
+    
+    public string CardDataToSwipe { get; set; }
+    
+    [Parameter]
+    public EventCallback PerformSwipeBadgeAction { get; set; }
+
+    private async Task SwipeBadge()
+    {
+        if (!await _badgeSwipeValidations.ValidateAll())
+        {
+            return;
+        }
+        
+        await _badgeSwipeModal.Hide();
+
+        await PerformSwipeBadgeAction.InvokeAsync();
+    }
+    
+    public async Task ShowDialog()
+    {
+        await _badgeSwipeModal.Show();
+    }
+}
