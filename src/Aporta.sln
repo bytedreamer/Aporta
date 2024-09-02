@@ -57,6 +57,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Windows", "Windows", "{D793
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{4BE8F4FD-297B-4E7E-A5C9-813EA9395BC2}"
 	ProjectSection(SolutionItems) = preProject
+		..\docs\AportaHouseKeeping.md = ..\docs\AportaHouseKeeping.md
 		..\docs\HowToCreateADriver.md = ..\docs\HowToCreateADriver.md
 		..\docs\HowToUseTheVirtualDeviceDriver.md = ..\docs\HowToUseTheVirtualDeviceDriver.md
 		..\README.md = ..\README.md

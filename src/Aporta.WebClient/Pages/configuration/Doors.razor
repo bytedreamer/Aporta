@@ -226,6 +226,14 @@ else
 
             StateHasChanged();
         });
+        _hubConnection.On<int>(Methods.ExtensionDataChanged, async _ =>
+        {
+
+
+            await InitializedAvailableEndpoints();
+
+            StateHasChanged();
+        });
         await _hubConnection.StartAsync();
     }
 
