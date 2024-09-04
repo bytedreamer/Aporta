@@ -1,5 +1,14 @@
 steps:
 - task: DotNetCoreCLI@2
+  displayName: 'Build Aporta'
+  inputs:
+    command: 'build'
+    projects: 'src/Aporta.sln'
+    arguments: '--configuration $(buildConfiguration)'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'AssemblyVersion' 
+  
+- task: DotNetCoreCLI@2
   displayName: 'Publish Aporta'
   inputs:
     command: 'publish'
