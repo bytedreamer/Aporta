@@ -28,28 +28,35 @@ public class VirtualDriver : IHardwareDriver
     public void Load(string configuration, IDataEncryption dataEncryption, ILoggerFactory loggerFactory)
     {
         _logger = loggerFactory.CreateLogger<VirtualDriver>();
-        
-        _configuration.Readers.Add(new Reader{Name = "Virtual Reader 1", Number = 1});
-        _configuration.Readers.Add(new Reader { Name = "Virtual Reader 2", Number = 2 });
-        _configuration.Readers.Add(new Reader { Name = "Virtual Reader 3", Number = 3 });
-        foreach (var reader in _configuration.Readers)
+
+        var configToLoad = JsonConvert.DeserializeObject<Configuration>(configuration);
+        if (configToLoad == null) return;
+        LoadConfiguration(configToLoad);
+    }
+
+
+    private void LoadConfiguration(Configuration configToLoad)
+    {
+        if (configToLoad == null) return;
+
+        foreach (var reader in configToLoad.Readers)
         {
+            _configuration.Readers.Add(reader);
             _endpoints.Add(new VirtualReader(reader.Name, Id, $"VR{reader.Number}"));
         }
+
         
-        _configuration.Outputs.Add(new Output{Name = "Virtual Output 1", Number = 1});
-        foreach (var output in _configuration.Outputs)
+        foreach (var output in configToLoad.Outputs)
         {
+            _configuration.Outputs.Add(output);
             _endpoints.Add(new VirtualOutput(output.Name, Id, $"VO{output.Number}"));
         }
         
-        _configuration.Inputs.Add(new Input{Name = "Virtual Input 1", Number = 1});
-        foreach (var input in _configuration.Inputs)
+        foreach (var input in configToLoad.Inputs)
         {
+            _configuration.Inputs.Add(input);
             _endpoints.Add(new VirtualInput(input.Name, Id, $"VI{input.Number}"));
         }
-        
-        OnUpdatedEndpoints();
     }
 
     /// <inheritdoc />
