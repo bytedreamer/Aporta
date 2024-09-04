@@ -30,6 +30,7 @@ public class VirtualDriver : IHardwareDriver
         _logger = loggerFactory.CreateLogger<VirtualDriver>();
 
         var configToLoad = JsonConvert.DeserializeObject<Configuration>(configuration);
+        if (configToLoad == null) return;
         LoadConfiguration(configToLoad);
     }
 
