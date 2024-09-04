@@ -12,10 +12,14 @@
         <PackageReference Include="Blazorise.Snackbar" Version="1.5.0" />
         <PackageReference Include="Microsoft.AspNetCore.Components" Version="8.0.3" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.8" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\Aporta.Shared\Aporta.Shared.csproj" />
       <ProjectReference Include="..\Aporta.Drivers.Virtual.Shared\Aporta.Drivers.Virtual.Shared.csproj" />
+      <ProjectReference Include="..\Aporta.Drivers.Virtual\Aporta.Drivers.Virtual.csproj" />
     </ItemGroup>
 </Project>

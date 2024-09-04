@@ -27,6 +27,8 @@ public class DoorRepository : BaseRepository<Door>
                                                 (@inAccessEndpointId, @outAccessEndpointId, @doorContactEndpointId, 
                                                  @requestToExitEndpointId, @doorStrikeEndpointId, @name)";
 
+    protected override string SqlUpdate =>throw new System.NotImplementedException();
+
     protected override string SqlDelete => @"delete from door where id = @id";
     
     protected override string SqlRowCount => @"select count(*) from door";
@@ -42,6 +44,11 @@ public class DoorRepository : BaseRepository<Door>
             doorStrikeEndpointId = door.DoorStrikeEndpointId,
             name = door.Name
         };
+    }
+
+    protected override object UpdateParameters(Door record)
+    {
+        throw new System.NotImplementedException();
     }
 
     protected override void InsertId(Door door, int id)

@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
@@ -19,6 +20,8 @@ public class OutputRepository : BaseRepository<Output>
     protected override string SqlInsert => @"insert into output
                                                 (endpoint_id, name) values 
                                                 (@endpointId, @name)";
+
+    protected override string SqlUpdate => throw new NotImplementedException();
 
     protected override string SqlDelete => @"delete from output where id = @id";
     
@@ -42,6 +45,11 @@ public class OutputRepository : BaseRepository<Output>
             endpointId = output.EndpointId,
             name = output.Name
         };
+    }
+
+    protected override object UpdateParameters(Output record)
+    {
+        throw new NotImplementedException();
     }
 
     protected override void InsertId(Output output, int id)

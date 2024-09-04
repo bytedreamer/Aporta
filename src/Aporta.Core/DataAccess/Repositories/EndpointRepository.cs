@@ -24,12 +24,16 @@ public class EndpointRepository : BaseRepository<Endpoint>
                                             (name, endpoint_type, driver_id, extension_id) values 
                                             (@name, @endpointType, @driverEndpointId, @extensionId)";
 
-        
+    protected override string SqlUpdate => @"update endpoint
+                                            set name = @name
+                                            where driver_id = @driverEndpointId and extension_id = @extensionId";
+
+
     protected override string SqlDelete => @"delete from endpoint
                                             where id = @id";
     
     protected override string SqlRowCount => @"select count(*) from endpoint";
-        
+
     public async Task<IEnumerable<Endpoint>> GetForExtension(Guid extensionId)
     {
         using var connection = DataAccess.CreateDbConnection();
@@ -39,6 +43,7 @@ public class EndpointRepository : BaseRepository<Endpoint>
             new {extensionId});
     }
 
+    /// <inheritdoc/>
     protected override object InsertParameters(Endpoint endpoint)
     {
         return new
@@ -50,6 +55,18 @@ public class EndpointRepository : BaseRepository<Endpoint>
         };
     }
 
+    /// <inheritdoc/>
+    protected override object UpdateParameters(Endpoint endpoint)
+    {
+        return new
+        {
+            name = endpoint.Name,
+            driverEndpointId = endpoint.DriverEndpointId,
+            extensionId = endpoint.ExtensionId
+        };
+    }
+
+    /// <inheritdoc/>
     protected override void InsertId(Endpoint endpoint, int id)
     {
         endpoint.Id = id;

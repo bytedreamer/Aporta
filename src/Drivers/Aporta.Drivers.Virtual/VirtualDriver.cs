@@ -4,6 +4,7 @@ using Aporta.Extensions.Endpoint;
 using Aporta.Extensions.Hardware;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Aporta.Drivers.Virtual.Shared.Actions;
 
 namespace Aporta.Drivers.Virtual;
 
@@ -27,27 +28,31 @@ public class VirtualDriver : IHardwareDriver
     public void Load(string configuration, IDataEncryption dataEncryption, ILoggerFactory loggerFactory)
     {
         _logger = loggerFactory.CreateLogger<VirtualDriver>();
-        
-        _configuration.Readers.Add(new Reader{Name = "Virtual Reader 1", Number = 1});
-        foreach (var reader in _configuration.Readers)
+
+        var configToLoad = JsonConvert.DeserializeObject<Configuration>(configuration);
+        if (configToLoad == null) return;
+        LoadConfiguration(configToLoad);
+    }
+
+    private void LoadConfiguration(Configuration configToLoad)
+    {
+        foreach (var reader in configToLoad.Readers)
         {
+            _configuration.Readers.Add(reader);
             _endpoints.Add(new VirtualReader(reader.Name, Id, $"VR{reader.Number}"));
         }
         
-        _configuration.Outputs.Add(new Output{Name = "Virtual Output 1", Number = 1});
-        foreach (var output in _configuration.Outputs)
+        foreach (var output in configToLoad.Outputs)
         {
+            _configuration.Outputs.Add(output);
             _endpoints.Add(new VirtualOutput(output.Name, Id, $"VO{output.Number}"));
         }
         
-        _configuration.Inputs.Add(new Input{Name = "Virtual Input 1", Number = 1});
-        _configuration.Inputs.Add(new Input{Name = "Virtual Input 1", Number = 2});
-        foreach (var input in _configuration.Inputs)
+        foreach (var input in configToLoad.Inputs)
         {
+            _configuration.Inputs.Add(input);
             _endpoints.Add(new VirtualInput(input.Name, Id, $"VI{input.Number}"));
         }
-        
-        OnUpdatedEndpoints();
     }
 
     /// <inheritdoc />
@@ -71,7 +76,101 @@ public class VirtualDriver : IHardwareDriver
     /// <inheritdoc />
     public Task<string> PerformAction(string action, string parameters)
     {
+        if (Enum.TryParse(action, out ActionType actionType))
+        {
+            switch (actionType)
+            {
+                case ActionType.BadgeSwipe:
+                    ProcessBadgeSwipe(parameters);
+                    break;
+
+                case ActionType.AddReader:
+
+                    var readerToAdd = JsonConvert.DeserializeObject<AddReaderParameter>(parameters);
+                    if (readerToAdd != null && AddReader(readerToAdd))
+                    {
+                        OnUpdatedEndpoints();
+                    }
+
+                    break;
+
+                case ActionType.RemoveReader:
+
+                    var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
+                    if (requestedReaderToRemove != null)
+                    {
+                        var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
+                        if (readerToRemove != null && RemoveReader(readerToRemove))
+                        {
+                            OnUpdatedEndpoints();
+                        }
+                    }
+
+
+                    break;
+            }
+        }
+
         return Task.FromResult(string.Empty);
+    }
+
+    private bool AddReader(AddReaderParameter requestedReaderToAdd)
+    {
+        try
+        {
+            var readerToAdd = new Reader() { Name = requestedReaderToAdd.Name, Number = GetNextReaderNumber()};
+            _configuration.Readers.Add(readerToAdd);
+            _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
+        } catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Exception occurred adding a new reader");
+            return false;
+        }
+
+        return true;
+    }
+
+    private byte GetNextReaderNumber()
+    {
+        if (_configuration.Readers.Count == 0) {  return 1; }
+        var maxReader = _configuration.Readers.MaxBy(x => x.Number);
+        return (maxReader == null) ? (byte) 1 : (byte)(maxReader.Number + 1);
+    }
+
+    private bool RemoveReader(Reader readerToRemove)
+    {
+        try
+        {
+            _configuration.Readers.Remove(readerToRemove);
+
+            var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VR{readerToRemove.Number}");
+            if (endPointToRemove != null)
+            {
+                _endpoints.Remove(endPointToRemove);
+            }
+
+        } catch (Exception exception)
+        {
+            _logger?.LogError(exception, "Exception occurred removing a reader");
+            return false;
+        }
+
+        return true;
+
+    }
+
+    private void ProcessBadgeSwipe(string parameters)
+    {
+        var badgeAction = JsonConvert.DeserializeObject<BadgeSwipeAction>(parameters);
+        if (badgeAction == null || badgeAction.CardData == null) return;
+
+        _logger?.LogInformation("A card has been presented to the reader");
+        var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
+            .SingleOrDefault(accessPoint =>
+                $"VR{badgeAction.ReaderNumber}" == accessPoint.Id);
+
+        AccessCredentialReceived?.Invoke(this, new AccessCredentialReceivedEventArgs(
+                accessPoint, new VirtualCredentialReceivedHandler(badgeAction.CardData)));
     }
 
     /// <inheritdoc />
@@ -101,5 +200,14 @@ public class VirtualDriver : IHardwareDriver
     protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs eventArgs)
     {
         OnlineStatusChanged?.Invoke(this, eventArgs);
+    }
+
+    private class VirtualCredentialReceivedHandler(string cardData) : ICredentialReceivedHandler
+    {
+        public bool IsValid()
+        {
+            return true;
+        }
+        public string MatchingCardData { get; } = cardData;
     }
 }

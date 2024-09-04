@@ -32,6 +32,4 @@
       <ProjectReference Include="..\TestWebClientConfiguration\TestWebClientConfiguration.csproj" />
     </ItemGroup>
 
-
-
 </Project>

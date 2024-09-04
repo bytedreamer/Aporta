@@ -10,7 +10,7 @@
         <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.5.0" />
         <PackageReference Include="Blazorise.Snackbar" Version="1.5.0" />
         <PackageReference Include="bunit" Version="1.27.17" />
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.8" />
         <PackageReference Include="Moq" Version="4.20.70" />
     </ItemGroup>
 

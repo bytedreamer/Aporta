@@ -93,6 +93,9 @@ public class OSDPDriver : IHardwareDriver
                 {
                     _endpoints.Add(new OSDPAccess(Id, device, reader, _panel, _portMapping[bus.PortName]));
                 }
+
+                device.IsConnected = false;
+                device.IdentityNotMatched = false;
             }
         }
     }
@@ -436,7 +439,7 @@ public class OSDPDriver : IHardwareDriver
         }
 
         if (_configuration == null) return;
-        
+
         _configuration.AvailablePorts = SerialPort.GetPortNames();
     }
 
@@ -484,8 +487,8 @@ public class OSDPDriver : IHardwareDriver
         
         return actionEnum switch
         {
-            ActionType.AddBus => AddBus(parameters),
-            ActionType.RemoveBus => RemoveBus(parameters),
+            ActionType.AddSerialBus => AddBus(parameters),
+            ActionType.RemoveSerialBus => RemoveBus(parameters),
             ActionType.AddUpdateDevice => AddUpdateDevice(parameters),
             ActionType.RemoveDevice => RemoveDevice(parameters),
             ActionType.AvailablePorts => JsonConvert.SerializeObject(SerialPort.GetPortNames()),
@@ -514,7 +517,8 @@ public class OSDPDriver : IHardwareDriver
         if (!_portMapping.ContainsKey(busAction.Bus.PortName))
         {
             _portMapping.TryAdd(busAction.Bus.PortName,
-                _panel.StartConnection(new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate)));
+                _panel.StartConnection(new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate),
+                    TimeSpan.FromMilliseconds(50), false));
         }
 
         return string.Empty;
@@ -688,20 +692,20 @@ public class OSDPDriver : IHardwareDriver
     private byte[] CreateRandomKey()
     {
         int keySizeInBytes = 16;
-        byte[] randomKey = new byte[keySizeInBytes];
+        var randomKey = new byte[keySizeInBytes];
 
-        using RandomNumberGenerator rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomKey);
+        using var generator = RandomNumberGenerator.Create();
+        generator.GetBytes(randomKey);
 
         return randomKey;
     }
 
     private void AddDeviceToPanel(Device device)
     {
-        _panel.AddDevice(_portMapping[device.PortName], device.Address, true, device.RequireSecurity, 
+        _panel.AddDevice(_portMapping[device.PortName], device.Address, true, device.RequireSecurity,
             CheckSecurityKey(device));
     }
-    
+
     private byte[] CheckSecurityKey(Device device)
     {
         if (device.SecureMode != SecureMode.Secure) return null;

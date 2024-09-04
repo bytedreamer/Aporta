@@ -5,9 +5,9 @@ namespace Aporta.Drivers.OSDP.Shared.Actions;
 public enum ActionType
 {
     [Description("Add serial bus")]
-    AddBus,
+    AddSerialBus,
     [Description("Remove serial bus")]
-    RemoveBus,
+    RemoveSerialBus,
     [Description("Add/Update OSDP device")]
     AddUpdateDevice,
     [Description("Remove OSDP device")]
@@ -25,5 +25,7 @@ public enum ActionType
     [Description("Disable PKOC support on OSDP device")]
     DisablePKOC,
     [Description("Enable PKOC support on OSDP device")]
-    EnablePKOC
+    EnablePKOC,
+    [Description("Edit a serial bus")] 
+    EditSerialBus
 }

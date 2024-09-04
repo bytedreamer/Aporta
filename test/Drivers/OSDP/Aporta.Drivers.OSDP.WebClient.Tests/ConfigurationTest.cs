@@ -65,11 +65,11 @@ public class ConfigurationTest : AportaTestContext
         await _cut.InvokeAsync(async () => await modalAddButton.Instance.Clicked.InvokeAsync());
         
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddBus.ToString(), busActionParameters));
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddSerialBus.ToString(), busActionParameters));
     }
 
     [Test]
-    public async Task ConfirmRemoveBus()
+    public async Task ConfirmDeleteBus()
     {
         // Arrange
         string busActionParameters = JsonConvert.SerializeObject(new BusAction
@@ -87,17 +87,18 @@ public class ConfigurationTest : AportaTestContext
         _cut = RenderComponent<Configuration>(parameters => parameters
             .Add(p => p.RawConfiguration, TestConfiguration)
             .Add(p => p.ExtensionId, _extensionId));
-
-        var removeBusButton = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == "Bus:COM3")
-            .FindComponents<Button>().Single(button => button.Nodes[0].TextContent.Trim() == "Remove");
-        await _cut.InvokeAsync(async () => await removeBusButton.Instance.Clicked.InvokeAsync());
+        
+        var busRow = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == $"Bus:COM3");
+        var deleteBusMenuItem = busRow.FindComponents<DropdownItem>()
+            .First(item => item.Nodes[0].TextContent == "Delete");
+        await _cut.InvokeAsync(async () => await deleteBusMenuItem.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveBus.ToString(), busActionParameters), Times.Once);
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveSerialBus.ToString(), busActionParameters), Times.Once);
     }
     
     [Test]
-    public async Task NotConfirmRemoveBus()
+    public async Task NotConfirmDeleteBus()
     {
         // Arrange
         string busActionParameters = JsonConvert.SerializeObject(new BusAction
@@ -116,12 +117,13 @@ public class ConfigurationTest : AportaTestContext
             .Add(p => p.RawConfiguration, TestConfiguration)
             .Add(p => p.ExtensionId, _extensionId));
 
-        var removeBusButton = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == "Bus:COM3")
-            .FindComponents<Button>().Single(button => button.Nodes[0].TextContent.Trim() == "Remove");
-        await _cut.InvokeAsync(async () => await removeBusButton.Instance.Clicked.InvokeAsync());
+        var busRow = _cut.FindComponents<Row>().Single(row => row.Instance.ElementId == $"Bus:COM3");
+        var deleteBusMenuItem = busRow.FindComponents<DropdownItem>()
+            .First(item => item.Nodes[0].TextContent == "Delete");
+        await _cut.InvokeAsync(async () => await deleteBusMenuItem.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveBus.ToString(), busActionParameters), Times.Never());
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveSerialBus.ToString(), busActionParameters), Times.Never());
     }
     
     [Test]

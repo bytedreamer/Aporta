@@ -98,7 +98,7 @@ else
         <ModalContent Size="ModalSize.Default" Centered="true">
             <ModalHeader>
                 <ModalTitle>
-                    Add Door
+                    Add Person
                 </ModalTitle>
                 <CloseButton Clicked="@_addPersonModal.Hide"/>
             </ModalHeader>
@@ -402,9 +402,16 @@ else
         foreach (var credential in unassignedCredentials)
         {
             url = $"{Paths.Events}/{credential.LastEvent}";
-            var lastEvent = await Http.GetFromJsonAsync<Event>(url);
-            var eventData = JsonSerializer.Deserialize<EventData>(lastEvent.Data);
-            _availableCredentialsForEnrollment.Add(new Tuple<Credential, Event, EventData>(credential, lastEvent, eventData));
+            try
+            {
+                var lastEvent = await Http.GetFromJsonAsync<Event>(url);
+                var eventData = JsonSerializer.Deserialize<EventData>(lastEvent.Data);
+                _availableCredentialsForEnrollment.Add(new Tuple<Credential, Event, EventData>(credential, lastEvent, eventData));
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         _availableCredentialsForEnrollment.Sort(CompareLastEventDescending);

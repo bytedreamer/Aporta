@@ -1,0 +1,88 @@
+@using Aporta.Drivers.OSDP.Shared
+
+<Modal @ref="_addDeviceModal">
+    <ModalContent Size="ModalSize.Default" Centered="true">
+        <ModalHeader>
+            <ModalTitle>
+                Add Device to @AddToBus?.PortName
+            </ModalTitle>
+            <CloseButton Clicked="@_addDeviceModal.Hide"/>
+        </ModalHeader>
+        <ModalBody>
+            <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addDeviceValidations">
+                <Validation Validator="@ValidationRule.IsNotEmpty" >
+                    <Field>
+                        <FieldLabel>Name</FieldLabel>
+                        <FieldBody>
+                            <TextEdit @bind-Text="DeviceToAdd.Name">
+                                <Feedback>
+                                    <ValidationError>
+                                        Please enter a name for the device
+                                    </ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+                <Validation Validator="@ValidateDeviceAddress">
+                    <Field>
+                        <FieldLabel>Address</FieldLabel>
+                        <FieldBody>
+                            <NumericEdit @bind-Value="DeviceToAdd.Address" TValue="byte" Decimals="0">
+                                <ValidationError>
+                                    Address already used by a device
+                                </ValidationError>
+                            </NumericEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+                <Field>
+                    <FieldBody>
+                        <Check @bind-Checked="@DeviceToAdd.RequireSecurity" TValue="bool">Require Security Using AES-128 Encryption</Check>
+                    </FieldBody>
+                </Field>
+            </Validations>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@_addDeviceModal.Hide">Cancel</Button>
+            <Button Color="Color.Primary" Clicked="@AddDevice">Add</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private Modal _addDeviceModal;
+    private Validations _addDeviceValidations;
+    
+    [Parameter]
+    public Bus AddToBus { get; set; }
+    
+    [Parameter]
+    public Device DeviceToAdd { get; set; }
+    
+    [Parameter]
+    public EventCallback PerformAddDeviceAction { get; set; }
+    
+    public async Task ShowDialog()
+    {
+        await _addDeviceModal.Show();
+    }
+    
+    private void ValidateDeviceAddress(ValidatorEventArgs eventArgs)
+    {
+        byte address = Convert.ToByte(eventArgs.Value);
+        eventArgs.Status = AddToBus.Devices.All(device => device.Address != address) ? ValidationStatus.Success : ValidationStatus.Error;
+    }
+
+    private async Task AddDevice()
+    {
+        if (!await _addDeviceValidations.ValidateAll())
+        {
+            return;
+        }
+
+        await _addDeviceModal.Hide();
+
+        await PerformAddDeviceAction.InvokeAsync();
+    }
+}
