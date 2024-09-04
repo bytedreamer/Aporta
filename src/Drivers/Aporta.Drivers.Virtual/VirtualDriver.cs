@@ -34,17 +34,13 @@ public class VirtualDriver : IHardwareDriver
         LoadConfiguration(configToLoad);
     }
 
-
     private void LoadConfiguration(Configuration configToLoad)
     {
-        if (configToLoad == null) return;
-
         foreach (var reader in configToLoad.Readers)
         {
             _configuration.Readers.Add(reader);
             _endpoints.Add(new VirtualReader(reader.Name, Id, $"VR{reader.Number}"));
         }
-
         
         foreach (var output in configToLoad.Outputs)
         {
