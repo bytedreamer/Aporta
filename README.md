@@ -97,7 +97,12 @@ General information about configuring and setting up the Aporta project for deve
 
 [Aporta HouseKeeping](docs/AportaHouseKeeping.md)
 
+## Aporta Core Abstractions and Concepts
+
+[A summary of all of the Core Abstractions and Concepts](docs/AportaCoreAbstractions.md) used in the Aporta code.
+
 ## Documentation 
+- [Aporta Core Abstractions and Concepts](docs/AportaCoreAbstractions.md)
 - [How to Create a Driver](docs/HowToCreateADriver.md)
 - [How to Use the Virtual Device Driver](docs/HowToUseTheVirtualDeviceDriver.md)
 - [Aporta Database Overview](docs/AportaDatabase.md)
