@@ -108,6 +108,50 @@ public class VirtualDriver : IHardwareDriver
 
 
                     break;
+
+                case ActionType.AddInput:
+
+                    var inputToAdd = JsonConvert.DeserializeObject<AddInputParameter>(parameters);
+                    if (inputToAdd != null && AddInput(inputToAdd))
+                    {
+                        OnUpdatedEndpoints();
+                    }
+                    break;
+
+                case ActionType.RemoveInput:
+
+                    var requestedInputToRemove = JsonConvert.DeserializeObject<Input>(parameters);
+                    if (requestedInputToRemove != null)
+                    {
+                        var inputToRemove = _configuration.Inputs.Find(rdr => rdr.Number == requestedInputToRemove.Number);
+                        if (inputToRemove != null && RemoveInput(inputToRemove))
+                        {
+                            OnUpdatedEndpoints();
+                        }
+                    }
+                    break;
+
+                case ActionType.AddOutput:
+
+                    var outputToAdd = JsonConvert.DeserializeObject<AddOutputParameter>(parameters);
+                    if (outputToAdd != null && AddOutput(outputToAdd))
+                    {
+                        OnUpdatedEndpoints();
+                    }
+                    break;
+
+                case ActionType.RemoveOutput:
+
+                    var requestedOutputToRemove = JsonConvert.DeserializeObject<Output>(parameters);
+                    if (requestedOutputToRemove != null)
+                    {
+                        var outputToRemove = _configuration.Outputs.Find(rdr => rdr.Number == requestedOutputToRemove.Number);
+                        if (outputToRemove != null && RemoveOutput(outputToRemove))
+                        {
+                            OnUpdatedEndpoints();
+                        }
+                    }
+                    break;
             }
         }
 
@@ -130,11 +174,59 @@ public class VirtualDriver : IHardwareDriver
         return true;
     }
 
+    private bool AddInput(AddInputParameter requestedInputToAdd)
+    {
+        try
+        {
+            var inputToAdd = new Input() { Name = requestedInputToAdd.Name, Number = GetNextInputNumber() };
+            _configuration.Inputs.Add(inputToAdd);
+            _endpoints.Add(new VirtualInput(inputToAdd.Name, Id, $"VI{inputToAdd.Number}"));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Exception occurred adding a new input");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool AddOutput(AddOutputParameter requestedOutputToAdd)
+    {
+        try
+        {
+            var outputToAdd = new Output() { Name = requestedOutputToAdd.Name, Number = GetNextOutputNumber() };
+            _configuration.Outputs.Add(outputToAdd);
+            _endpoints.Add(new VirtualOutput(outputToAdd.Name, Id, $"VO{outputToAdd.Number}"));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Exception occurred adding a new output");
+            return false;
+        }
+
+        return true;
+    }
+
     private byte GetNextReaderNumber()
     {
         if (_configuration.Readers.Count == 0) {  return 1; }
         var maxReader = _configuration.Readers.MaxBy(x => x.Number);
         return (maxReader == null) ? (byte) 1 : (byte)(maxReader.Number + 1);
+    }
+
+    private byte GetNextInputNumber()
+    {
+        if (_configuration.Inputs.Count == 0) { return 1; }
+        var maxInput = _configuration.Inputs.MaxBy(x => x.Number);
+        return (maxInput == null) ? (byte)1 : (byte)(maxInput.Number + 1);
+    }
+
+    private byte GetNextOutputNumber()
+    {
+        if (_configuration.Outputs.Count == 0) { return 1; }
+        var maxOutput = _configuration.Outputs.MaxBy(x => x.Number);
+        return (maxOutput == null) ? (byte)1 : (byte)(maxOutput.Number + 1);
     }
 
     private bool RemoveReader(Reader readerToRemove)
@@ -152,6 +244,51 @@ public class VirtualDriver : IHardwareDriver
         } catch (Exception exception)
         {
             _logger?.LogError(exception, "Exception occurred removing a reader");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool RemoveInput(Input inputToRemove)
+    {
+        try
+        {
+            _configuration.Inputs.Remove(inputToRemove);
+
+            var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VI{inputToRemove.Number}");
+            if (endPointToRemove != null)
+            {
+                _endpoints.Remove(endPointToRemove);
+            }
+
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogError(exception, "Exception occurred removing an input");
+            return false;
+        }
+
+        return true;
+
+    }
+
+    private bool RemoveOutput(Output outputToRemove)
+    {
+        try
+        {
+            _configuration.Outputs.Remove(outputToRemove);
+
+            var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VO{outputToRemove.Number}");
+            if (endPointToRemove != null)
+            {
+                _endpoints.Remove(endPointToRemove);
+            }
+
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogError(exception, "Exception occurred removing an input");
             return false;
         }
 

@@ -8,6 +8,10 @@ namespace Aporta.Drivers.Virtual.Shared.Actions
         BadgeSwipe,
         AddReader,
         EditReader,
-        RemoveReader
+        RemoveReader,
+        AddInput,
+        RemoveInput,
+        AddOutput,
+        RemoveOutput
     }
 }

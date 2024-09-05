@@ -97,6 +97,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Virtual", "Virtual", "{72A1
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aporta.Drivers.Virtual.WebClient.Tests", "..\test\Drivers\Virtual\Aporta.Drivers.Virtual.WebClient.Tests\Aporta.Drivers.Virtual.WebClient.Tests.csproj", "{FD09709D-A3DC-487B-AD25-26E5452DC811}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Drivers.Virtual.Tests", "Aporta.Drivers.Virtual.Tests\Aporta.Drivers.Virtual.Tests.csproj", "{1E07F94D-F040-4C9F-8236-39A679556D59}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -263,6 +265,14 @@ Global
 		{FD09709D-A3DC-487B-AD25-26E5452DC811}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FD09709D-A3DC-487B-AD25-26E5452DC811}.Release|x86.ActiveCfg = Release|Any CPU
 		{FD09709D-A3DC-487B-AD25-26E5452DC811}.Release|x86.Build.0 = Release|Any CPU
+		{1E07F94D-F040-4C9F-8236-39A679556D59}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E07F94D-F040-4C9F-8236-39A679556D59}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E07F94D-F040-4C9F-8236-39A679556D59}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1E07F94D-F040-4C9F-8236-39A679556D59}.Debug|x86.Build.0 = Debug|Any CPU
+		{1E07F94D-F040-4C9F-8236-39A679556D59}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E07F94D-F040-4C9F-8236-39A679556D59}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E07F94D-F040-4C9F-8236-39A679556D59}.Release|x86.ActiveCfg = Release|Any CPU
+		{1E07F94D-F040-4C9F-8236-39A679556D59}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -292,6 +302,7 @@ Global
 		{6D6C6215-8154-4E95-9B5E-71E526CE091B} = {2DFBFA3A-B289-4723-A630-C5240C7ADE85}
 		{72A10DAD-4C7D-4F7B-A8B2-BCE3D391F4A2} = {6F57EF26-FA40-4A1E-BD23-DA25755334F2}
 		{FD09709D-A3DC-487B-AD25-26E5452DC811} = {72A10DAD-4C7D-4F7B-A8B2-BCE3D391F4A2}
+		{1E07F94D-F040-4C9F-8236-39A679556D59} = {72A10DAD-4C7D-4F7B-A8B2-BCE3D391F4A2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65C2BC8A-D61C-4643-BD0F-2670F6AA9D01}
