@@ -22,7 +22,7 @@ The project is early in its development. After working on access control product
     - SSL required by default **(Done)**
     - A master password to gain access
 - OSDP Driver
-    - Install new devices with security channel encryption
+    - Install new devices with security channel encryption **(Done)**
     - Process standard Wiegand card reads **(Done)**
     - Detect if device is online **(Done)**
     - Control output **(Done)**
@@ -62,11 +62,6 @@ Steps to install and run from Linux DEB packages
 ```shell
 sudo ./Aporta
 ```
-## Aporta Housekeeping
-
-General information about configuring and setting up the Aporta project for development and running locally.
-
-[Aporta HouseKeeping](docs/AportaHouseKeeping.md)
 
 ### Configuration ###
 

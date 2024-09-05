@@ -57,7 +57,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Windows", "Windows", "{D793
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{4BE8F4FD-297B-4E7E-A5C9-813EA9395BC2}"
 	ProjectSection(SolutionItems) = preProject
-		..\docs\AportaHouseKeeping.md = ..\docs\AportaHouseKeeping.md
 		..\docs\HowToCreateADriver.md = ..\docs\HowToCreateADriver.md
 		..\docs\HowToUseTheVirtualDeviceDriver.md = ..\docs\HowToUseTheVirtualDeviceDriver.md
 		..\README.md = ..\README.md
@@ -96,6 +95,23 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Virtual", "Virtual", "{72A10DAD-4C7D-4F7B-A8B2-BCE3D391F4A2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aporta.Drivers.Virtual.WebClient.Tests", "..\test\Drivers\Virtual\Aporta.Drivers.Virtual.WebClient.Tests\Aporta.Drivers.Virtual.WebClient.Tests.csproj", "{FD09709D-A3DC-487B-AD25-26E5452DC811}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{3AEB3233-ACAA-4206-B08D-A2F4486089E2}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\images\AddingReaderstoConfigurationAndEndPoints.JPG = ..\docs\images\AddingReaderstoConfigurationAndEndPoints.JPG
+		..\docs\images\AportaConfig.JPG = ..\docs\images\AportaConfig.JPG
+		..\docs\images\AportaDrivers.jpg = ..\docs\images\AportaDrivers.jpg
+		..\docs\images\AportaSolutionStructure.JPG = ..\docs\images\AportaSolutionStructure.JPG
+		..\docs\images\DatabaseTableCreation.jpg = ..\docs\images\DatabaseTableCreation.jpg
+		..\docs\images\DatabaseTableCreationScriptFiles.jpg = ..\docs\images\DatabaseTableCreationScriptFiles.jpg
+		..\docs\images\ReaderFlow01_ConfigurationRazor.jpg = ..\docs\images\ReaderFlow01_ConfigurationRazor.jpg
+		..\docs\images\RunningAporta.JPG = ..\docs\images\RunningAporta.JPG
+		..\docs\images\sqlitebrowser_view_aporta.jpg = ..\docs\images\sqlitebrowser_view_aporta.jpg
+		..\docs\images\SQLLite_ExtensionTable.jpg = ..\docs\images\SQLLite_ExtensionTable.jpg
+		..\docs\images\VirtualDriver_WebClient_ConfigurationUI.JPG = ..\docs\images\VirtualDriver_WebClient_ConfigurationUI.JPG
+		..\docs\images\VirtualReader.JPG = ..\docs\images\VirtualReader.JPG
+		..\docs\images\VirtualReaderDriver.jpg = ..\docs\images\VirtualReaderDriver.jpg
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -292,6 +308,7 @@ Global
 		{6D6C6215-8154-4E95-9B5E-71E526CE091B} = {2DFBFA3A-B289-4723-A630-C5240C7ADE85}
 		{72A10DAD-4C7D-4F7B-A8B2-BCE3D391F4A2} = {6F57EF26-FA40-4A1E-BD23-DA25755334F2}
 		{FD09709D-A3DC-487B-AD25-26E5452DC811} = {72A10DAD-4C7D-4F7B-A8B2-BCE3D391F4A2}
+		{3AEB3233-ACAA-4206-B08D-A2F4486089E2} = {4BE8F4FD-297B-4E7E-A5C9-813EA9395BC2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65C2BC8A-D61C-4643-BD0F-2670F6AA9D01}
