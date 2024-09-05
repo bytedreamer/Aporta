@@ -62,15 +62,12 @@ Steps to install and run from Linux DEB packages
 ```shell
 sudo ./Aporta
 ```
-## Aporta Housekeeping
 
-General information about configuring and setting up the Aporta project for development and running locally.
+### Quick Start
 
-[Aporta HouseKeeping](docs/AportaHouseKeeping.md)
+After installing Aporta, browse to the local web url ```https://localhost:8443``` to get started. A [Quick Start Guide](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide) can be found in the Wiki section.
 
 ### Configuration ###
-
-Browse to the local web url ```https://localhost:8443``` to get started. A [Quick Start Guide](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide) can be found in the Wiki section.
 
 _appsettings.Production.json_ - Location for Aporta settings
 
@@ -93,6 +90,12 @@ _appsettings.Production.json_ - Location for Aporta settings
     }
 }
 ```
+
+## Aporta Housekeeping
+
+General information about configuring and setting up the Aporta project for development and running locally.
+
+[Aporta HouseKeeping](docs/AportaHouseKeeping.md)
 
 ## Documentation 
 - [How to Create a Driver](docs/HowToCreateADriver.md)
