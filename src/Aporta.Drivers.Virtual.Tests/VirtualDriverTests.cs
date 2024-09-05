@@ -34,7 +34,7 @@ namespace Aporta.Drivers.Virtual.Tests
             //assert
             var configuration = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
 
-            Assert.IsInstanceOf<Shared.Input>(configuration.Inputs.Find(x => x.Name == inputToAdd.Name));
+            Assert.IsInstanceOf<Shared.Input>(configuration?.Inputs.Find(x => x.Name == inputToAdd.Name));
 
 
         }
@@ -66,7 +66,7 @@ namespace Aporta.Drivers.Virtual.Tests
             //assert
             var newConfig = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
 
-            Assert.IsNull(newConfig.Inputs.Find(x => x.Name == inputToRemove.Name && x.Number == inputToRemove.Number));
+            Assert.IsNull(newConfig?.Inputs.Find(x => x.Name == inputToRemove.Name && x.Number == inputToRemove.Number));
         }
 
         [Test]

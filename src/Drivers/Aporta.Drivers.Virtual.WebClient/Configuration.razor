@@ -22,7 +22,7 @@ else
                 <CardTitle Margin="Margin.Is4.OnX">
                     <Row Margin="Margin.Is2.OnY">
                         <Column>
-                            <Heading>Virtual Readers</Heading>
+                            <Heading>Virtual Reader Configuration</Heading>
                         </Column>
                     </Row>
                     <Row>
@@ -73,9 +73,69 @@ else
             </Card>
         </Column>
     </Row>
-    
+
+
+    <Row>
+        <Column ColumnSize="ColumnSize.IsFull">
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    <Row Margin="Margin.Is2.OnY">
+                        <Column>
+                            <Heading>Virtual Input Configuration</Heading>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column>
+                            <Button Color="Color.Primary" Clicked="ShowAddInputDialog">Add Virtual Input</Button>
+                        </Column>
+                    </Row>
+                </CardTitle>
+                <CardBody>
+                    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Input Name</TableHeaderCell>
+                                <TableHeaderCell>Input Number</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var input in _configuration.Inputs)
+                            {
+                                <TableRow ElementId="@("Input:" + @input.Name)">
+                                    <TableRowHeader>
+                                        @input.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @input.Number
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                Action
+                                            </DropdownToggle>
+                                            <DropdownMenu>
+                                                @if (IsInputAvailableForDelete(input))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await RemoveInput(input))">Delete</DropdownItem>
+                                                    <DropdownDivider />
+                                                }
+                                            </DropdownMenu>
+                                        </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
     <BadgeSwipeDialog @ref="_badgeSwipeDialog"
                    PerformSwipeBadgeAction="@BadgeSwipe" />
+
+    <AddInputDialog @ref="_addInputDialog" PerformAddInputAction="@AddInput" />
 
     <Modal @ref="_addVirtualReaderModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
@@ -132,9 +192,10 @@ else
     private Shared.AddReaderParameter _readerToAdd;
 
     private BadgeSwipeDialog _badgeSwipeDialog;
+    private AddInputDialog _addInputDialog;
 
     private Endpoint[] _availableAccessPoints;
-    
+
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
     [Parameter]
@@ -182,19 +243,19 @@ else
 
         return true;
     }
-    
+
     private async Task ShowSwipeBadgeModal(byte readerNumber)
     {
         _badgeSwipeDialog.ReaderNumberToSwipe = readerNumber;
         await _badgeSwipeDialog.ShowDialog();
     }
-    
+
     private async Task ShowAddReaderModal()
     {
         _readerToAdd = new Shared.AddReaderParameter();
         await _addVirtualReaderModal.Show();
     }
-    
+
     private async Task BadgeSwipe()
     {
         await PerformAction(ActionType.BadgeSwipe, JsonConvert.SerializeObject(new BadgeSwipeAction
@@ -241,4 +302,40 @@ else
     {
         return  _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
     }
+
+    private bool IsInputAvailableForDelete(Shared.Input input)
+    {
+        return _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
+    }
+
+    private async Task ShowAddInputDialog()
+    {
+        _addInputDialog.AddInputParam = new Shared.AddInputParameter();
+        await _addInputDialog.ShowDialog();
+    }
+
+    private async Task AddInput()
+    {
+        await PerformAction(ActionType.AddInput, JsonConvert.SerializeObject(_addInputDialog.AddInputParam));
+    }
+
+    private async Task RemoveInput(Shared.Input inputToRemove)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete input '{inputToRemove.Name}'?", "Delete input", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        var inputToRemoveSerialized = JsonConvert.SerializeObject(inputToRemove);
+
+        if (await PerformAction(ActionType.RemoveInput, inputToRemoveSerialized))
+        {
+            await InitializedAvailableEndpoints();
+        }
+    }
+
 }
