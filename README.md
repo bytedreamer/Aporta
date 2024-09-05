@@ -63,9 +63,11 @@ Steps to install and run from Linux DEB packages
 sudo ./Aporta
 ```
 
-### Configuration ###
+### Quick Start
 
-Browse to the local web url ```https://localhost:8443``` to get started. A [Quick Start Guide](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide) can be found in the Wiki section.
+After installing Aporta, browse to the local web url ```https://localhost:8443``` to get started. A [Quick Start Guide](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide) can be found in the Wiki section.
+
+### Configuration ###
 
 _appsettings.Production.json_ - Location for Aporta settings
 
