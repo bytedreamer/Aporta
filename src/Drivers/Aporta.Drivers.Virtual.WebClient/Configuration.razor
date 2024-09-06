@@ -225,7 +225,7 @@ else
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary" Clicked="@_addVirtualReaderModal.Hide">Cancel</Button>
-                <Button Color="Color.Primary" Clicked="@(async () => await AddReader())">Add</Button>
+                <Button id="btnAddReaderModal" Color="Color.Primary" Clicked="@(async () => await AddReader())">Add</Button>
             </ModalFooter>
         </ModalContent>
     </Modal>

@@ -146,8 +146,7 @@ public class ConfigurationTest : AportaTestContext
         var textEdit = _cut.Find("#AddReaderTextEdit");
         textEdit.Input(newReader.Name);
 
-        var modalAddReaderButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
-
+        var modalAddReaderButton = _cut.FindComponents<Button>().First(button => button.Markup.Contains("btnAddReaderModal"));  // _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
         await _cut.InvokeAsync(async () => await modalAddReaderButton.Instance.Clicked.InvokeAsync());
 
         // Assert
