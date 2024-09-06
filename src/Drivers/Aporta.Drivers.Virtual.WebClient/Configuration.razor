@@ -132,10 +132,70 @@ else
         </Column>
     </Row>
 
+
+    <Row>
+        <Column ColumnSize="ColumnSize.IsFull">
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    <Row Margin="Margin.Is2.OnY">
+                        <Column>
+                            <Heading>Virtual Output Configuration</Heading>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column>
+                            <Button Color="Color.Primary" Clicked="ShowAddOutputDialog">Add Virtual Output</Button>
+                        </Column>
+                    </Row>
+                </CardTitle>
+                <CardBody>
+                    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Output Name</TableHeaderCell>
+                                <TableHeaderCell>Output Number</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var output in _configuration.Outputs)
+                            {
+                                <TableRow ElementId="@("Input:" + @output.Name)">
+                                    <TableRowHeader>
+                                        @output.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @output.Number
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                Action
+                                            </DropdownToggle>
+                                            <DropdownMenu>
+                                                @if (IsOutputAvailableForDelete(output))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await RemoveOutput(output))">Delete</DropdownItem>
+                                                    <DropdownDivider />
+                                                }
+                                            </DropdownMenu>
+                                        </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
     <BadgeSwipeDialog @ref="_badgeSwipeDialog"
                    PerformSwipeBadgeAction="@BadgeSwipe" />
 
     <AddInputDialog @ref="_addInputDialog" PerformAddInputAction="@AddInput" />
+
+    <AddOutputDialog @ref="_addOutputDialog" PerformAddOutputAction="@AddOutput" />
 
     <Modal @ref="_addVirtualReaderModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
@@ -193,6 +253,7 @@ else
 
     private BadgeSwipeDialog _badgeSwipeDialog;
     private AddInputDialog _addInputDialog;
+    private AddOutputDialog _addOutputDialog;
 
     private Endpoint[] _availableAccessPoints;
 
@@ -308,6 +369,11 @@ else
         return _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
     }
 
+    private bool IsOutputAvailableForDelete(Shared.Output output)
+    {
+        return _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
+    }
+
     private async Task ShowAddInputDialog()
     {
         _addInputDialog.AddInputParam = new Shared.AddInputParameter();
@@ -333,6 +399,37 @@ else
         var inputToRemoveSerialized = JsonConvert.SerializeObject(inputToRemove);
 
         if (await PerformAction(ActionType.RemoveInput, inputToRemoveSerialized))
+        {
+            await InitializedAvailableEndpoints();
+        }
+    }
+
+
+    private async Task ShowAddOutputDialog()
+    {
+        _addOutputDialog.AddOutputParam = new Shared.AddOutputParameter();
+        await _addOutputDialog.ShowDialog();
+    }
+
+    private async Task AddOutput()
+    {
+        await PerformAction(ActionType.AddOutput, JsonConvert.SerializeObject(_addOutputDialog.AddOutputParam));
+    }
+
+    private async Task RemoveOutput(Shared.Output outputToRemove)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete output '{outputToRemove.Name}'?", "Delete output", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        var outputToRemoveSerialized = JsonConvert.SerializeObject(outputToRemove);
+
+        if (await PerformAction(ActionType.RemoveInput, outputToRemoveSerialized))
         {
             await InitializedAvailableEndpoints();
         }
