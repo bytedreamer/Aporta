@@ -72,13 +72,52 @@ namespace Aporta.Drivers.Virtual.Tests
         [Test]
         public void AddOutput()
         {
-            Assert.Fail();
+            //arrange
+            var virtualDriver = new VirtualDriver();
+            var outputToAdd = new AddOutputParameter() { Name = "Output 1" };
+
+            Mock<Microsoft.Extensions.Logging.ILoggerFactory> _mockLoggerFactory = new();
+            Mock<Aporta.Extensions.IDataEncryption> _mockDataEncryption = new();
+
+            //act
+            virtualDriver.Load(string.Empty, _mockDataEncryption.Object, _mockLoggerFactory.Object);
+
+            virtualDriver.PerformAction(ActionType.AddOutput.ToString(), JsonConvert.SerializeObject(outputToAdd));
+
+            //assert
+            var configuration = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
+
+            Assert.IsInstanceOf<Shared.Output>(configuration?.Outputs.Find(x => x.Name == outputToAdd.Name));
         }
 
         [Test]
         public void RemoveOutput()
         {
-            Assert.Fail();
+            //arrange
+            var virtualDriver = new VirtualDriver();
+            var output1 = new Shared.Output() { Number = 1, Name = "Output 1" };
+            var output2 = new Shared.Output() { Number = 1, Name = "Output 2" };
+            var output3 = new Shared.Output() { Number = 1, Name = "Output 3" };
+
+            Mock<Microsoft.Extensions.Logging.ILoggerFactory> _mockLoggerFactory = new();
+            Mock<Aporta.Extensions.IDataEncryption> _mockDataEncryption = new();
+
+            var initialConfig = new Configuration();
+            initialConfig.Outputs.Add(output1);
+            initialConfig.Outputs.Add(output2);
+            initialConfig.Outputs.Add(output3);
+
+            //act
+            virtualDriver.Load(string.Empty, _mockDataEncryption.Object, _mockLoggerFactory.Object);
+
+            var outputToRemove = output2;
+
+            virtualDriver.PerformAction(ActionType.RemoveOutput.ToString(), JsonConvert.SerializeObject(outputToRemove));
+
+            //assert
+            var newConfig = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
+
+            Assert.IsNull(newConfig?.Inputs.Find(x => x.Name == outputToRemove.Name && x.Number == outputToRemove.Number));
         }
 
     }

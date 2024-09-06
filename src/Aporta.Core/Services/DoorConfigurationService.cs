@@ -37,6 +37,26 @@ public class DoorConfigurationService
             !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id));
     }
 
+    public async Task<IEnumerable<Endpoint>> AvailableEndPoints()
+    {
+        var endpoints = await _endpointRepository.GetAll();
+        var doors = (await _doorRepository.GetAll()).ToArray();
+        return endpoints.Where(endpoint =>
+            //Find readers not assigned to a door
+            (endpoint.Type == EndpointType.Reader &&
+            !doors.Select(door => door.InAccessEndpointId).Contains(endpoint.Id) &&
+            !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id))
+            //Find inputs not assigned to a door
+            ||
+            (endpoint.Type == EndpointType.Input &&
+            !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id))
+            //Find outputs not assigned to a door
+            ||
+            (endpoint.Type == EndpointType.Output &&
+            !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id))
+            );
+    }
+
     public async Task<IEnumerable<Door>> GetAll()
     {
         return await _doorRepository.GetAll();

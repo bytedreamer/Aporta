@@ -118,8 +118,8 @@ public class ConfigurationTest : AportaTestContext
         // Assert
         Assert.That(_cut.Nodes[0].TextContent, Does.Not.Contain("Setup"));
         Assert.That(_cut.Nodes[0].TextContent, Contains.Substring("Add Virtual Reader"));
-        Assert.That(_cut.Nodes[0].TextContent, Contains.Substring("Add Virtual Input"));
-        Assert.That(_cut.Nodes[0].TextContent, Contains.Substring("Add Virtual Output"));
+        Assert.That(_cut.Nodes[1].TextContent, Contains.Substring("Add Virtual Input"));
+        Assert.That(_cut.Nodes[2].TextContent, Contains.Substring("Add Virtual Output"));
 
     }
 
@@ -241,8 +241,8 @@ public class ConfigurationTest : AportaTestContext
 
         //set up endpoints not assigned to a door
         Endpoint[] availableEndPoints = {
-            new() { ExtensionId = _extensionId, Type = EndpointType.Reader, DriverEndpointId = $"VI{inputsOnRazorPage[1].Number}", Id = inputsOnRazorPage[1].Number },
-            new() { ExtensionId = _extensionId, Type = EndpointType.Reader, DriverEndpointId = $"VI{inputsOnRazorPage[2].Number}", Id = inputsOnRazorPage[2].Number }
+            new() { ExtensionId = _extensionId, Type = EndpointType.Input, DriverEndpointId = $"VI{inputsOnRazorPage[1].Number}", Id = inputsOnRazorPage[1].Number },
+            new() { ExtensionId = _extensionId, Type = EndpointType.Input, DriverEndpointId = $"VI{inputsOnRazorPage[2].Number}", Id = inputsOnRazorPage[2].Number }
 
         };
 
@@ -281,7 +281,7 @@ public class ConfigurationTest : AportaTestContext
 
         var emptyConfig = new Shared.Configuration();
 
-        var newOutput = new Shared.AddInputParameter { Name = "Test Output" };
+        var newOutput = new Shared.AddOutputParameter { Name = "Test Output" };
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
@@ -316,8 +316,8 @@ public class ConfigurationTest : AportaTestContext
 
         //set up endpoints not assigned to a door
         Endpoint[] availableEndPoints = {
-            new() { ExtensionId = _extensionId, Type = EndpointType.Reader, DriverEndpointId = $"VO{outputsOnRazorPage[1].Number}", Id = outputsOnRazorPage[1].Number },
-            new() { ExtensionId = _extensionId, Type = EndpointType.Reader, DriverEndpointId = $"VO{outputsOnRazorPage[2].Number}", Id = outputsOnRazorPage[2].Number }
+            new() { ExtensionId = _extensionId, Type = EndpointType.Output, DriverEndpointId = $"VO{outputsOnRazorPage[1].Number}", Id = outputsOnRazorPage[1].Number },
+            new() { ExtensionId = _extensionId, Type = EndpointType.Output, DriverEndpointId = $"VO{outputsOnRazorPage[2].Number}", Id = outputsOnRazorPage[2].Number }
 
         };
 

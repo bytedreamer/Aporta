@@ -193,9 +193,9 @@ else
     <BadgeSwipeDialog @ref="_badgeSwipeDialog"
                    PerformSwipeBadgeAction="@BadgeSwipe" />
 
-    <AddInputDialog @ref="_addInputDialog" PerformAddInputAction="@AddInput" />
+    <AddInputDialog @ref="_addInputDialog" AddInputParam="@_addInputParam" PerformAddInputAction="@AddInput" />
 
-    <AddOutputDialog @ref="_addOutputDialog" PerformAddOutputAction="@AddOutput" />
+    <AddOutputDialog @ref="_addOutputDialog" AddOutputParam="@_addOutputParam" PerformAddOutputAction="@AddOutput" />
 
     <Modal @ref="_addVirtualReaderModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
@@ -252,10 +252,14 @@ else
     private Shared.AddReaderParameter _readerToAdd;
 
     private BadgeSwipeDialog _badgeSwipeDialog;
-    private AddInputDialog _addInputDialog;
-    private AddOutputDialog _addOutputDialog;
 
-    private Endpoint[] _availableAccessPoints;
+    private AddInputDialog _addInputDialog;
+    private AddInputParameter _addInputParam;
+
+    private AddOutputDialog _addOutputDialog;
+    private AddOutputParameter _addOutputParam;
+
+    private Endpoint[] _availableEndPoints;
 
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
@@ -268,18 +272,19 @@ else
     protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
+        _addInputParam = new Shared.AddInputParameter() { Name = string.Empty };
+        _addOutputParam = new Shared.AddOutputParameter() { Name = string.Empty };
     }
 
     protected override async Task OnInitializedAsync()
     {
         _readerToAdd = new Shared.AddReaderParameter();
-
         await InitializedAvailableEndpoints();
     }
 
     private async Task InitializedAvailableEndpoints()
     {
-        _availableAccessPoints = await DoorCalls.GetAvailableEndpoints();
+        _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
 
         StateHasChanged();
     }
@@ -361,28 +366,28 @@ else
 
     private bool IsReaderAvailableForDelete(Reader reader)
     {
-        return  _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
     }
 
     private bool IsInputAvailableForDelete(Shared.Input input)
     {
-        return _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
     }
 
     private bool IsOutputAvailableForDelete(Shared.Output output)
     {
-        return _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
     }
 
     private async Task ShowAddInputDialog()
     {
-        _addInputDialog.AddInputParam = new Shared.AddInputParameter();
+        _addInputParam = new Shared.AddInputParameter();
         await _addInputDialog.ShowDialog();
     }
 
     private async Task AddInput()
     {
-        await PerformAction(ActionType.AddInput, JsonConvert.SerializeObject(_addInputDialog.AddInputParam));
+        await PerformAction(ActionType.AddInput, JsonConvert.SerializeObject(_addInputParam));
     }
 
     private async Task RemoveInput(Shared.Input inputToRemove)
@@ -407,13 +412,13 @@ else
 
     private async Task ShowAddOutputDialog()
     {
-        _addOutputDialog.AddOutputParam = new Shared.AddOutputParameter();
+        _addOutputParam = new Shared.AddOutputParameter();
         await _addOutputDialog.ShowDialog();
     }
 
     private async Task AddOutput()
     {
-        await PerformAction(ActionType.AddOutput, JsonConvert.SerializeObject(_addOutputDialog.AddOutputParam));
+        await PerformAction(ActionType.AddOutput, JsonConvert.SerializeObject(_addOutputParam));
     }
 
     private async Task RemoveOutput(Shared.Output outputToRemove)
@@ -429,7 +434,7 @@ else
 
         var outputToRemoveSerialized = JsonConvert.SerializeObject(outputToRemove);
 
-        if (await PerformAction(ActionType.RemoveInput, outputToRemoveSerialized))
+        if (await PerformAction(ActionType.RemoveOutput, outputToRemoveSerialized))
         {
             await InitializedAvailableEndpoints();
         }

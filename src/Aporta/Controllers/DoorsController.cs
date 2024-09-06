@@ -46,4 +46,10 @@ public class DoorsController : ControllerBase
     {
         return await _doorConfigurationService.AvailableAccessPoints();
     }
+
+    [HttpGet("endpointsavailable")]
+    public async Task<IEnumerable<Endpoint>> AvailableEndPoints()
+    {
+        return await _doorConfigurationService.AvailableEndPoints();
+    }
 }

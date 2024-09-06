@@ -12,6 +12,12 @@ namespace Aporta.Shared.Calls
         /// <inheritdoc />
         public async Task<Endpoint[]> GetAvailableEndpoints()
         {
+            return await httpClient.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/endpointsavailable");
+        }
+
+        /// <inheritdoc />
+        public async Task<Endpoint[]> GetAvailableAccessPoints()
+        {
             return await httpClient.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
         }
 
@@ -26,6 +32,11 @@ namespace Aporta.Shared.Calls
         /// Return all endpoints available to be assigned to a door
         /// </summary>
         public Task<Endpoint[]> GetAvailableEndpoints();
+
+        /// <summary>
+        /// Return all access points available to be assigned to a door
+        /// </summary>
+        public Task<Endpoint[]> GetAvailableAccessPoints();
     }
 
 }
