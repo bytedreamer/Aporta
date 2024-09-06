@@ -146,7 +146,7 @@ public class ConfigurationTest : AportaTestContext
         var textEdit = _cut.Find("#AddReaderTextEdit");
         textEdit.Input(newReader.Name);
 
-        var modalAddReaderButton = _cut.FindComponents<Button>().First(button => button.Markup.Contains("btnAddReaderModal"));  // _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
+        var modalAddReaderButton = _cut.FindComponents<Button>().First(button => button.Markup.Contains("btnAddReaderModal")); 
         await _cut.InvokeAsync(async () => await modalAddReaderButton.Instance.Clicked.InvokeAsync());
 
         // Assert
@@ -218,7 +218,7 @@ public class ConfigurationTest : AportaTestContext
         var textEdit = _cut.Find("#AddInputTextEdit");
         textEdit.Input(newInput.Name);
 
-        var modalAddInputButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
+        var modalAddInputButton = _cut.FindComponents<Button>().First(button => button.Markup.Contains("btnAddInputModal"));
 
         await _cut.InvokeAsync(async () => await modalAddInputButton.Instance.Clicked.InvokeAsync());
 
@@ -294,7 +294,7 @@ public class ConfigurationTest : AportaTestContext
         var textEdit = _cut.Find("#AddOutputTextEdit");
         textEdit.Input(newOutput.Name);
 
-        var modalAddOutputButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
+        var modalAddOutputButton = _cut.FindComponents<Button>().First(button => button.Markup.Contains("btnAddOutputModal"));
 
         await _cut.InvokeAsync(async () => await modalAddOutputButton.Instance.Clicked.InvokeAsync());
 

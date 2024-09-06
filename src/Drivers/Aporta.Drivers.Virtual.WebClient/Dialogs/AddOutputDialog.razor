@@ -29,7 +29,7 @@
         </ModalBody>
         <ModalFooter>
             <Button Color="Color.Secondary" Clicked="@_addOutputModal.Hide">Cancel</Button>
-            <Button Color="Color.Primary" Clicked="@(async () => await AddOutput())">Add</Button>
+            <Button id="btnAddOutputModal" Color="Color.Primary" Clicked="@(async () => await AddOutput())">Add</Button>
         </ModalFooter>
     </ModalContent>
 </Modal>
