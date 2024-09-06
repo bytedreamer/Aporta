@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -15,6 +16,8 @@ public class DoorConfigurationService
 {
     private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
+    private readonly OutputRepository _outputRepository;
+    private readonly InputRepository _inputRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private readonly ILogger<DoorConfigurationService> _logger;
 
@@ -25,6 +28,8 @@ public class DoorConfigurationService
         _logger = logger;
         _doorRepository = new DoorRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
+        _outputRepository = new OutputRepository(dataAccess);
+        _inputRepository = new InputRepository(dataAccess);
     }
 
     public async Task<IEnumerable<Endpoint>> AvailableAccessPoints()
@@ -41,19 +46,23 @@ public class DoorConfigurationService
     {
         var endpoints = await _endpointRepository.GetAll();
         var doors = (await _doorRepository.GetAll()).ToArray();
+        var inputs = (await _inputRepository.GetAll()).ToArray();
+        var outputs = (await _outputRepository.GetAll()).ToArray();
         return endpoints.Where(endpoint =>
             //Find readers not assigned to a door
             (endpoint.Type == EndpointType.Reader &&
             !doors.Select(door => door.InAccessEndpointId).Contains(endpoint.Id) &&
-            !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id))
-            //Find inputs not assigned to a door
+            !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id))            
             ||
-            (endpoint.Type == EndpointType.Input &&
-            !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id))
-            //Find outputs not assigned to a door
+            //Find input endpoints not assigned to a door or input
+            (endpoint.Type == EndpointType.Input 
+            && !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id)
+            && !inputs.Select(input => input.EndpointId).Contains(endpoint.Id))            
             ||
-            (endpoint.Type == EndpointType.Output &&
-            !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id))
+            //Find output endpoints not assigned to a door or output
+            (endpoint.Type == EndpointType.Output 
+            && !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id)
+            && !outputs.Select(output => output.EndpointId).Contains(endpoint.Id))            
             );
     }
 
