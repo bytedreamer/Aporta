@@ -92,9 +92,9 @@ _appsettings.Production.json_ - Location for Aporta settings
 ```
 
 ## Documentation 
-- [How to Create a Driver](docs/HowToCreateADriver.md)
-- [How to Use the Virtual Device Driver](docs/HowToUseTheVirtualDeviceDriver.md)
-- [Aporta Database Overview](docs/AportaDatabase.md)
-- [Adding a New Reader - Flow](docs/VirtualReaderFlow.md)
+- [How to Create a Driver](https://github.com/bytedreamer/Aporta/wiki/How-to-create-a-new-Aporta-Hardware-Driver#how-to-create-a-new-aporta-hardware-driver)
+- [How to Use the Virtual Device Driver](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide#how-to-use-the-virtual-device-driver)
+- [Aporta Database Overview](https://github.com/bytedreamer/Aporta/wiki/Aporta-Database)
+- [Adding a New Reader - Flow](https://github.com/bytedreamer/Aporta/wiki/Adding-a-New-Virtual-Reader-%E2%80%90-Flow)
 
 
