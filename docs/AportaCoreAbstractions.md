@@ -109,28 +109,6 @@ Inputs are a kind of device [EndPoint](#endpoint).
 
 **Database:** Inputs are saved to the endpoint table in the Aporta database. In order for an input to be available for assigning to a door, a driver must first be configured with the input. When a driver is configured with an input, the input information is serialized and saved in the configuration column of the extensions table.
 
-Below is an example of the Virtual Driver configured with two inputs, no outputs, and no readers:
-
-```json
-
-{
-    "Inputs": [
-        {
-            "Name": "Input Endpoint for Door Sensor 1",
-            "Number": 1
-        },
-        {
-            "Name": "Input Endpoint for Door Sensor 2",
-            "Number": 2
-        }
-    ],
-    "Outputs": [],
-    "Readers": []
-}
-
-```
-
-
 
 ## Output
 
@@ -168,4 +146,44 @@ class IEndpoint{
 
 ```
 
+## Database
 
+Below is an example of the Virtual Driver configured with three inputs, two outputs, and one reader. This configuration is saved in the configuration column of the Extensions table:
+```json
+{
+    "Inputs": [
+        {
+            "Name": "Input Endpoint for Door Sensor 2",
+            "Number": 2
+        },
+        {
+            "Name": "Input Endpoint for Door Sensor 4",
+            "Number": 4
+        },
+        {
+            "Name": "Input Endpoint for Door Sensor 5",
+            "Number": 5
+        }
+    ],
+    "Outputs": [
+        {
+            "Name": "Output Endpoint for Relay B",
+            "Number": 2
+        },
+        {
+            "Name": "Output Endpoint for Relay C",
+            "Number": 3
+        }
+    ],
+    "Readers": [
+        {
+            "Name": "Reader Endpoint 1",
+            "Number": 1
+        }
+    ]
+}
+```
+
+Here are those endpoints saved to the endpoint table in the Aporta database:
+
+![End Point Table Records](images/EndPointTableRecords.jpg)

@@ -421,7 +421,10 @@ else
 
     private async Task AddOutput()
     {
-        await PerformAction(ActionType.AddOutput, JsonConvert.SerializeObject(_addOutputParam));
+        if (await PerformAction(ActionType.AddOutput, JsonConvert.SerializeObject(_addOutputParam)))
+        {
+            await InitializeAvailableEndpoints();
+        }
     }
 
     private async Task RemoveOutput(Shared.Output outputToRemove)
