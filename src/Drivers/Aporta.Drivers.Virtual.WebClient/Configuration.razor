@@ -279,10 +279,10 @@ else
     protected override async Task OnInitializedAsync()
     {
         _readerToAdd = new Shared.AddReaderParameter();
-        await InitializedAvailableEndpoints();
+        await InitializeAvailableEndpoints();
     }
 
-    private async Task InitializedAvailableEndpoints()
+    private async Task InitializeAvailableEndpoints()
     {
         _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
 
@@ -346,7 +346,7 @@ else
 
         if (await PerformAction(ActionType.RemoveReader, readerToRemoveSerialized))
         {
-            await InitializedAvailableEndpoints(); 
+            await InitializeAvailableEndpoints(); 
         }
     }
 
@@ -360,7 +360,7 @@ else
 
         if (await PerformAction(ActionType.AddReader, JsonConvert.SerializeObject(_readerToAdd)))
         {
-            await InitializedAvailableEndpoints(); 
+            await InitializeAvailableEndpoints(); 
         }
     }
 
@@ -387,7 +387,10 @@ else
 
     private async Task AddInput()
     {
-        await PerformAction(ActionType.AddInput, JsonConvert.SerializeObject(_addInputParam));
+        if (await PerformAction(ActionType.AddInput, JsonConvert.SerializeObject(_addInputParam)))
+        {
+            await InitializeAvailableEndpoints();
+        }
     }
 
     private async Task RemoveInput(Shared.Input inputToRemove)
@@ -405,7 +408,7 @@ else
 
         if (await PerformAction(ActionType.RemoveInput, inputToRemoveSerialized))
         {
-            await InitializedAvailableEndpoints();
+            await InitializeAvailableEndpoints();
         }
     }
 
@@ -436,7 +439,7 @@ else
 
         if (await PerformAction(ActionType.RemoveOutput, outputToRemoveSerialized))
         {
-            await InitializedAvailableEndpoints();
+            await InitializeAvailableEndpoints();
         }
     }
 

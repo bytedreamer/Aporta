@@ -22,6 +22,8 @@ class Door{
 
 ```
 
+**Database:** Doors are saved to the doors table in the Aporta database.
+
 ## Device
 The physical hardware device controlling access through a [door](#door). A device typically consists of a card or badge **[Reader](#reader)**, an [Output](#output) mechanism for physically locking and unlocking the door, and an [Input](#input) mechanism for determining if the door is actually closed and locked.
 
@@ -35,7 +37,7 @@ The software in Aporta that controls a [device](#device). The driver is responsi
 
 Drivers are located in the Aporta.Drivers namespace.
 
-Aporta is extensible. You can [write your own drivers](HowToCreateADriver.md) for your own devices.
+Aporta is extensible. You can [write your own drivers](HowToCreateADriver.md) for your own devices. For this reason, drivers are saved to the extensions table in the Aporta database.
 
 All drivers in Aporta are a kind of IHardwareDriver and implement the **IHardwareDriver** interface.
 
@@ -64,6 +66,8 @@ class IHardwareDriver{
 
 ```
 
+**Database:** Drivers are saved to the extensions table in the Aporta database.
+
 ## Reader
 The part of the device that reads the credentials from a card or badge. A reader is assigned to a [door](#door) as either allowing Access into a building or Access out of a building.
 
@@ -84,6 +88,8 @@ class IAccess{
 
 Door Access is a kind of device [EndPoint](#endpoint).
 
+**Database:** Readers are saved to the endpoint table in the Aporta database. When a driver is configured with a reader, the reader information is serialized and saved in the configuration column of the extensions table.
+
 
 ## Input
 
@@ -100,6 +106,31 @@ class IInput{
 ```
 
 Inputs are a kind of device [EndPoint](#endpoint).
+
+**Database:** Inputs are saved to the endpoint table in the Aporta database. In order for an input to be available for assigning to a door, a driver must first be configured with the input. When a driver is configured with an input, the input information is serialized and saved in the configuration column of the extensions table.
+
+Below is an example of the Virtual Driver configured with two inputs, no outputs, and no readers:
+
+```json
+
+{
+    "Inputs": [
+        {
+            "Name": "Input Endpoint for Door Sensor 1",
+            "Number": 1
+        },
+        {
+            "Name": "Input Endpoint for Door Sensor 2",
+            "Number": 2
+        }
+    ],
+    "Outputs": [],
+    "Readers": []
+}
+
+```
+
+
 
 ## Output
 
