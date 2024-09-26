@@ -91,10 +91,17 @@ _appsettings.Production.json_ - Location for Aporta settings
 }
 ```
 
+## Aporta Housekeeping
+
+General information about configuring and setting up the Aporta project for development and running locally.
+
+[Aporta HouseKeeping](docs/AportaHouseKeeping.md)
+
+## Aporta Core Abstractions and Concepts
+
+[A summary of all of the Core Abstractions and Concepts](docs/AportaCoreAbstractions.md) used in the Aporta code.
+
 ## Documentation 
-- [How to Create a Driver](https://github.com/bytedreamer/Aporta/wiki/How-to-create-a-new-Aporta-Hardware-Driver#how-to-create-a-new-aporta-hardware-driver)
-- [How to Use the Virtual Device Driver](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide#how-to-use-the-virtual-device-driver)
-- [Aporta Database Overview](https://github.com/bytedreamer/Aporta/wiki/Aporta-Database)
-- [Adding a New Reader - Flow](https://github.com/bytedreamer/Aporta/wiki/Adding-a-New-Virtual-Reader-%E2%80%90-Flow)
+
 
 

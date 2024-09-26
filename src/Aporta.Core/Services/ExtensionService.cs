@@ -303,11 +303,20 @@ public class ExtensionService(
 
     private bool IsEndPointAvailableForDelete(Endpoint endpointToDelete, Door[] doors, IEnumerable<Endpoint> endpoints)
     {
-
         var availableEndPoints = endpoints.Where(endpoint =>
-            endpoint.Type == EndpointType.Reader &&
+            //Find readers not assigned to a door
+            (endpoint.Type == EndpointType.Reader &&
             !doors.Select(door => door.InAccessEndpointId).Contains(endpoint.Id) &&
-            !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id));
+            !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id))            
+            ||
+            //Find inputs not assigned to a door
+            (endpoint.Type == EndpointType.Input &&
+            !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id))            
+            ||
+            //Find outputs not assigned to a door
+            (endpoint.Type == EndpointType.Output &&
+            !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id))
+            );
 
         return availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == endpointToDelete.DriverEndpointId) > 0;
     }

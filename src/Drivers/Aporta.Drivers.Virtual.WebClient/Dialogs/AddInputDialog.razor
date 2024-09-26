@@ -1,0 +1,64 @@
+﻿@using Aporta.Shared.Models
+@using Aporta.Drivers.Virtual.Shared
+
+<Modal @ref="_addInputModal">
+    <ModalContent Size="ModalSize.Default" Centered="true">
+        <ModalHeader>
+            <ModalTitle>
+                Add Virtual Input
+            </ModalTitle>
+            <CloseButton Clicked="@_addInputModal.Hide" />
+        </ModalHeader>
+        <ModalBody>
+            <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addInputValidations">
+                <Validation Validator="@ValidationRule.IsNotEmpty">
+                    <Field>
+                        <FieldLabel>Name</FieldLabel>
+                        <FieldBody>
+                            <TextEdit @bind-Text="AddInputParam.Name" id="AddInputTextEdit">
+                                <Feedback>
+                                    <ValidationError>
+                                        Please enter a name for the input
+                                    </ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+            </Validations>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@_addInputModal.Hide">Cancel</Button>
+            <Button id="btnAddInputModal" Color="Color.Primary" Clicked="@(async () => await AddInput())">Add</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private Modal _addInputModal;
+    private Validations _addInputValidations;
+
+    [Parameter]
+    public AddInputParameter AddInputParam { get; set; }
+
+
+    [Parameter]
+    public EventCallback PerformAddInputAction { get; set; }
+
+    private async Task AddInput()
+    {
+        if (!await _addInputValidations.ValidateAll())
+        {
+            return;
+        }
+
+        await _addInputModal.Hide();
+
+        await PerformAddInputAction.InvokeAsync();
+    }
+
+    public async Task ShowDialog()
+    {
+        await _addInputModal.Show();
+    }
+}

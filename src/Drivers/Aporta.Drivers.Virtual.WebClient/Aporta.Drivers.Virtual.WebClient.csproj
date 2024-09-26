@@ -22,4 +22,17 @@
       <ProjectReference Include="..\Aporta.Drivers.Virtual.Shared\Aporta.Drivers.Virtual.Shared.csproj" />
       <ProjectReference Include="..\Aporta.Drivers.Virtual\Aporta.Drivers.Virtual.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Dialogs\AddInputDialog.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="Dialogs\AddInputDialog.razor" />
+      <_ContentIncludedByDefault Remove="Dialogs\AddOutputDialog.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Dialogs\AddOutputDialog.razor" />
+    </ItemGroup>
 </Project>

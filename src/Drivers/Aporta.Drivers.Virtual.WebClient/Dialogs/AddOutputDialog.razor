@@ -1,0 +1,64 @@
+﻿@using Aporta.Shared.Models
+@using Aporta.Drivers.Virtual.Shared
+
+<Modal @ref="_addOutputModal">
+    <ModalContent Size="ModalSize.Default" Centered="true">
+        <ModalHeader>
+            <ModalTitle>
+                Add Virtual Output
+            </ModalTitle>
+            <CloseButton Clicked="@_addOutputModal.Hide" />
+        </ModalHeader>
+        <ModalBody>
+            <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addOutputValidations">
+                <Validation Validator="@ValidationRule.IsNotEmpty">
+                    <Field>
+                        <FieldLabel>Name</FieldLabel>
+                        <FieldBody>
+                            <TextEdit @bind-Text="AddOutputParam.Name" id="AddOutputTextEdit">
+                                <Feedback>
+                                    <ValidationError>
+                                        Please enter a name for the output
+                                    </ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+            </Validations>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@_addOutputModal.Hide">Cancel</Button>
+            <Button id="btnAddOutputModal" Color="Color.Primary" Clicked="@(async () => await AddOutput())">Add</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private Modal _addOutputModal;
+    private Validations _addOutputValidations;
+
+    [Parameter]
+    public AddOutputParameter AddOutputParam { get; set; }
+
+
+    [Parameter]
+    public EventCallback PerformAddOutputAction { get; set; }
+
+    private async Task AddOutput()
+    {
+        if (!await _addOutputValidations.ValidateAll())
+        {
+            return;
+        }
+
+        await _addOutputModal.Hide();
+
+        await PerformAddOutputAction.InvokeAsync();
+    }
+
+    public async Task ShowDialog()
+    {
+        await _addOutputModal.Show();
+    }
+}

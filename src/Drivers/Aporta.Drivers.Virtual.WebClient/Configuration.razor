@@ -22,7 +22,7 @@ else
                 <CardTitle Margin="Margin.Is4.OnX">
                     <Row Margin="Margin.Is2.OnY">
                         <Column>
-                            <Heading>Virtual Readers</Heading>
+                            <Heading>Virtual Reader Configuration</Heading>
                         </Column>
                     </Row>
                     <Row>
@@ -73,9 +73,129 @@ else
             </Card>
         </Column>
     </Row>
-    
+
+
+    <Row>
+        <Column ColumnSize="ColumnSize.IsFull">
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    <Row Margin="Margin.Is2.OnY">
+                        <Column>
+                            <Heading>Virtual Input Configuration</Heading>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column>
+                            <Button Color="Color.Primary" Clicked="ShowAddInputDialog">Add Virtual Input</Button>
+                        </Column>
+                    </Row>
+                </CardTitle>
+                <CardBody>
+                    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Input Name</TableHeaderCell>
+                                <TableHeaderCell>Input Number</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var input in _configuration.Inputs)
+                            {
+                                <TableRow ElementId="@("Input:" + @input.Name)">
+                                    <TableRowHeader>
+                                        @input.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @input.Number
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                Action
+                                            </DropdownToggle>
+                                            <DropdownMenu>
+                                                @if (IsInputAvailableForDelete(input))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await RemoveInput(input))">Delete</DropdownItem>
+                                                    <DropdownDivider />
+                                                }
+                                            </DropdownMenu>
+                                        </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
+
+    <Row>
+        <Column ColumnSize="ColumnSize.IsFull">
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    <Row Margin="Margin.Is2.OnY">
+                        <Column>
+                            <Heading>Virtual Output Configuration</Heading>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column>
+                            <Button Color="Color.Primary" Clicked="ShowAddOutputDialog">Add Virtual Output</Button>
+                        </Column>
+                    </Row>
+                </CardTitle>
+                <CardBody>
+                    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Output Name</TableHeaderCell>
+                                <TableHeaderCell>Output Number</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var output in _configuration.Outputs)
+                            {
+                                <TableRow ElementId="@("Input:" + @output.Name)">
+                                    <TableRowHeader>
+                                        @output.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @output.Number
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                Action
+                                            </DropdownToggle>
+                                            <DropdownMenu>
+                                                @if (IsOutputAvailableForDelete(output))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await RemoveOutput(output))">Delete</DropdownItem>
+                                                    <DropdownDivider />
+                                                }
+                                            </DropdownMenu>
+                                        </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
     <BadgeSwipeDialog @ref="_badgeSwipeDialog"
                    PerformSwipeBadgeAction="@BadgeSwipe" />
+
+    <AddInputDialog @ref="_addInputDialog" AddInputParam="@_addInputParam" PerformAddInputAction="@AddInput" />
+
+    <AddOutputDialog @ref="_addOutputDialog" AddOutputParam="@_addOutputParam" PerformAddOutputAction="@AddOutput" />
 
     <Modal @ref="_addVirtualReaderModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
@@ -105,7 +225,7 @@ else
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary" Clicked="@_addVirtualReaderModal.Hide">Cancel</Button>
-                <Button Color="Color.Primary" Clicked="@(async () => await AddReader())">Add</Button>
+                <Button id="btnAddReaderModal" Color="Color.Primary" Clicked="@(async () => await AddReader())">Add</Button>
             </ModalFooter>
         </ModalContent>
     </Modal>
@@ -133,8 +253,14 @@ else
 
     private BadgeSwipeDialog _badgeSwipeDialog;
 
-    private Endpoint[] _availableAccessPoints;
-    
+    private AddInputDialog _addInputDialog;
+    private AddInputParameter _addInputParam;
+
+    private AddOutputDialog _addOutputDialog;
+    private AddOutputParameter _addOutputParam;
+
+    private Endpoint[] _availableEndPoints;
+
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
     [Parameter]
@@ -146,18 +272,19 @@ else
     protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
+        _addInputParam = new Shared.AddInputParameter() { Name = string.Empty };
+        _addOutputParam = new Shared.AddOutputParameter() { Name = string.Empty };
     }
 
     protected override async Task OnInitializedAsync()
     {
         _readerToAdd = new Shared.AddReaderParameter();
-
-        await InitializedAvailableEndpoints();
+        await InitializeAvailableEndpoints();
     }
 
-    private async Task InitializedAvailableEndpoints()
+    private async Task InitializeAvailableEndpoints()
     {
-        _availableAccessPoints = await DoorCalls.GetAvailableEndpoints();
+        _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
 
         StateHasChanged();
     }
@@ -182,19 +309,19 @@ else
 
         return true;
     }
-    
+
     private async Task ShowSwipeBadgeModal(byte readerNumber)
     {
         _badgeSwipeDialog.ReaderNumberToSwipe = readerNumber;
         await _badgeSwipeDialog.ShowDialog();
     }
-    
+
     private async Task ShowAddReaderModal()
     {
         _readerToAdd = new Shared.AddReaderParameter();
         await _addVirtualReaderModal.Show();
     }
-    
+
     private async Task BadgeSwipe()
     {
         await PerformAction(ActionType.BadgeSwipe, JsonConvert.SerializeObject(new BadgeSwipeAction
@@ -219,7 +346,7 @@ else
 
         if (await PerformAction(ActionType.RemoveReader, readerToRemoveSerialized))
         {
-            await InitializedAvailableEndpoints(); 
+            await InitializeAvailableEndpoints(); 
         }
     }
 
@@ -233,12 +360,90 @@ else
 
         if (await PerformAction(ActionType.AddReader, JsonConvert.SerializeObject(_readerToAdd)))
         {
-            await InitializedAvailableEndpoints(); 
+            await InitializeAvailableEndpoints(); 
         }
     }
 
     private bool IsReaderAvailableForDelete(Reader reader)
     {
-        return  _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
     }
+
+    private bool IsInputAvailableForDelete(Shared.Input input)
+    {
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
+    }
+
+    private bool IsOutputAvailableForDelete(Shared.Output output)
+    {
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
+    }
+
+    private async Task ShowAddInputDialog()
+    {
+        _addInputParam = new Shared.AddInputParameter();
+        await _addInputDialog.ShowDialog();
+    }
+
+    private async Task AddInput()
+    {
+        if (await PerformAction(ActionType.AddInput, JsonConvert.SerializeObject(_addInputParam)))
+        {
+            await InitializeAvailableEndpoints();
+        }
+    }
+
+    private async Task RemoveInput(Shared.Input inputToRemove)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete input '{inputToRemove.Name}'?", "Delete input", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        var inputToRemoveSerialized = JsonConvert.SerializeObject(inputToRemove);
+
+        if (await PerformAction(ActionType.RemoveInput, inputToRemoveSerialized))
+        {
+            await InitializeAvailableEndpoints();
+        }
+    }
+
+
+    private async Task ShowAddOutputDialog()
+    {
+        _addOutputParam = new Shared.AddOutputParameter();
+        await _addOutputDialog.ShowDialog();
+    }
+
+    private async Task AddOutput()
+    {
+        if (await PerformAction(ActionType.AddOutput, JsonConvert.SerializeObject(_addOutputParam)))
+        {
+            await InitializeAvailableEndpoints();
+        }
+    }
+
+    private async Task RemoveOutput(Shared.Output outputToRemove)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete output '{outputToRemove.Name}'?", "Delete output", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        var outputToRemoveSerialized = JsonConvert.SerializeObject(outputToRemove);
+
+        if (await PerformAction(ActionType.RemoveOutput, outputToRemoveSerialized))
+        {
+            await InitializeAvailableEndpoints();
+        }
+    }
+
 }
