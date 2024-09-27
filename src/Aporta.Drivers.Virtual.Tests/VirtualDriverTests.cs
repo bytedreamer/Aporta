@@ -31,7 +31,7 @@ namespace Aporta.Drivers.Virtual.Tests
             //assert
             var configuration = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
 
-            Assert.IsInstanceOf<Input>(configuration?.Inputs.Find(x => x.Name == inputToAdd.Name));
+            Assert.That(configuration?.Inputs.Find(x => x.Name == inputToAdd.Name), Is.InstanceOf<Input>());
         }
 
         [Test]
@@ -61,7 +61,8 @@ namespace Aporta.Drivers.Virtual.Tests
             //assert
             var newConfig = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
 
-            Assert.IsNull(newConfig?.Inputs.Find(x => x.Name == inputToRemove.Name && x.Number == inputToRemove.Number));
+            Assert.That(newConfig?.Inputs.Find(x => x.Name == inputToRemove.Name && x.Number == inputToRemove.Number),
+                Is.Null);
         }
 
         [Test]
@@ -82,7 +83,7 @@ namespace Aporta.Drivers.Virtual.Tests
             //assert
             var configuration = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
 
-            Assert.IsInstanceOf<Output>(configuration?.Outputs.Find(x => x.Name == outputToAdd.Name));
+            Assert.That(configuration?.Outputs.Find(x => x.Name == outputToAdd.Name), Is.InstanceOf<Output>());
         }
 
         [Test]
@@ -107,13 +108,14 @@ namespace Aporta.Drivers.Virtual.Tests
 
             var outputToRemove = output2;
 
-            virtualDriver.PerformAction(ActionType.RemoveOutput.ToString(), JsonConvert.SerializeObject(outputToRemove));
+            virtualDriver.PerformAction(ActionType.RemoveOutput.ToString(),
+                JsonConvert.SerializeObject(outputToRemove));
 
             //assert
             var newConfig = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
 
-            Assert.IsNull(newConfig?.Inputs.Find(x => x.Name == outputToRemove.Name && x.Number == outputToRemove.Number));
+            Assert.That(newConfig?.Inputs.Find(x => x.Name == outputToRemove.Name && x.Number == outputToRemove.Number),
+                Is.Null);
         }
-
     }
 }
