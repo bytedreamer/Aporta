@@ -19,6 +19,6 @@ public class Extension
     
     public Extension ShallowCopy()
     {
-        return (Extension) this.MemberwiseClone();
+        return (Extension) MemberwiseClone();
     }
 }

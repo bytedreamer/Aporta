@@ -162,7 +162,7 @@ public class VirtualDriver : IHardwareDriver
     {
         try
         {
-            var readerToAdd = new Reader() { Name = requestedReaderToAdd.Name, Number = GetNextReaderNumber()};
+            var readerToAdd = new Reader { Name = requestedReaderToAdd.Name, Number = GetNextReaderNumber()};
             _configuration.Readers.Add(readerToAdd);
             _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
         } catch (Exception ex)
@@ -178,7 +178,7 @@ public class VirtualDriver : IHardwareDriver
     {
         try
         {
-            var inputToAdd = new Input() { Name = requestedInputToAdd.Name, Number = GetNextInputNumber() };
+            var inputToAdd = new Input { Name = requestedInputToAdd.Name, Number = GetNextInputNumber() };
             _configuration.Inputs.Add(inputToAdd);
             _endpoints.Add(new VirtualInput(inputToAdd.Name, Id, $"VI{inputToAdd.Number}"));
         }
@@ -195,7 +195,7 @@ public class VirtualDriver : IHardwareDriver
     {
         try
         {
-            var outputToAdd = new Output() { Name = requestedOutputToAdd.Name, Number = GetNextOutputNumber() };
+            var outputToAdd = new Output { Name = requestedOutputToAdd.Name, Number = GetNextOutputNumber() };
             _configuration.Outputs.Add(outputToAdd);
             _endpoints.Add(new VirtualOutput(outputToAdd.Name, Id, $"VO{outputToAdd.Number}"));
         }

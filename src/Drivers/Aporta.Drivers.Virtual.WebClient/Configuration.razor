@@ -272,8 +272,8 @@ else
     protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
-        _addInputParam = new Shared.AddInputParameter() { Name = string.Empty };
-        _addOutputParam = new Shared.AddOutputParameter() { Name = string.Empty };
+        _addInputParam = new AddInputParameter { Name = string.Empty };
+        _addOutputParam = new AddOutputParameter { Name = string.Empty };
     }
 
     protected override async Task OnInitializedAsync()
@@ -381,7 +381,7 @@ else
 
     private async Task ShowAddInputDialog()
     {
-        _addInputParam = new Shared.AddInputParameter();
+        _addInputParam = new AddInputParameter();
         await _addInputDialog.ShowDialog();
     }
 
@@ -415,7 +415,7 @@ else
 
     private async Task ShowAddOutputDialog()
     {
-        _addOutputParam = new Shared.AddOutputParameter();
+        _addOutputParam = new AddOutputParameter();
         await _addOutputDialog.ShowDialog();
     }
 

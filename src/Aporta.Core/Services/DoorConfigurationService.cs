@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -12,25 +11,15 @@ using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services;
 
-public class DoorConfigurationService
+public class DoorConfigurationService(
+    IDataAccess dataAccess,
+    IHubContext<DataChangeNotificationHub> hubContext,
+    ILogger<DoorConfigurationService> logger)
 {
-    private readonly DoorRepository _doorRepository;
-    private readonly EndpointRepository _endpointRepository;
-    private readonly OutputRepository _outputRepository;
-    private readonly InputRepository _inputRepository;
-    private readonly IHubContext<DataChangeNotificationHub> _hubContext;
-    private readonly ILogger<DoorConfigurationService> _logger;
-
-    public DoorConfigurationService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
-        ILogger<DoorConfigurationService> logger)
-    {
-        _hubContext = hubContext;
-        _logger = logger;
-        _doorRepository = new DoorRepository(dataAccess);
-        _endpointRepository = new EndpointRepository(dataAccess);
-        _outputRepository = new OutputRepository(dataAccess);
-        _inputRepository = new InputRepository(dataAccess);
-    }
+    private readonly DoorRepository _doorRepository = new(dataAccess);
+    private readonly EndpointRepository _endpointRepository = new(dataAccess);
+    private readonly OutputRepository _outputRepository = new(dataAccess);
+    private readonly InputRepository _inputRepository = new(dataAccess);
 
     public async Task<IEnumerable<Endpoint>> AvailableAccessPoints()
     {
@@ -78,19 +67,19 @@ public class DoorConfigurationService
 
     public async Task Insert(Door door)
     {
-        _logger.LogDebug("Request to insert door {Name}", door.Name);
+        logger.LogDebug("Request to insert door {Name}", door.Name);
             
         await _doorRepository.Insert(door);
             
-        await _hubContext.Clients.All.SendAsync(Methods.DoorInserted, door.Id);
+        await hubContext.Clients.All.SendAsync(Methods.DoorInserted, door.Id);
     }
 
     public async Task Delete(int id)
     {
-        _logger.LogDebug("Request to delete door with id of {Id}", id);
+        logger.LogDebug("Request to delete door with id of {Id}", id);
             
         await _doorRepository.Delete(id);
             
-        await _hubContext.Clients.All.SendAsync(Methods.DoorDeleted, id);
+        await hubContext.Clients.All.SendAsync(Methods.DoorDeleted, id);
     }
 }
