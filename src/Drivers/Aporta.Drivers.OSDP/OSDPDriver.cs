@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.IO.Ports;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -33,6 +35,7 @@ public class OSDPDriver : IHardwareDriver
     private readonly ConcurrentDictionary<string, Guid> _portMapping = new();
     private readonly List<IEndpoint> _endpoints = new();
     private readonly ConcurrentDictionary<int, PKOCDevice> _pkocDevices = new();
+    private readonly ConcurrentDictionary<string, IOsdpConnection> _connections = new();
         
     private ControlPanel _panel;
     private PKOCControlPanel _pkocPanel;
@@ -417,9 +420,11 @@ public class OSDPDriver : IHardwareDriver
     {
         foreach (var bus in _configuration.Buses)
         {
-            _portMapping.TryAdd(bus.PortName,
-                _panel.StartConnection(new SerialPortOsdpConnection(bus.PortName, bus.BaudRate),
-                    TimeSpan.FromMilliseconds(50), false));
+            var connection = new SerialPortOsdpConnection(bus.PortName, bus.BaudRate); 
+            
+            _connections.TryAdd(bus.PortName, connection);
+           
+            _portMapping.TryAdd(bus.PortName, _panel.StartConnection(connection, TimeSpan.FromMilliseconds(50), false));
         }
     }
 
@@ -450,7 +455,12 @@ public class OSDPDriver : IHardwareDriver
         {
             access.Dispose();
         }
-        
+
+        foreach (var bus in _configuration.Buses)
+        {       
+            _connections.TryRemove(bus.PortName, out _);
+        }
+
         _panel.Shutdown();
             
         _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
@@ -553,8 +563,14 @@ public class OSDPDriver : IHardwareDriver
         var deviceAction = JsonConvert.DeserializeObject<DeviceAction>(parameters);
         if (deviceAction == null) return string.Empty;
 
-        _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName).Devices
-            .Add(deviceAction.Device);
+        var bus = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName);
+
+        if (!_connections[bus.PortName]?.IsOpen ?? true)
+        {
+            throw new Exception($"{bus.PortName} is not open");
+        }
+
+        bus.Devices.Add(deviceAction.Device);
 
         AddDeviceToPanel(deviceAction.Device);
 

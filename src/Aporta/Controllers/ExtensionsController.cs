@@ -11,28 +11,21 @@ namespace Aporta.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ExtensionsController : ControllerBase
+public class ExtensionsController(
+    ExtensionService extensionService,
+    ILogger<ExtensionsController> logger)
+    : ControllerBase
 {
-    private readonly ILogger<ExtensionsController> _logger;
-    private readonly ExtensionService _extensionService;
-
-    public ExtensionsController(ExtensionService extensionService,
-        ILogger<ExtensionsController> logger)
-    {
-        _logger = logger;
-        _extensionService = extensionService;
-    }
-
     [HttpGet]
     public ActionResult<IEnumerable<Extension>> Get()
     {
         try
         {
-            return new ActionResult<IEnumerable<Extension>>(_extensionService.GetExtensions());
+            return new ActionResult<IEnumerable<Extension>>(extensionService.GetExtensions());
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unable to get extensions");
+            logger.LogError(exception, "Unable to get extensions");
             return Problem(exception.Message);
         }
     }
@@ -42,11 +35,11 @@ public class ExtensionsController : ControllerBase
     {
         try
         {
-            return new ActionResult<Extension>(_extensionService.GetExtension(extensionId));
+            return new ActionResult<Extension>(extensionService.GetExtension(extensionId));
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unable to get extension {ExtensionId}", extensionId);
+            logger.LogError(exception, "Unable to get extension {ExtensionId}", extensionId);
             return Problem(exception.Message);
         }
     }
@@ -56,11 +49,11 @@ public class ExtensionsController : ControllerBase
     {
         try
         {
-            await _extensionService.EnableExtension(extensionId, enabled);
+            await extensionService.EnableExtension(extensionId, enabled);
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unable to update extension {ExtensionId}", extensionId);
+            logger.LogError(exception, "Unable to update extension {ExtensionId}", extensionId);
             return Problem(exception.Message);
         }
 
@@ -70,19 +63,15 @@ public class ExtensionsController : ControllerBase
     [HttpPost("{extensionId:Guid}/action/{actionType}")]
     public async Task<ActionResult> PerformAction(Guid extensionId, string actionType, [FromBody] dynamic parameter)
     {
-        bool success = true;
-        string result = string.Empty;
         try
         {
-            result = await _extensionService.PerformAction(extensionId, actionType,
-                JsonSerializer.Serialize(parameter));
+            return Content(await extensionService.PerformAction(extensionId, actionType,
+                JsonSerializer.Serialize(parameter)));
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unable to perform action {ActionType} for extension {ExtensionId}", actionType, extensionId);
-            success = false;
+            logger.LogError(exception, "Unable to perform action {ActionType} for extension {ExtensionId}", actionType, extensionId);
+            return Problem(exception.Message);
         }
-
-        return success ? Content(result) : Problem();
     }
 }
