@@ -1,23 +1,23 @@
-﻿@using Aporta.Drivers.Virtual.Shared
+@using Aporta.Drivers.Virtual.Shared
 
-<Modal @ref="_addOutputModal" Closing="@OnModalClosing">
+<Modal @ref="_addReaderModal" Closing="@OnModalClosing">
     <ModalContent Size="ModalSize.Default" Centered="true">
         <ModalHeader>
             <ModalTitle>
-                Add Virtual Output
+                Add Virtual Reader
             </ModalTitle>
-            <CloseButton Clicked="@_addOutputModal.Hide" />
+            <CloseButton Clicked="@_addReaderModal.Hide" />
         </ModalHeader>
         <ModalBody>
-            <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addOutputValidations">
+            <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addReaderValidations">
                 <Validation Validator="@ValidationRule.IsNotEmpty">
                     <Field>
                         <FieldLabel>Name</FieldLabel>
                         <FieldBody>
-                            <TextEdit @bind-Text="AddOutputParam.Name" id="AddOutputTextEdit">
+                            <TextEdit @bind-Text="AddReaderParam.Name" id="AddReaderTextEdit">
                                 <Feedback>
                                     <ValidationError>
-                                        Please enter a name for the output
+                                        Please enter a name for the virtual reader
                                     </ValidationError>
                                 </Feedback>
                             </TextEdit>
@@ -27,37 +27,36 @@
             </Validations>
         </ModalBody>
         <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="@_addOutputModal.Hide">Cancel</Button>
-            <Button id="btnAddOutputModal" Color="Color.Primary" Clicked="@(async () => await AddOutput())">Add</Button>
+            <Button Color="Color.Secondary" Clicked="@_addReaderModal.Hide">Cancel</Button>
+            <Button id="btnAddReaderModal" Color="Color.Primary" Clicked="@(async () => await AddReader())">Add</Button>
         </ModalFooter>
     </ModalContent>
 </Modal>
 
 @code {
-    private Modal _addOutputModal;
-    private Validations _addOutputValidations;
+    private Modal _addReaderModal;
+    private Validations _addReaderValidations;
 
     [Parameter]
-    public AddOutputParameter AddOutputParam { get; set; }
+    public AddReaderParameter AddReaderParam { get; set; }
 
     [Parameter]
-    public EventCallback PerformAddOutputAction { get; set; }
+    public EventCallback PerformAddReaderAction { get; set; }
 
-    private async Task AddOutput()
+    private async Task AddReader()
     {
-        if (!await _addOutputValidations.ValidateAll())
+        if (!await _addReaderValidations.ValidateAll())
         {
             return;
         }
 
-        await _addOutputModal.Hide();
+        await _addReaderModal.Hide();
 
-        await PerformAddOutputAction.InvokeAsync();
-    }
+        await PerformAddReaderAction.InvokeAsync();    }
 
     public async Task ShowDialog()
     {
-        await _addOutputModal.Show();
+        await _addReaderModal.Show();
     }
     
     private Task OnModalClosing( ModalClosingEventArgs eventArgs )
