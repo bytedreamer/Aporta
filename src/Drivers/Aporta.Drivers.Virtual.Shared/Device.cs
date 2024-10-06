@@ -31,11 +31,6 @@ public class Reader
     public byte Number { get; init; }
 }
 
-public class AddInputParameter
-{
-    public string Name { get; set; } = string.Empty;
-}
-
 public class AddOutputParameter
 {
     public string Name { get; set; } = string.Empty;

@@ -92,7 +92,6 @@ public class VirtualDriver : IHardwareDriver
                 break;
 
             case ActionType.RemoveReader:
-
                 var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
                 if (requestedReaderToRemove != null)
                 {
@@ -102,21 +101,13 @@ public class VirtualDriver : IHardwareDriver
                         OnUpdatedEndpoints();
                     }
                 }
-
-
                 break;
 
-            case ActionType.AddInput:
-
-                var inputToAdd = JsonConvert.DeserializeObject<AddInputParameter>(parameters);
-                if (inputToAdd != null && AddInput(inputToAdd))
-                {
-                    OnUpdatedEndpoints();
-                }
+            case ActionType.AddUpdateInput:
+                AddUpdateInput(parameters);
                 break;
 
             case ActionType.RemoveInput:
-
                 var requestedInputToRemove = JsonConvert.DeserializeObject<Input>(parameters);
                 if (requestedInputToRemove != null)
                 {
@@ -128,13 +119,8 @@ public class VirtualDriver : IHardwareDriver
                 }
                 break;
 
-            case ActionType.AddOutput:
-
-                var outputToAdd = JsonConvert.DeserializeObject<AddOutputParameter>(parameters);
-                if (outputToAdd != null && AddOutput(outputToAdd))
-                {
-                    OnUpdatedEndpoints();
-                }
+            case ActionType.AddUpdateOutput:
+                AddUpdateOutput(parameters);
                 break;
 
             case ActionType.RemoveOutput:
@@ -176,39 +162,51 @@ public class VirtualDriver : IHardwareDriver
         
         OnUpdatedEndpoints();
     }
-
-    private bool AddInput(AddInputParameter requestedInputToAdd)
+    
+    private void AddUpdateInput(string parameters)
     {
-        try
+        var input = JsonConvert.DeserializeObject<Input>(parameters);
+        if (input == null)
         {
-            var inputToAdd = new Input { Name = requestedInputToAdd.Name, Number = GetNextInputNumber() };
+            throw new NullReferenceException($"Cannot add input {parameters}");
+        }
+        
+        var foundInput = _configuration.Inputs.Find(rdr => rdr.Number == input.Number);
+        if (foundInput != null)
+        {
+            _configuration.Inputs[_configuration.Inputs.IndexOf(foundInput)] = input;
+        }
+        else
+        {
+            var inputToAdd = new Input { Name = input.Name, Number = GetNextReaderNumber() };
             _configuration.Inputs.Add(inputToAdd);
             _endpoints.Add(new VirtualInput(inputToAdd.Name, Id, $"VI{inputToAdd.Number}"));
         }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Exception occurred adding a new input");
-            return false;
-        }
-
-        return true;
+        
+        OnUpdatedEndpoints();
     }
 
-    private bool AddOutput(AddOutputParameter requestedOutputToAdd)
+    private void AddUpdateOutput(string parameters)
     {
-        try
+        var output = JsonConvert.DeserializeObject<Output>(parameters);
+        if (output == null)
         {
-            var outputToAdd = new Output { Name = requestedOutputToAdd.Name, Number = GetNextOutputNumber() };
-            _configuration.Outputs.Add(outputToAdd);
-            _endpoints.Add(new VirtualOutput(outputToAdd.Name, Id, $"VO{outputToAdd.Number}"));
+            throw new NullReferenceException($"Cannot add output {parameters}");
         }
-        catch (Exception ex)
+        
+        var foundOutput = _configuration.Outputs.Find(rdr => rdr.Number == output.Number);
+        if (foundOutput != null)
         {
-            _logger?.LogError(ex, "Exception occurred adding a new output");
-            return false;
+            _configuration.Outputs[_configuration.Outputs.IndexOf(foundOutput)] = output;
         }
-
-        return true;
+        else
+        {
+            var ouptutToAdd = new Output { Name = output.Name, Number = GetNextReaderNumber() };
+            _configuration.Outputs.Add(ouptutToAdd);
+            _endpoints.Add(new VirtualOutput(ouptutToAdd.Name, Id, $"VO{ouptutToAdd.Number}"));
+        }
+        
+        OnUpdatedEndpoints();
     }
 
     private byte GetNextReaderNumber()

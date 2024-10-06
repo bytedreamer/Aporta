@@ -9,9 +9,9 @@ namespace Aporta.Drivers.Virtual.Shared.Actions
         AddUpdateReader,
         EditReader,
         RemoveReader,
-        AddInput,
+        AddUpdateInput,
         RemoveInput,
-        AddOutput,
+        AddUpdateOutput,
         RemoveOutput,
         
     }

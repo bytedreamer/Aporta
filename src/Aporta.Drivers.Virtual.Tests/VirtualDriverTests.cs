@@ -18,7 +18,7 @@ namespace Aporta.Drivers.Virtual.Tests
         {
             //arrange
             var virtualDriver = new VirtualDriver();
-            var inputToAdd = new AddInputParameter { Name = "Input 1" };
+            var inputToAdd = new Input { Name = "Input 1" };
 
             Mock<Microsoft.Extensions.Logging.ILoggerFactory> mockLoggerFactory = new();
             Mock<IDataEncryption> mockDataEncryption = new();
@@ -26,7 +26,7 @@ namespace Aporta.Drivers.Virtual.Tests
             //act
             virtualDriver.Load(string.Empty, mockDataEncryption.Object, mockLoggerFactory.Object);
 
-            virtualDriver.PerformAction(ActionType.AddInput.ToString(), JsonConvert.SerializeObject(inputToAdd));
+            virtualDriver.PerformAction(ActionType.AddUpdateInput.ToString(), JsonConvert.SerializeObject(inputToAdd));
 
             //assert
             var configuration = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
@@ -78,7 +78,7 @@ namespace Aporta.Drivers.Virtual.Tests
             //act
             virtualDriver.Load(string.Empty, mockDataEncryption.Object, mockLoggerFactory.Object);
 
-            virtualDriver.PerformAction(ActionType.AddOutput.ToString(), JsonConvert.SerializeObject(outputToAdd));
+            virtualDriver.PerformAction(ActionType.AddUpdateOutput.ToString(), JsonConvert.SerializeObject(outputToAdd));
 
             //assert
             var configuration = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());

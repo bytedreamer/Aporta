@@ -6,6 +6,8 @@
 @using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
 @using Aporta.Drivers.Virtual.WebClient.Dialogs
+@using Input = Aporta.Drivers.Virtual.Shared.Input
+@using Output = Aporta.Drivers.Virtual.Shared.Output
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls DoorCalls;
@@ -83,7 +85,7 @@ else
                     </Row>
                     <Row>
                         <Column>
-                            <Button Color="Color.Primary" Clicked="ShowAddInputDialog">Add Virtual Input</Button>
+                            <Button Color="Color.Primary" Clicked="ShowAddInputModal">Add Virtual Input</Button>
                         </Column>
                     </Row>
                 </CardTitle>
@@ -112,11 +114,8 @@ else
                                                 Action
                                             </DropdownToggle>
                                             <DropdownMenu>
-                                                @if (IsInputAvailableForDelete(input))
-                                                {
-                                                    <DropdownItem Clicked="@(async () => await RemoveInput(input))">Delete</DropdownItem>
-                                                    <DropdownDivider />
-                                                }
+                                                <DropdownItem Clicked="@(async () => await ShowEditInputModal(input))">Edit</DropdownItem>
+                                                <DropdownItem Clicked="@(async () => await RemoveInput(input))" Disabled="@(!IsInputAvailableForDelete(input))">Delete</DropdownItem>
                                             </DropdownMenu>
                                         </Dropdown>
                                     </TableRowCell>
@@ -140,7 +139,7 @@ else
                     </Row>
                     <Row>
                         <Column>
-                            <Button Color="Color.Primary" Clicked="ShowAddOutputDialog">Add Virtual Output</Button>
+                            <Button Color="Color.Primary" Clicked="ShowAddOutputModal">Add Virtual Output</Button>
                         </Column>
                     </Row>
                 </CardTitle>
@@ -156,7 +155,7 @@ else
                         <TableBody>
                             @foreach (var output in _configuration.Outputs)
                             {
-                                <TableRow ElementId="@("Input:" + @output.Name)">
+                                <TableRow ElementId="@("Output:" + @output.Name)">
                                     <TableRowHeader>
                                         @output.Name
                                     </TableRowHeader>
@@ -169,11 +168,8 @@ else
                                                 Action
                                             </DropdownToggle>
                                             <DropdownMenu>
-                                                @if (IsOutputAvailableForDelete(output))
-                                                {
-                                                    <DropdownItem Clicked="@(async () => await RemoveOutput(output))">Delete</DropdownItem>
-                                                    <DropdownDivider />
-                                                }
+                                                <DropdownItem Clicked="@(async () => await ShowEditOutputModal(output))">Edit</DropdownItem>
+                                                <DropdownItem Clicked="@(async () => await RemoveOutput(output))" Disabled="@(!IsOutputAvailableForDelete(output))">Delete</DropdownItem>
                                             </DropdownMenu>
                                         </Dropdown>
                                     </TableRowCell>
@@ -187,10 +183,6 @@ else
     </Row>
 
     <AddEditDeviceDialog @ref="_addEditDeviceDialog" PerformAction="@AddEditDevice" />
-
-    <AddInputDialog @ref="_addInputDialog" AddInputParam="@_addInputParam" PerformAddInputAction="@AddInput" />
-
-    <AddOutputDialog @ref="_addOutputDialog" AddOutputParam="@_addOutputParam" PerformAddOutputAction="@AddOutput" />
 
     <BadgeSwipeDialog @ref="_badgeSwipeDialog" PerformSwipeBadgeAction="@BadgeSwipe" />
 
@@ -213,12 +205,6 @@ else
 
     private AddEditDeviceDialog _addEditDeviceDialog;
     
-    private AddInputDialog _addInputDialog;
-    private AddInputParameter _addInputParam;
-
-    private AddOutputDialog _addOutputDialog;
-    private AddOutputParameter _addOutputParam;
-    
     private BadgeSwipeDialog _badgeSwipeDialog;
 
     private Endpoint[] _availableEndPoints;
@@ -234,8 +220,6 @@ else
     protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
-        _addInputParam = new AddInputParameter { Name = string.Empty };
-        _addOutputParam = new AddOutputParameter { Name = string.Empty };
     }
 
     protected override async Task OnInitializedAsync()
@@ -297,15 +281,6 @@ else
         await _addEditDeviceDialog.ShowDialog();
     }
 
-    private async Task BadgeSwipe()
-    {
-        await PerformAction(ActionType.BadgeSwipe, JsonConvert.SerializeObject(new BadgeSwipeAction
-        {
-            ReaderNumber = _badgeSwipeDialog.ReaderNumberToSwipe,
-            CardData = _badgeSwipeDialog.CardDataToSwipe
-        }));
-    }
-
     private async Task RemoveReader(Reader readerToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete reader '{readerToRemove.Name}'?", "Delete reader", options =>
@@ -324,55 +299,43 @@ else
             await InitializeAvailableEndpoints(); 
         }
     }
-
-    private async Task AddEditDevice()
+    
+    private async Task BadgeSwipe()
     {
-        if (_addEditDeviceDialog.Type == AddEditDeviceDialog.DeviceType.Reader)
+        await PerformAction(ActionType.BadgeSwipe, JsonConvert.SerializeObject(new BadgeSwipeAction
         {
-            if (await PerformAction(ActionType.AddUpdateReader, JsonConvert.SerializeObject(
-                    new Reader(name: _addEditDeviceDialog.Name, number: _addEditDeviceDialog.Number))))
-            {
-                await InitializeAvailableEndpoints();
-            }
-        }
+            ReaderNumber = _badgeSwipeDialog.ReaderNumberToSwipe,
+            CardData = _badgeSwipeDialog.CardDataToSwipe
+        }));
     }
-
-    private bool IsReaderAvailableForDelete(Reader reader)
+    
+    private async Task ShowAddInputModal()
     {
-        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
+        _addEditDeviceDialog.IsAdding = true;
+        _addEditDeviceDialog.Number = 0;
+        _addEditDeviceDialog.Name = string.Empty;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Input;
+        
+        await _addEditDeviceDialog.ShowDialog();
     }
-
-    private bool IsInputAvailableForDelete(Shared.Input input)
+    
+    private async Task ShowEditInputModal(Input input)
     {
-        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
+        _addEditDeviceDialog.IsAdding = false;
+        _addEditDeviceDialog.Number = input.Number;
+        _addEditDeviceDialog.Name = input.Name;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Input;
+
+        await _addEditDeviceDialog.ShowDialog();
     }
 
-    private bool IsOutputAvailableForDelete(Shared.Output output)
-    {
-        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
-    }
-
-    private async Task ShowAddInputDialog()
-    {
-        _addInputParam = new AddInputParameter();
-        await _addInputDialog.ShowDialog();
-    }
-
-    private async Task AddInput()
-    {
-        if (await PerformAction(ActionType.AddInput, JsonConvert.SerializeObject(_addInputParam)))
-        {
-            await InitializeAvailableEndpoints();
-        }
-    }
-
-    private async Task RemoveInput(Shared.Input inputToRemove)
+    private async Task RemoveInput(Input inputToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete input '{inputToRemove.Name}'?", "Delete input", options =>
-        {
-            options.ShowMessageIcon = false;
-            options.ConfirmButtonColor = Color.Danger;
-        }))
+            {
+                options.ShowMessageIcon = false;
+                options.ConfirmButtonColor = Color.Danger;
+            }))
         {
             return;
         }
@@ -384,22 +347,28 @@ else
             await InitializeAvailableEndpoints();
         }
     }
-
-    private async Task ShowAddOutputDialog()
+    
+    private async Task ShowAddOutputModal()
     {
-        _addOutputParam = new AddOutputParameter();
-        await _addOutputDialog.ShowDialog();
+        _addEditDeviceDialog.IsAdding = true;
+        _addEditDeviceDialog.Number = 0;
+        _addEditDeviceDialog.Name = string.Empty;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Output;
+        
+        await _addEditDeviceDialog.ShowDialog();
     }
-
-    private async Task AddOutput()
+    
+    private async Task ShowEditOutputModal(Output output)
     {
-        if (await PerformAction(ActionType.AddOutput, JsonConvert.SerializeObject(_addOutputParam)))
-        {
-            await InitializeAvailableEndpoints();
-        }
-    }
+        _addEditDeviceDialog.IsAdding = false;
+        _addEditDeviceDialog.Number = output.Number;
+        _addEditDeviceDialog.Name = output.Name;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Output;
 
-    private async Task RemoveOutput(Shared.Output outputToRemove)
+        await _addEditDeviceDialog.ShowDialog();
+    }
+    
+    private async Task RemoveOutput(Output outputToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete output '{outputToRemove.Name}'?", "Delete output", options =>
             {
@@ -416,5 +385,36 @@ else
         {
             await InitializeAvailableEndpoints();
         }
+    }
+    
+    private async Task AddEditDevice()
+    {
+        var actionTypeList = new Dictionary<AddEditDeviceDialog.DeviceType, ActionType>
+        {
+            { AddEditDeviceDialog.DeviceType.Reader, ActionType.AddUpdateReader },
+            { AddEditDeviceDialog.DeviceType.Input, ActionType.AddUpdateInput },
+            { AddEditDeviceDialog.DeviceType.Output, ActionType.AddUpdateOutput }
+        };
+
+        if (await PerformAction(actionTypeList[_addEditDeviceDialog.Type], JsonConvert.SerializeObject(
+                new Reader(name: _addEditDeviceDialog.Name, number: _addEditDeviceDialog.Number))))
+        {
+            await InitializeAvailableEndpoints();
+        }
+    }
+    
+    private bool IsReaderAvailableForDelete(Reader reader)
+    {
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
+    }
+
+    private bool IsInputAvailableForDelete(Input input)
+    {
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
+    }
+
+    private bool IsOutputAvailableForDelete(Output output)
+    {
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
     }
 }

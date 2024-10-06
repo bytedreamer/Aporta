@@ -8,6 +8,8 @@ using Moq;
 using Newtonsoft.Json;
 using TestWebClientConfiguration;
 using Aporta.Shared.Models;
+using Input = Aporta.Drivers.Virtual.Shared.Input;
+using Output = Aporta.Drivers.Virtual.Shared.Output;
 
 namespace Aporta.Drivers.Virtual.WebClient.Tests;
 
@@ -36,22 +38,8 @@ public class ConfigurationTest : AportaTestContext
         var config = new Shared.Configuration();
 
         config.Readers.Add(new Reader { Name = "Virtual Reader 1", Number = 1 });
-        config.Outputs.Add(new Shared.Output { Name = "Virtual Output 1", Number = 1 });
-        config.Inputs.Add(new Shared.Input { Name = "Virtual Input 1", Number = 1 });
-
-        return config;
-    }
-
-    private Shared.Configuration SetUpDeviceConfiguration(List<Reader> readers)
-    {
-        var config = new Shared.Configuration();
-
-        foreach (var reader in readers)
-        {
-            config.Readers.Add(reader);
-            config.Outputs.Add(new Shared.Output { Name = $"Virtual Output {reader.Number}", Number = reader.Number });
-            config.Inputs.Add(new Shared.Input { Name = $"Virtual Input {reader.Number}", Number = reader.Number });
-        }
+        config.Outputs.Add(new Output { Name = "Virtual Output 1", Number = 1 });
+        config.Inputs.Add(new Input { Name = "Virtual Input 1", Number = 1 });
 
         return config;
     }
@@ -182,9 +170,9 @@ public class ConfigurationTest : AportaTestContext
 
         SetUpDoorMock(availableEndPoints);
 
-        var config = SetUpDeviceConfiguration(readersOnRazorPage);
+        var config = new Shared.Configuration();
 
-        var readerToEdit = readersOnRazorPage[0];
+        config.Readers.AddRange(readersOnRazorPage);
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
@@ -235,7 +223,9 @@ public class ConfigurationTest : AportaTestContext
 
         SetUpDoorMock(availableEndPoints);
 
-        var config = SetUpDeviceConfiguration(readersOnRazorPage);
+        var config = new Shared.Configuration();
+
+        config.Readers.AddRange(readersOnRazorPage);
 
         var readerToRemove = readersOnRazorPage[1];
 
@@ -268,44 +258,107 @@ public class ConfigurationTest : AportaTestContext
 
         var emptyConfig = new Shared.Configuration();
 
-        var newInput = new AddInputParameter { Name = "Test Input" };
+        string newInputName = "New Input";
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
             .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(emptyConfig))
             .Add(p => p.ExtensionId, _extensionId));
 
-        var addInputButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add Virtual Input");
+        var addInputButton = _cut.FindComponents<Button>()
+            .First(button => button.Nodes[0].TextContent.Trim() == "Add Virtual Input");
 
         await _cut.InvokeAsync(async () => await addInputButton.Instance.Clicked.InvokeAsync());
 
-        var textEdit = _cut.Find("#AddInputTextEdit");
-        textEdit.Input(newInput.Name);
+        var textEdit = _cut.Find("#NameTextEdit");
+        textEdit.Input(newInputName);
 
-        var modalAddInputButton = _cut.FindComponents<Button>().First(button => button.Markup.Contains("btnAddInputModal"));
-
-        await _cut.InvokeAsync(async () => await modalAddInputButton.Instance.Clicked.InvokeAsync());
+        var modalAddButton =
+            _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
+        await _cut.InvokeAsync(async () => await modalAddButton.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddInput.ToString(), JsonConvert.SerializeObject(newInput)));
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateInput.ToString(),
+            JsonConvert.SerializeObject(new Input { Name = newInputName, Number = 0 })));
     }
+    
+     [Test]
+    public async Task EditInput()
+    {
+        // Arrange
+        var inputsOnRazorPage = new List<Input>
+        {
+            new() { Name = "Virtual Input 1", Number = 1 },
+            new() { Name = "Virtual Input 2", Number = 2 },
+            new() { Name = "Virtual Input 3", Number = 3 }
+        };
 
+        Endpoint[] availableEndPoints =
+        {
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Input,
+                DriverEndpointId = $"VI{inputsOnRazorPage[1].Number}", Id = inputsOnRazorPage[1].Number
+            },
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Input,
+                DriverEndpointId = $"VI{inputsOnRazorPage[2].Number}", Id = inputsOnRazorPage[2].Number
+            }
+        };
+
+        SetUpDoorMock(availableEndPoints);
+
+        var config = new Shared.Configuration();
+
+        config.Inputs.AddRange(inputsOnRazorPage);
+
+        // Act
+        _cut = RenderComponent<Configuration>(parameters => parameters
+            .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(config))
+            .Add(p => p.ExtensionId, _extensionId));
+
+        var editButton = _cut.FindComponents<DropdownItem>().First(button =>
+            !button.Instance.Disabled && button.Nodes[0].TextContent.Trim() == "Edit");
+
+        await _cut.InvokeAsync(async () => await editButton.Instance.Clicked.InvokeAsync());
+        
+        var textEdit = _cut.Find("#NameTextEdit");
+        textEdit.Input("Edit Input Name");
+
+        var modalEditButton =
+            _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Edit");
+        await _cut.InvokeAsync(async () => await modalEditButton.Instance.Clicked.InvokeAsync());
+        
+        // Assert
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateInput.ToString(),
+            JsonConvert.SerializeObject(new Reader { Name = "Edit Input Name", Number = 1 })));
+    }
 
     [Test]
     public async Task RemoveInput()
     {
         // Arrange
-        var inputsOnRazorPage = new List<Shared.Input>
+        var inputsOnRazorPage = new List<Input>
         {
-            new() {Name = "Virtual Input 1",Number = 1 },
-            new() {Name = "Virtual Input 2",Number = 2 },
-            new() {Name = "Virtual Input 3",Number = 3 }
+            new() { Name = "Virtual Input 1", Number = 1 },
+            new() { Name = "Virtual Input 2", Number = 2 },
+            new() { Name = "Virtual Input 3", Number = 3 }
         };
 
         //set up endpoints not assigned to a door
-        Endpoint[] availableEndPoints = {
-            new() { ExtensionId = _extensionId, Type = EndpointType.Input, DriverEndpointId = $"VI{inputsOnRazorPage[1].Number}", Id = inputsOnRazorPage[1].Number },
-            new() { ExtensionId = _extensionId, Type = EndpointType.Input, DriverEndpointId = $"VI{inputsOnRazorPage[2].Number}", Id = inputsOnRazorPage[2].Number }
+        Endpoint[] availableEndPoints =
+        {
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Input,
+                DriverEndpointId = $"VI{inputsOnRazorPage[1].Number}", Id = inputsOnRazorPage[1].Number
+            },
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Input,
+                DriverEndpointId = $"VI{inputsOnRazorPage[2].Number}", Id = inputsOnRazorPage[2].Number
+            }
 
         };
 
@@ -328,12 +381,14 @@ public class ConfigurationTest : AportaTestContext
             .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(config))
             .Add(p => p.ExtensionId, _extensionId));
 
-        var deleteButton = _cut.FindComponents<DropdownItem>().First(button => button.Nodes[0].TextContent.Trim() == "Delete");
+        var deleteButton = _cut.FindComponents<DropdownItem>().First(button =>
+            !button.Instance.Disabled && button.Nodes[0].TextContent.Trim() == "Delete");
 
         await _cut.InvokeAsync(async () => await deleteButton.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveInput.ToString(), JsonConvert.SerializeObject(inputToRemove)));
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.RemoveInput.ToString(),
+            JsonConvert.SerializeObject(inputToRemove)));
     }
 
     [Test]
@@ -344,33 +399,89 @@ public class ConfigurationTest : AportaTestContext
 
         var emptyConfig = new Shared.Configuration();
 
-        var newOutput = new Shared.AddOutputParameter { Name = "Test Output" };
+        string newOutputName = "New Output";
 
         // Act
         _cut = RenderComponent<Configuration>(parameters => parameters
             .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(emptyConfig))
             .Add(p => p.ExtensionId, _extensionId));
 
-        var addOutputButton = _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add Virtual Output");
+        var addOutputButton = _cut.FindComponents<Button>()
+            .First(button => button.Nodes[0].TextContent.Trim() == "Add Virtual Output");
 
         await _cut.InvokeAsync(async () => await addOutputButton.Instance.Clicked.InvokeAsync());
 
-        var textEdit = _cut.Find("#AddOutputTextEdit");
-        textEdit.Input(newOutput.Name);
+        var textEdit = _cut.Find("#NameTextEdit");
+        textEdit.Input(newOutputName);
 
-        var modalAddOutputButton = _cut.FindComponents<Button>().First(button => button.Markup.Contains("btnAddOutputModal"));
+        var modalAddOutputButton =
+            _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Add");
 
         await _cut.InvokeAsync(async () => await modalAddOutputButton.Instance.Clicked.InvokeAsync());
 
         // Assert
-        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddOutput.ToString(), JsonConvert.SerializeObject(newOutput)));
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateOutput.ToString(),
+            JsonConvert.SerializeObject(new Output { Name = newOutputName, Number = 0 })));
     }
 
+         [Test]
+    public async Task EditOutput()
+    {
+        // Arrange
+        var outputsOnRazorPage = new List<Output>
+        {
+            new() { Name = "Virtual Output 1", Number = 1 },
+            new() { Name = "Virtual Output 2", Number = 2 },
+            new() { Name = "Virtual Output 3", Number = 3 }
+        };
+
+        Endpoint[] availableEndPoints =
+        {
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Output,
+                DriverEndpointId = $"VO{outputsOnRazorPage[1].Number}", Id = outputsOnRazorPage[1].Number
+            },
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Output,
+                DriverEndpointId = $"VO{outputsOnRazorPage[2].Number}", Id = outputsOnRazorPage[2].Number
+            }
+        };
+
+        SetUpDoorMock(availableEndPoints);
+
+        var config = new Shared.Configuration();
+
+        config.Outputs.AddRange(outputsOnRazorPage);
+
+        // Act
+        _cut = RenderComponent<Configuration>(parameters => parameters
+            .Add(p => p.RawConfiguration, JsonConvert.SerializeObject(config))
+            .Add(p => p.ExtensionId, _extensionId));
+
+        var editButton = _cut.FindComponents<DropdownItem>().First(button =>
+            !button.Instance.Disabled && button.Nodes[0].TextContent.Trim() == "Edit");
+
+        await _cut.InvokeAsync(async () => await editButton.Instance.Clicked.InvokeAsync());
+        
+        var textEdit = _cut.Find("#NameTextEdit");
+        textEdit.Input("Edit Output Name");
+
+        var modalEditButton =
+            _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Edit");
+        await _cut.InvokeAsync(async () => await modalEditButton.Instance.Clicked.InvokeAsync());
+        
+        // Assert
+        _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateOutput.ToString(),
+            JsonConvert.SerializeObject(new Reader { Name = "Edit Output Name", Number = 1 })));
+    }
+    
     [Test]
     public async Task RemoveOutput()
     {
         // Arrange
-        var outputsOnRazorPage = new List<Shared.Output>
+        var outputsOnRazorPage = new List<Output>
         {
             new() {Name = "Virtual Output 1",Number = 1 },
             new() {Name = "Virtual Output 2",Number = 2 },
