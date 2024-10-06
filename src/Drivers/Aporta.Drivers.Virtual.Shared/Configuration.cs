@@ -2,9 +2,9 @@ namespace Aporta.Drivers.Virtual.Shared;
 
 public class Configuration
 {
-    public List<Reader> Readers { get; } = [];
+    public List<Device> Readers { get; } = [];
     
-    public List<Output> Outputs { get; } = [];
+    public List<Device> Outputs { get; } = [];
     
-    public List<Input> Inputs { get; } = [];
+    public List<Device> Inputs { get; } = [];
 }

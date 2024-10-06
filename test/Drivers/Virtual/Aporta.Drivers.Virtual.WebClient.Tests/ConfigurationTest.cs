@@ -8,8 +8,6 @@ using Moq;
 using Newtonsoft.Json;
 using TestWebClientConfiguration;
 using Aporta.Shared.Models;
-using Input = Aporta.Drivers.Virtual.Shared.Input;
-using Output = Aporta.Drivers.Virtual.Shared.Output;
 
 namespace Aporta.Drivers.Virtual.WebClient.Tests;
 
@@ -37,9 +35,9 @@ public class ConfigurationTest : AportaTestContext
     {
         var config = new Shared.Configuration();
 
-        config.Readers.Add(new Reader { Name = "Virtual Reader 1", Number = 1 });
-        config.Outputs.Add(new Output { Name = "Virtual Output 1", Number = 1 });
-        config.Inputs.Add(new Input { Name = "Virtual Input 1", Number = 1 });
+        config.Readers.Add(new Device { Name = "Virtual Reader 1", Number = 1 });
+        config.Outputs.Add(new Device { Name = "Virtual Output 1", Number = 1 });
+        config.Inputs.Add(new Device { Name = "Virtual Input 1", Number = 1 });
 
         return config;
     }
@@ -140,14 +138,14 @@ public class ConfigurationTest : AportaTestContext
 
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateReader.ToString(),
-            JsonConvert.SerializeObject(new Reader { Name = newReaderName, Number = 0 })));
+            JsonConvert.SerializeObject(new Device { Name = newReaderName, Number = 0 })));
     }
     
     [Test]
     public async Task EditReader()
     {
         // Arrange
-        var readersOnRazorPage = new List<Reader>
+        var readersOnRazorPage = new List<Device>
         {
             new() { Name = "Virtual Reader 1", Number = 1 },
             new() { Name = "Virtual Reader 2", Number = 2 },
@@ -193,14 +191,14 @@ public class ConfigurationTest : AportaTestContext
         
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateReader.ToString(),
-            JsonConvert.SerializeObject(new Reader { Name = "Edit Reader Name", Number = 1 })));
+            JsonConvert.SerializeObject(new Device { Name = "Edit Reader Name", Number = 1 })));
     }
 
     [Test]
     public async Task RemoveReader()
     {
         // Arrange
-        var readersOnRazorPage = new List<Reader>
+        var readersOnRazorPage = new List<Device>
         {
             new() { Name = "Virtual Reader 1", Number = 1 },
             new() { Name = "Virtual Reader 2", Number = 2 },
@@ -279,14 +277,14 @@ public class ConfigurationTest : AportaTestContext
 
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateInput.ToString(),
-            JsonConvert.SerializeObject(new Input { Name = newInputName, Number = 0 })));
+            JsonConvert.SerializeObject(new Device { Name = newInputName, Number = 0 })));
     }
     
      [Test]
     public async Task EditInput()
     {
         // Arrange
-        var inputsOnRazorPage = new List<Input>
+        var inputsOnRazorPage = new List<Device>
         {
             new() { Name = "Virtual Input 1", Number = 1 },
             new() { Name = "Virtual Input 2", Number = 2 },
@@ -332,14 +330,14 @@ public class ConfigurationTest : AportaTestContext
         
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateInput.ToString(),
-            JsonConvert.SerializeObject(new Reader { Name = "Edit Input Name", Number = 1 })));
+            JsonConvert.SerializeObject(new Device { Name = "Edit Input Name", Number = 1 })));
     }
 
     [Test]
     public async Task RemoveInput()
     {
         // Arrange
-        var inputsOnRazorPage = new List<Input>
+        var inputsOnRazorPage = new List<Device>
         {
             new() { Name = "Virtual Input 1", Number = 1 },
             new() { Name = "Virtual Input 2", Number = 2 },
@@ -421,14 +419,14 @@ public class ConfigurationTest : AportaTestContext
 
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateOutput.ToString(),
-            JsonConvert.SerializeObject(new Output { Name = newOutputName, Number = 0 })));
+            JsonConvert.SerializeObject(new Device { Name = newOutputName, Number = 0 })));
     }
 
          [Test]
     public async Task EditOutput()
     {
         // Arrange
-        var outputsOnRazorPage = new List<Output>
+        var outputsOnRazorPage = new List<Device>
         {
             new() { Name = "Virtual Output 1", Number = 1 },
             new() { Name = "Virtual Output 2", Number = 2 },
@@ -474,14 +472,14 @@ public class ConfigurationTest : AportaTestContext
         
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateOutput.ToString(),
-            JsonConvert.SerializeObject(new Reader { Name = "Edit Output Name", Number = 1 })));
+            JsonConvert.SerializeObject(new Device { Name = "Edit Output Name", Number = 1 })));
     }
     
     [Test]
     public async Task RemoveOutput()
     {
         // Arrange
-        var outputsOnRazorPage = new List<Output>
+        var outputsOnRazorPage = new List<Device>
         {
             new() {Name = "Virtual Output 1",Number = 1 },
             new() {Name = "Virtual Output 2",Number = 2 },

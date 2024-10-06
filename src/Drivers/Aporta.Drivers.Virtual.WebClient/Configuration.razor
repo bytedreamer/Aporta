@@ -1,13 +1,11 @@
-﻿@using Blazorise.Snackbar
+﻿@using Aporta.Drivers.Virtual.Shared
+@using Blazorise.Snackbar
 @using Newtonsoft.Json
 
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Models
-@using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
 @using Aporta.Drivers.Virtual.WebClient.Dialogs
-@using Input = Aporta.Drivers.Virtual.Shared.Input
-@using Output = Aporta.Drivers.Virtual.Shared.Output
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls DoorCalls;
@@ -271,7 +269,7 @@ else
         await _addEditDeviceDialog.ShowDialog();
     }
 
-    private async Task ShowEditReaderModal(Reader reader)
+    private async Task ShowEditReaderModal(Device reader)
     {
         _addEditDeviceDialog.IsAdding = false;
         _addEditDeviceDialog.Number = reader.Number;
@@ -281,7 +279,7 @@ else
         await _addEditDeviceDialog.ShowDialog();
     }
 
-    private async Task RemoveReader(Reader readerToRemove)
+    private async Task RemoveReader(Device readerToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete reader '{readerToRemove.Name}'?", "Delete reader", options =>
         {
@@ -319,7 +317,7 @@ else
         await _addEditDeviceDialog.ShowDialog();
     }
     
-    private async Task ShowEditInputModal(Input input)
+    private async Task ShowEditInputModal(Device input)
     {
         _addEditDeviceDialog.IsAdding = false;
         _addEditDeviceDialog.Number = input.Number;
@@ -329,7 +327,7 @@ else
         await _addEditDeviceDialog.ShowDialog();
     }
 
-    private async Task RemoveInput(Input inputToRemove)
+    private async Task RemoveInput(Device inputToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete input '{inputToRemove.Name}'?", "Delete input", options =>
             {
@@ -358,7 +356,7 @@ else
         await _addEditDeviceDialog.ShowDialog();
     }
     
-    private async Task ShowEditOutputModal(Output output)
+    private async Task ShowEditOutputModal(Device output)
     {
         _addEditDeviceDialog.IsAdding = false;
         _addEditDeviceDialog.Number = output.Number;
@@ -368,7 +366,7 @@ else
         await _addEditDeviceDialog.ShowDialog();
     }
     
-    private async Task RemoveOutput(Output outputToRemove)
+    private async Task RemoveOutput(Device outputToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete output '{outputToRemove.Name}'?", "Delete output", options =>
             {
@@ -397,23 +395,23 @@ else
         };
 
         if (await PerformAction(actionTypeList[_addEditDeviceDialog.Type], JsonConvert.SerializeObject(
-                new Reader(name: _addEditDeviceDialog.Name, number: _addEditDeviceDialog.Number))))
+                new Device{Name = _addEditDeviceDialog.Name, Number = _addEditDeviceDialog.Number})))
         {
             await InitializeAvailableEndpoints();
         }
     }
     
-    private bool IsReaderAvailableForDelete(Reader reader)
+    private bool IsReaderAvailableForDelete(Device reader)
     {
         return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
     }
 
-    private bool IsInputAvailableForDelete(Input input)
+    private bool IsInputAvailableForDelete(Device input)
     {
         return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
     }
 
-    private bool IsOutputAvailableForDelete(Output output)
+    private bool IsOutputAvailableForDelete(Device output)
     {
         return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
     }

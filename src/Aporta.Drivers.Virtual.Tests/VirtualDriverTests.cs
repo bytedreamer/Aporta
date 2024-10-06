@@ -18,7 +18,7 @@ namespace Aporta.Drivers.Virtual.Tests
         {
             //arrange
             var virtualDriver = new VirtualDriver();
-            var inputToAdd = new Input { Name = "Input 1" };
+            var inputToAdd = new Device { Name = "Input 1" };
 
             Mock<Microsoft.Extensions.Logging.ILoggerFactory> mockLoggerFactory = new();
             Mock<IDataEncryption> mockDataEncryption = new();
@@ -31,7 +31,7 @@ namespace Aporta.Drivers.Virtual.Tests
             //assert
             var configuration = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
 
-            Assert.That(configuration?.Inputs.Find(x => x.Name == inputToAdd.Name), Is.InstanceOf<Input>());
+            Assert.That(configuration?.Inputs.Find(x => x.Name == inputToAdd.Name), Is.InstanceOf<Device>());
         }
 
         [Test]
@@ -39,9 +39,9 @@ namespace Aporta.Drivers.Virtual.Tests
         {
             //arrange
             var virtualDriver = new VirtualDriver();
-            var input1 = new Input { Number = 1, Name = "Input 1" };
-            var input2 = new Input { Number = 1, Name = "Input 2" };
-            var input3 = new Input { Number = 1, Name = "Input 3" };
+            var input1 = new Device { Number = 1, Name = "Input 1" };
+            var input2 = new Device { Number = 1, Name = "Input 2" };
+            var input3 = new Device { Number = 1, Name = "Input 3" };
 
             Mock<Microsoft.Extensions.Logging.ILoggerFactory> mockLoggerFactory = new();
             Mock<IDataEncryption> mockDataEncryption = new();
@@ -70,8 +70,9 @@ namespace Aporta.Drivers.Virtual.Tests
         {
             //arrange
             var virtualDriver = new VirtualDriver();
-            var outputToAdd = new AddOutputParameter { Name = "Output 1" };
-
+            
+            var outputToAdd = new Device{Name = "Output To Add", Number = 0};
+ 
             Mock<Microsoft.Extensions.Logging.ILoggerFactory> mockLoggerFactory = new();
             Mock<IDataEncryption> mockDataEncryption = new();
 
@@ -83,7 +84,7 @@ namespace Aporta.Drivers.Virtual.Tests
             //assert
             var configuration = JsonConvert.DeserializeObject<Configuration>(virtualDriver.CurrentConfiguration());
 
-            Assert.That(configuration?.Outputs.Find(x => x.Name == outputToAdd.Name), Is.InstanceOf<Output>());
+            Assert.That(configuration?.Outputs.Find(x => x.Name == outputToAdd.Name), Is.InstanceOf<Device>());
         }
 
         [Test]
@@ -91,9 +92,9 @@ namespace Aporta.Drivers.Virtual.Tests
         {
             //arrange
             var virtualDriver = new VirtualDriver();
-            var output1 = new Output { Number = 1, Name = "Output 1" };
-            var output2 = new Output { Number = 1, Name = "Output 2" };
-            var output3 = new Output { Number = 1, Name = "Output 3" };
+            var output1 = new Device { Number = 1, Name = "Output 1" };
+            var output2 = new Device { Number = 1, Name = "Output 2" };
+            var output3 = new Device { Number = 1, Name = "Output 3" };
 
             Mock<Microsoft.Extensions.Logging.ILoggerFactory> mockLoggerFactory = new();
             Mock<IDataEncryption> mockDataEncryption = new();

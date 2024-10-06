@@ -92,7 +92,7 @@ public class VirtualDriver : IHardwareDriver
                 break;
 
             case ActionType.RemoveReader:
-                var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
+                var requestedReaderToRemove = JsonConvert.DeserializeObject<Device>(parameters);
                 if (requestedReaderToRemove != null)
                 {
                     var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
@@ -108,7 +108,7 @@ public class VirtualDriver : IHardwareDriver
                 break;
 
             case ActionType.RemoveInput:
-                var requestedInputToRemove = JsonConvert.DeserializeObject<Input>(parameters);
+                var requestedInputToRemove = JsonConvert.DeserializeObject<Device>(parameters);
                 if (requestedInputToRemove != null)
                 {
                     var inputToRemove = _configuration.Inputs.Find(rdr => rdr.Number == requestedInputToRemove.Number);
@@ -125,7 +125,7 @@ public class VirtualDriver : IHardwareDriver
 
             case ActionType.RemoveOutput:
 
-                var requestedOutputToRemove = JsonConvert.DeserializeObject<Output>(parameters);
+                var requestedOutputToRemove = JsonConvert.DeserializeObject<Device>(parameters);
                 if (requestedOutputToRemove != null)
                 {
                     var outputToRemove = _configuration.Outputs.Find(rdr => rdr.Number == requestedOutputToRemove.Number);
@@ -142,7 +142,7 @@ public class VirtualDriver : IHardwareDriver
 
     private void AddUpdateReader(string parameters)
     {
-        var reader = JsonConvert.DeserializeObject<Reader>(parameters);
+        var reader = JsonConvert.DeserializeObject<Device>(parameters);
         if (reader == null)
         {
             throw new NullReferenceException($"Cannot add reader {parameters}");
@@ -155,7 +155,7 @@ public class VirtualDriver : IHardwareDriver
         }
         else
         {
-            var readerToAdd = new Reader { Name = reader.Name, Number = GetNextReaderNumber() };
+            var readerToAdd = new Device { Name = reader.Name, Number = GetNextReaderNumber() };
             _configuration.Readers.Add(readerToAdd);
             _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
         }
@@ -165,7 +165,7 @@ public class VirtualDriver : IHardwareDriver
     
     private void AddUpdateInput(string parameters)
     {
-        var input = JsonConvert.DeserializeObject<Input>(parameters);
+        var input = JsonConvert.DeserializeObject<Device>(parameters);
         if (input == null)
         {
             throw new NullReferenceException($"Cannot add input {parameters}");
@@ -178,7 +178,7 @@ public class VirtualDriver : IHardwareDriver
         }
         else
         {
-            var inputToAdd = new Input { Name = input.Name, Number = GetNextReaderNumber() };
+            var inputToAdd = new Device { Name = input.Name, Number = GetNextInputNumber() };
             _configuration.Inputs.Add(inputToAdd);
             _endpoints.Add(new VirtualInput(inputToAdd.Name, Id, $"VI{inputToAdd.Number}"));
         }
@@ -188,7 +188,7 @@ public class VirtualDriver : IHardwareDriver
 
     private void AddUpdateOutput(string parameters)
     {
-        var output = JsonConvert.DeserializeObject<Output>(parameters);
+        var output = JsonConvert.DeserializeObject<Device>(parameters);
         if (output == null)
         {
             throw new NullReferenceException($"Cannot add output {parameters}");
@@ -201,7 +201,7 @@ public class VirtualDriver : IHardwareDriver
         }
         else
         {
-            var ouptutToAdd = new Output { Name = output.Name, Number = GetNextReaderNumber() };
+            var ouptutToAdd = new Device { Name = output.Name, Number = GetNextOutputNumber() };
             _configuration.Outputs.Add(ouptutToAdd);
             _endpoints.Add(new VirtualOutput(ouptutToAdd.Name, Id, $"VO{ouptutToAdd.Number}"));
         }
@@ -230,7 +230,7 @@ public class VirtualDriver : IHardwareDriver
         return (maxOutput == null) ? (byte)1 : (byte)(maxOutput.Number + 1);
     }
 
-    private bool RemoveReader(Reader readerToRemove)
+    private bool RemoveReader(Device readerToRemove)
     {
         try
         {
@@ -251,7 +251,7 @@ public class VirtualDriver : IHardwareDriver
         return true;
     }
 
-    private bool RemoveInput(Input inputToRemove)
+    private bool RemoveInput(Device inputToRemove)
     {
         try
         {
@@ -274,7 +274,7 @@ public class VirtualDriver : IHardwareDriver
 
     }
 
-    private bool RemoveOutput(Output outputToRemove)
+    private bool RemoveOutput(Device outputToRemove)
     {
         try
         {
