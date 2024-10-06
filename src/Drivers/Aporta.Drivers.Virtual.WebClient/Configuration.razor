@@ -6,7 +6,6 @@
 @using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
 @using Aporta.Drivers.Virtual.WebClient.Dialogs
-@using AddReaderParameter = Aporta.Drivers.Virtual.Shared.AddReaderParameter
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls DoorCalls;
@@ -57,11 +56,9 @@ else
                                                 Action
                                             </DropdownToggle>
                                             <DropdownMenu>
-                                                @if (IsReaderAvailableForDelete(reader))
-                                                {
-                                                    <DropdownItem Clicked="@(async () => await RemoveReader(reader))">Delete</DropdownItem>
-                                                    <DropdownDivider/>
-                                                }
+                                                <DropdownItem Clicked="@(async () => await ShowEditReaderModal(reader))">Edit</DropdownItem>
+                                                <DropdownItem Clicked="@(async () => await RemoveReader(reader))" Disabled="@(!IsReaderAvailableForDelete(reader))">Delete</DropdownItem>
+                                                <DropdownDivider/>
                                                 <DropdownItem Clicked="@(async () => await ShowSwipeBadgeModal(reader.Number))">Swipe Badge</DropdownItem>
                                             </DropdownMenu>
                                         </Dropdown>
@@ -189,7 +186,7 @@ else
         </Column>
     </Row>
 
-    <AddReaderDialog @ref="_addReaderDialog" AddReaderParam="@_addReaderParam" PerformAddReaderAction="@AddReader" />
+    <AddEditDeviceDialog @ref="_addEditDeviceDialog" PerformAction="@AddEditDevice" />
 
     <AddInputDialog @ref="_addInputDialog" AddInputParam="@_addInputParam" PerformAddInputAction="@AddInput" />
 
@@ -214,8 +211,7 @@ else
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
 
-    private AddReaderDialog _addReaderDialog;
-    private Shared.AddReaderParameter _addReaderParam;
+    private AddEditDeviceDialog _addEditDeviceDialog;
     
     private AddInputDialog _addInputDialog;
     private AddInputParameter _addInputParam;
@@ -238,7 +234,6 @@ else
     protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
-        _addReaderParam = new AddReaderParameter { Name = string.Empty };
         _addInputParam = new AddInputParameter { Name = string.Empty };
         _addOutputParam = new AddOutputParameter { Name = string.Empty };
     }
@@ -284,8 +279,22 @@ else
 
     private async Task ShowAddReaderModal()
     {
-        _addReaderParam = new Shared.AddReaderParameter();
-        await _addReaderDialog.ShowDialog();
+        _addEditDeviceDialog.IsAdding = true;
+        _addEditDeviceDialog.Number = 0;
+        _addEditDeviceDialog.Name = string.Empty;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Reader;
+        
+        await _addEditDeviceDialog.ShowDialog();
+    }
+
+    private async Task ShowEditReaderModal(Reader reader)
+    {
+        _addEditDeviceDialog.IsAdding = false;
+        _addEditDeviceDialog.Number = reader.Number;
+        _addEditDeviceDialog.Name = reader.Name;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Reader;
+
+        await _addEditDeviceDialog.ShowDialog();
     }
 
     private async Task BadgeSwipe()
@@ -316,11 +325,15 @@ else
         }
     }
 
-    private async Task AddReader()
+    private async Task AddEditDevice()
     {
-        if (await PerformAction(ActionType.AddReader, JsonConvert.SerializeObject(_addReaderParam)))
+        if (_addEditDeviceDialog.Type == AddEditDeviceDialog.DeviceType.Reader)
         {
-            await InitializeAvailableEndpoints(); 
+            if (await PerformAction(ActionType.AddUpdateReader, JsonConvert.SerializeObject(
+                    new Reader(name: _addEditDeviceDialog.Name, number: _addEditDeviceDialog.Number))))
+            {
+                await InitializeAvailableEndpoints();
+            }
         }
     }
 
@@ -372,7 +385,6 @@ else
         }
     }
 
-
     private async Task ShowAddOutputDialog()
     {
         _addOutputParam = new AddOutputParameter();
@@ -390,10 +402,10 @@ else
     private async Task RemoveOutput(Shared.Output outputToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete output '{outputToRemove.Name}'?", "Delete output", options =>
-        {
-            options.ShowMessageIcon = false;
-            options.ConfirmButtonColor = Color.Danger;
-        }))
+            {
+                options.ShowMessageIcon = false;
+                options.ConfirmButtonColor = Color.Danger;
+            }))
         {
             return;
         }
@@ -405,5 +417,4 @@ else
             await InitializeAvailableEndpoints();
         }
     }
-
 }

@@ -16,14 +16,19 @@ public class Output
     
 public class Reader
 {
+    public Reader()
+    {
+    }
+
+    public Reader(string name, byte number)
+    {
+        Name = name;
+        Number = number;
+    }
+
     public string Name { get; init; } = string.Empty;
 
     public byte Number { get; init; }
-}
-
-public class AddReaderParameter
-{
-    public string Name { get; set; } = string.Empty;
 }
 
 public class AddInputParameter

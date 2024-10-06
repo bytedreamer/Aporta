@@ -1,0 +1,87 @@
+<Modal @ref="_addUpdateDeviceModal" Closing="@OnModalClosing">
+    <ModalContent Size="ModalSize.Default" Centered="true">
+        <ModalHeader>
+            <ModalTitle>
+                @ModalTitleText
+            </ModalTitle>
+            <CloseButton Clicked="@_addUpdateDeviceModal.Hide" />
+        </ModalHeader>
+        <ModalBody>
+            <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_validations">
+                <Validation Validator="@ValidationRule.IsNotEmpty">
+                    <Field>
+                        <FieldLabel>Name</FieldLabel>
+                        <FieldBody>
+                            <TextEdit @bind-Text="Name" id="NameTextEdit">
+                                <Feedback>
+                                    <ValidationError>
+                                        @ValidationText
+                                    </ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+            </Validations>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@_addUpdateDeviceModal.Hide">Cancel</Button>
+            <Button Color="Color.Primary" Clicked="@(async () => await AddUpdateDevice())">@ButtonText</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    private Modal _addUpdateDeviceModal;
+    private Validations _validations;
+
+    private string ModalTitleText => $"{ButtonText} Virtual {Type.ToString()}";
+    private string ButtonText => IsAdding ? "Add" : "Edit";
+    private string ValidationText => $"Please enter a name for the virtual {Type.ToString().ToLower()}";
+    
+    [Parameter]
+    public bool IsAdding { get; set; }
+
+    [Parameter]
+    public string Name { get; set; }
+
+    [Parameter]
+    public EventCallback PerformAction { get; set; }
+
+    [Parameter]
+    public byte Number { get; set; }
+    
+    [Parameter]
+    public DeviceType Type { get; set; }
+
+    private async Task AddUpdateDevice()
+    {
+        if (!await _validations.ValidateAll())
+        {
+            return;
+        }
+
+        await _addUpdateDeviceModal.Hide();
+
+        await PerformAction.InvokeAsync();    
+    }
+
+    public async Task ShowDialog()
+    {
+        await _addUpdateDeviceModal.Show();
+    }
+    
+    private Task OnModalClosing( ModalClosingEventArgs eventArgs )
+    {
+        eventArgs.Cancel = eventArgs.CloseReason == CloseReason.FocusLostClosing;
+
+        return Task.CompletedTask;
+    }
+    
+    public enum DeviceType
+    {
+        Reader,
+        Input,
+        Output
+    }
+}

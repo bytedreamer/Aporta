@@ -76,102 +76,105 @@ public class VirtualDriver : IHardwareDriver
     /// <inheritdoc />
     public Task<string> PerformAction(string action, string parameters)
     {
-        if (Enum.TryParse(action, out ActionType actionType))
+        if (!Enum.TryParse(action, out ActionType actionType))
         {
-            switch (actionType)
-            {
-                case ActionType.BadgeSwipe:
-                    ProcessBadgeSwipe(parameters);
-                    break;
+            throw new ArgumentException("Invalid action type");
+        }
+        
+        switch (actionType)
+        {
+            case ActionType.BadgeSwipe:
+                ProcessBadgeSwipe(parameters);
+                break;
 
-                case ActionType.AddReader:
+            case ActionType.AddUpdateReader:
+                AddUpdateReader(parameters);
+                break;
 
-                    var readerToAdd = JsonConvert.DeserializeObject<AddReaderParameter>(parameters);
-                    if (readerToAdd != null && AddReader(readerToAdd))
+            case ActionType.RemoveReader:
+
+                var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
+                if (requestedReaderToRemove != null)
+                {
+                    var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
+                    if (readerToRemove != null && RemoveReader(readerToRemove))
                     {
                         OnUpdatedEndpoints();
                     }
-
-                    break;
-
-                case ActionType.RemoveReader:
-
-                    var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
-                    if (requestedReaderToRemove != null)
-                    {
-                        var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
-                        if (readerToRemove != null && RemoveReader(readerToRemove))
-                        {
-                            OnUpdatedEndpoints();
-                        }
-                    }
+                }
 
 
-                    break;
+                break;
 
-                case ActionType.AddInput:
+            case ActionType.AddInput:
 
-                    var inputToAdd = JsonConvert.DeserializeObject<AddInputParameter>(parameters);
-                    if (inputToAdd != null && AddInput(inputToAdd))
-                    {
-                        OnUpdatedEndpoints();
-                    }
-                    break;
+                var inputToAdd = JsonConvert.DeserializeObject<AddInputParameter>(parameters);
+                if (inputToAdd != null && AddInput(inputToAdd))
+                {
+                    OnUpdatedEndpoints();
+                }
+                break;
 
-                case ActionType.RemoveInput:
+            case ActionType.RemoveInput:
 
-                    var requestedInputToRemove = JsonConvert.DeserializeObject<Input>(parameters);
-                    if (requestedInputToRemove != null)
-                    {
-                        var inputToRemove = _configuration.Inputs.Find(rdr => rdr.Number == requestedInputToRemove.Number);
-                        if (inputToRemove != null && RemoveInput(inputToRemove))
-                        {
-                            OnUpdatedEndpoints();
-                        }
-                    }
-                    break;
-
-                case ActionType.AddOutput:
-
-                    var outputToAdd = JsonConvert.DeserializeObject<AddOutputParameter>(parameters);
-                    if (outputToAdd != null && AddOutput(outputToAdd))
+                var requestedInputToRemove = JsonConvert.DeserializeObject<Input>(parameters);
+                if (requestedInputToRemove != null)
+                {
+                    var inputToRemove = _configuration.Inputs.Find(rdr => rdr.Number == requestedInputToRemove.Number);
+                    if (inputToRemove != null && RemoveInput(inputToRemove))
                     {
                         OnUpdatedEndpoints();
                     }
-                    break;
+                }
+                break;
 
-                case ActionType.RemoveOutput:
+            case ActionType.AddOutput:
 
-                    var requestedOutputToRemove = JsonConvert.DeserializeObject<Output>(parameters);
-                    if (requestedOutputToRemove != null)
+                var outputToAdd = JsonConvert.DeserializeObject<AddOutputParameter>(parameters);
+                if (outputToAdd != null && AddOutput(outputToAdd))
+                {
+                    OnUpdatedEndpoints();
+                }
+                break;
+
+            case ActionType.RemoveOutput:
+
+                var requestedOutputToRemove = JsonConvert.DeserializeObject<Output>(parameters);
+                if (requestedOutputToRemove != null)
+                {
+                    var outputToRemove = _configuration.Outputs.Find(rdr => rdr.Number == requestedOutputToRemove.Number);
+                    if (outputToRemove != null && RemoveOutput(outputToRemove))
                     {
-                        var outputToRemove = _configuration.Outputs.Find(rdr => rdr.Number == requestedOutputToRemove.Number);
-                        if (outputToRemove != null && RemoveOutput(outputToRemove))
-                        {
-                            OnUpdatedEndpoints();
-                        }
+                        OnUpdatedEndpoints();
                     }
-                    break;
-            }
+                }
+                break;
         }
 
         return Task.FromResult(string.Empty);
     }
 
-    private bool AddReader(AddReaderParameter requestedReaderToAdd)
+    private void AddUpdateReader(string parameters)
     {
-        try
+        var reader = JsonConvert.DeserializeObject<Reader>(parameters);
+        if (reader == null)
         {
-            var readerToAdd = new Reader { Name = requestedReaderToAdd.Name, Number = GetNextReaderNumber()};
+            throw new NullReferenceException($"Cannot add reader {parameters}");
+        }
+        
+        var foundReader = _configuration.Readers.Find(rdr => rdr.Number == reader.Number);
+        if (foundReader != null)
+        {
+            _configuration.Readers[_configuration.Readers.IndexOf(foundReader)] = reader;
+        }
+        else
+        {
+            var readerToAdd = new Reader { Name = reader.Name, Number = GetNextReaderNumber() };
             _configuration.Readers.Add(readerToAdd);
             _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
-        } catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Exception occurred adding a new reader");
-            return false;
         }
-
-        return true;
+        
+        OnUpdatedEndpoints();
     }
 
     private bool AddInput(AddInputParameter requestedInputToAdd)
