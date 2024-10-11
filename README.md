@@ -103,5 +103,8 @@ General information about configuring and setting up the Aporta project for deve
 
 ## Documentation 
 
+See the Aporta wiki:
+
+https://github.com/bytedreamer/Aporta/wiki
 
 

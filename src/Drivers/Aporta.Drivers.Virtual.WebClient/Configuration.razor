@@ -6,9 +6,14 @@
 @using Aporta.Shared.Models
 @using Aporta.Drivers.Virtual.Shared.Actions
 @using Aporta.Drivers.Virtual.WebClient.Dialogs
+@using Microsoft.AspNetCore.SignalR.Client
+@using Aporta.Shared.Messaging
+
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls DoorCalls;
+@inject IInputCalls InputCalls;
+@inject IOutputCalls OutputCalls;
 
 @if (_configuration == null)
 {
@@ -93,6 +98,7 @@ else
                             <TableRow>
                                 <TableHeaderCell>Input Name</TableHeaderCell>
                                 <TableHeaderCell>Input Number</TableHeaderCell>
+                                <TableHeaderCell>State</TableHeaderCell>
                                 <TableHeaderCell></TableHeaderCell>
                             </TableRow>
                         </TableHeader>
@@ -105,6 +111,20 @@ else
                                     </TableRowHeader>
                                     <TableRowCell>
                                         @input.Number
+                                    </TableRowCell>
+                                    <TableRowCell>
+                                        @if (_inputStates[input.Number].HasValue && _inputStates[input.Number].Value)
+                                        {
+                                            <Icon Name="IconName.ArrowUp" Style="color: red" />
+                                        }
+                                        else if (_inputStates[input.Number].HasValue && !_inputStates[input.Number].Value)
+                                        {
+                                            <Icon Name="IconName.ArrowDown" Style="color: green" />
+                                        }
+                                        else
+                                        {
+                                            <Icon Name="IconName.QuestionCircle"></Icon>
+                                        }
                                     </TableRowCell>
                                     <TableRowCell TextAlignment="TextAlignment.End">
                                         <Dropdown>
@@ -147,6 +167,7 @@ else
                             <TableRow>
                                 <TableHeaderCell>Output Name</TableHeaderCell>
                                 <TableHeaderCell>Output Number</TableHeaderCell>
+                                <TableHeaderCell>State</TableHeaderCell>
                                 <TableHeaderCell></TableHeaderCell>
                             </TableRow>
                         </TableHeader>
@@ -159,6 +180,19 @@ else
                                     </TableRowHeader>
                                     <TableRowCell>
                                         @output.Number
+                                    </TableRowCell>
+                                    <TableRowCell>
+                                        @if (_outputStates[output.Number].HasValue && _outputStates[output.Number].Value)
+                                        {
+                                            <Icon Name="IconName.ArrowUp" Style="color: red" />
+                                        }
+                                        else if (_outputStates[output.Number].HasValue && !_outputStates[output.Number].Value)
+                                        {
+                                            <Icon Name="IconName.ArrowDown" Style="color: green" />
+                                        } else
+                                        {
+                                        <Icon Name="IconName.QuestionCircle"></Icon>
+                                        }
                                     </TableRowCell>
                                     <TableRowCell TextAlignment="TextAlignment.End">
                                         <Dropdown>
@@ -197,17 +231,24 @@ else
     [Inject]
     IMessageService MessageService { get; set; }
 
+    private HubConnection _hubConnection;
+
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
 
     private AddEditDeviceDialog _addEditDeviceDialog;
-    
+
     private BadgeSwipeDialog _badgeSwipeDialog;
 
     private Endpoint[] _availableEndPoints;
+    private readonly Dictionary<int, bool?> _inputStates = new();
+    private readonly Dictionary<int, bool?> _outputStates = new();
 
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
+
+    private IEnumerable<Input> _inputs;
+    private IEnumerable<Output> _outputs;
 
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -215,14 +256,47 @@ else
     [Parameter]
     public string RawConfiguration { get; set; }
 
-    protected override void OnParametersSet()
+    protected override async void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
+
     }
 
     protected override async Task OnInitializedAsync()
     {
         await InitializeAvailableEndpoints();
+
+        _outputs = await OutputCalls.GetAllOutputs();
+        _inputs = await InputCalls.GetAllInputs();
+
+
+        foreach(var output in _outputs)
+        {
+            _outputStates[output.Id] = await OutputCalls.GetOutputState(output.Id);
+        }
+
+        foreach (var input in _inputs)
+        {
+            _inputStates[input.Id] = await InputCalls.GetInputState(input.Id);
+        }
+
+        // _hubConnection = new HubConnectionBuilder()
+        //     .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+        //     .WithAutomaticReconnect(new SignalRRetryPolicy())
+        //     .Build();
+        // _hubConnection.On<int, bool>(Methods.OutputStateChanged, (outputId, newState) =>
+        // {
+        //     //_outputStates[outputId] = newState;
+
+        //     StateHasChanged();
+        // });
+        // _hubConnection.On<int, bool>(Methods.InputStateChanged, (input, newState) =>
+        // {
+        //     //_inputStates[input] = newState;
+
+        //     StateHasChanged();
+        // });
+
     }
 
     private async Task InitializeAvailableEndpoints()
@@ -230,6 +304,32 @@ else
         _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
 
         StateHasChanged();
+    }
+
+    private int? GetOutputEndpointId(byte outputNumber)
+    {
+        try
+        {
+            var endpoint = _availableEndPoints.First(endpoint => endpoint.DriverEndpointId == $"VO{outputNumber}");
+            return endpoint.Id;
+        } catch (Exception ex)
+        {
+            return null;
+        }
+
+    }
+
+    private int? GetInputEndpointId(byte inputNumber)
+    {
+        try
+        {
+            var endpoint = _availableEndPoints.First(endpoint => endpoint.DriverEndpointId == $"VI{inputNumber}");
+            return endpoint.Id;
+        } catch (Exception ex)
+        {
+            return null;
+        }
+
     }
 
     private async Task<bool> PerformAction(ActionType actionType, string parameters)
@@ -415,4 +515,6 @@ else
     {
         return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
     }
+
+
 }
