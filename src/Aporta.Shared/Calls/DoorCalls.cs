@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using System.Collections.Generic;
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
@@ -21,6 +22,12 @@ namespace Aporta.Shared.Calls
             return await httpClient.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
         }
 
+        /// <inheritdoc />
+        public async Task<IEnumerable<Door>> GetAllDoors()
+        {
+            return await httpClient.GetFromJsonAsync<List<Door>>(Paths.Doors);
+        }
+
     }
 
     /// <summary>
@@ -37,6 +44,11 @@ namespace Aporta.Shared.Calls
         /// Return all access points available to be assigned to a door
         /// </summary>
         public Task<Endpoint[]> GetAvailableAccessPoints();
+
+        /// <summary>
+        /// Return all doors
+        /// </summary>
+        public Task<IEnumerable<Door>> GetAllDoors();
     }
 
 }

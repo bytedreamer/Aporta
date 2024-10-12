@@ -62,7 +62,13 @@ else
                                             </DropdownToggle>
                                             <DropdownMenu>
                                                 <DropdownItem Clicked="@(async () => await ShowEditReaderModal(reader))">Edit</DropdownItem>
-                                                <DropdownItem Clicked="@(async () => await RemoveReader(reader))" Disabled="@(!IsReaderAvailableForDelete(reader))">Delete</DropdownItem>
+                                                @if (IsReaderAvailableForDelete(reader))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await RemoveReader(reader))" Disabled="false">Delete</DropdownItem>
+                                                } else
+                                                {
+                                                    <DropdownItem Disabled="true">Assigned to @_doors.First(d => d.InAccessEndpointId == reader.Number || d.OutAccessEndpointId == reader.Number).Name</DropdownItem>
+                                                }                                                
                                                 <DropdownDivider/>
                                                 <DropdownItem Clicked="@(async () => await ShowSwipeBadgeModal(reader.Number))">Swipe Badge</DropdownItem>
                                             </DropdownMenu>
@@ -113,11 +119,11 @@ else
                                         @input.Number
                                     </TableRowCell>
                                     <TableRowCell>
-                                        @if (_inputStates[input.Number].HasValue && _inputStates[input.Number].Value)
+                                        @if (_inputStates.ContainsKey(input.Number) && _inputStates[input.Number].HasValue && _inputStates[input.Number].Value)
                                         {
                                             <Icon Name="IconName.ArrowUp" Style="color: red" />
                                         }
-                                        else if (_inputStates[input.Number].HasValue && !_inputStates[input.Number].Value)
+                                        else if (_inputStates.ContainsKey(input.Number) && _inputStates[input.Number].HasValue && !_inputStates[input.Number].Value)
                                         {
                                             <Icon Name="IconName.ArrowDown" Style="color: green" />
                                         }
@@ -133,7 +139,23 @@ else
                                             </DropdownToggle>
                                             <DropdownMenu>
                                                 <DropdownItem Clicked="@(async () => await ShowEditInputModal(input))">Edit</DropdownItem>
-                                                <DropdownItem Clicked="@(async () => await RemoveInput(input))" Disabled="@(!IsInputAvailableForDelete(input))">Delete</DropdownItem>
+                                                @if (IsInputAvailableForDelete(input))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await RemoveInput(input))" Disabled="false">Delete</DropdownItem>
+                                                }
+                                                else
+                                                {
+                                                    <DropdownItem Disabled="true">Assigned to @_inputs.First(i => i.Id == input.Number).Name</DropdownItem>
+                                                }
+                                                <DropdownDivider />
+                                                @if (_inputStates.ContainsKey(input.Number) && _inputStates[input.Number].HasValue && _inputStates[input.Number].Value)
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await InputCalls.SetInputState(input.Number, false))">Deactivate</DropdownItem>
+                                                }
+                                                else if (_inputStates.ContainsKey(input.Number) && _inputStates[input.Number].HasValue && !_inputStates[input.Number].Value)
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await InputCalls.SetInputState(input.Number, true))">Activate</DropdownItem>
+                                                }
                                             </DropdownMenu>
                                         </Dropdown>
                                     </TableRowCell>
@@ -182,16 +204,16 @@ else
                                         @output.Number
                                     </TableRowCell>
                                     <TableRowCell>
-                                        @if (_outputStates[output.Number].HasValue && _outputStates[output.Number].Value)
+                                        @if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && _outputStates[output.Number].Value)
                                         {
                                             <Icon Name="IconName.ArrowUp" Style="color: red" />
                                         }
-                                        else if (_outputStates[output.Number].HasValue && !_outputStates[output.Number].Value)
+                                        else if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && !_outputStates[output.Number].Value)
                                         {
                                             <Icon Name="IconName.ArrowDown" Style="color: green" />
                                         } else
                                         {
-                                        <Icon Name="IconName.QuestionCircle"></Icon>
+                                            <Icon Name="IconName.QuestionCircle"></Icon>
                                         }
                                     </TableRowCell>
                                     <TableRowCell TextAlignment="TextAlignment.End">
@@ -201,7 +223,22 @@ else
                                             </DropdownToggle>
                                             <DropdownMenu>
                                                 <DropdownItem Clicked="@(async () => await ShowEditOutputModal(output))">Edit</DropdownItem>
-                                                <DropdownItem Clicked="@(async () => await RemoveOutput(output))" Disabled="@(!IsOutputAvailableForDelete(output))">Delete</DropdownItem>
+                                                @if (IsOutputAvailableForDelete(output))
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await RemoveOutput(output))" Disabled="false">Delete</DropdownItem>
+                                                } else
+                                                {
+                                                    <DropdownItem Disabled="true">Assigned to @_outputs.First(o => o.Id == output.Number).Name</DropdownItem>
+                                                }
+                                                <DropdownDivider />
+                                                @if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && _outputStates[output.Number].Value)
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await OutputCalls.SetOutputState(output.Number, false))">Deactivate</DropdownItem>                                                    
+                                                }
+                                                else if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && !_outputStates[output.Number].Value)
+                                                {
+                                                    <DropdownItem Clicked="@(async () => await OutputCalls.SetOutputState(output.Number, true))">Activate</DropdownItem>
+                                                }
                                             </DropdownMenu>
                                         </Dropdown>
                                     </TableRowCell>
@@ -249,6 +286,7 @@ else
 
     private IEnumerable<Input> _inputs;
     private IEnumerable<Output> _outputs;
+    private IEnumerable<Door> _doors;
 
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -268,7 +306,7 @@ else
 
         _outputs = await OutputCalls.GetAllOutputs();
         _inputs = await InputCalls.GetAllInputs();
-
+        _doors = await DoorCalls.GetAllDoors();
 
         foreach(var output in _outputs)
         {
