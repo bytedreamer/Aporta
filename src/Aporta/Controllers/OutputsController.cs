@@ -46,7 +46,13 @@ public class OutputsController : ControllerBase
     {
         return await _outputService.AvailableControlPoints();
     }
-        
+
+    [HttpGet("outputendpoints")]
+    public async Task<IEnumerable<Endpoint>> AllOutputEndpoints()
+    {
+        return await _outputService.AllOutputEndPoints();
+    }
+
     [HttpGet("set/{outputId:int}")]
     public async Task<bool?> GetState(int outputId)
     {

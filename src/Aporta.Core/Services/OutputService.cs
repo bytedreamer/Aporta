@@ -80,6 +80,12 @@ public class OutputService
             !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id));
     }
 
+    public async Task<IEnumerable<Endpoint>> AllOutputEndPoints()
+    {
+        var endpoints = await _endpointRepository.GetAll();
+        return endpoints.Where(endpoint => endpoint.Type == EndpointType.Output);
+    }
+
     public async Task SetState(int outputId, bool state)
     {
         var output = await _outputRepository.Get(outputId);

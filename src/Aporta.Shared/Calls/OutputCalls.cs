@@ -15,6 +15,12 @@ namespace Aporta.Shared.Calls
     public class OutputCalls(HttpClient httpClient) : IOutputCalls
     {
 
+        public async Task<IEnumerable<Endpoint>> GetAllOutputEndpoints()
+        {
+            string url = $"{Paths.Outputs}/outputendpoints";
+            return await httpClient.GetFromJsonAsync<List<Endpoint>>(url);
+        }
+
         public async Task<IEnumerable<Output>> GetAllOutputs()
         {
             return await httpClient.GetFromJsonAsync<List<Output>>(Paths.Outputs);
@@ -49,6 +55,7 @@ namespace Aporta.Shared.Calls
 
     public interface IOutputCalls
     {
+        public Task<IEnumerable<Endpoint>> GetAllOutputEndpoints();
         public Task<IEnumerable<Output>> GetAllOutputs();
         public Task<bool?> GetOutputState(int outputId);
         public Task SetOutputState(int outputId, bool? checkedValue);

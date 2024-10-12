@@ -129,7 +129,7 @@ else
                                         }
                                         else
                                         {
-                                            <Icon Name="IconName.QuestionCircle"></Icon>
+                                            <Icon Name="IconName.Clear" Style="color: white"></Icon>
                                         }
                                     </TableRowCell>
                                     <TableRowCell TextAlignment="TextAlignment.End">
@@ -213,7 +213,7 @@ else
                                             <Icon Name="IconName.ArrowDown" Style="color: green" />
                                         } else
                                         {
-                                            <Icon Name="IconName.QuestionCircle"></Icon>
+                                            <Icon Name="IconName.Clear" Style="color: white"></Icon>
                                         }
                                     </TableRowCell>
                                     <TableRowCell TextAlignment="TextAlignment.End">
@@ -228,7 +228,7 @@ else
                                                     <DropdownItem Clicked="@(async () => await RemoveOutput(output))" Disabled="false">Delete</DropdownItem>
                                                 } else
                                                 {
-                                                    <DropdownItem Disabled="true">Assigned to @_outputs.First(o => o.Id == output.Number).Name</DropdownItem>
+                                                    <DropdownItem Disabled="true">Assigned to @GetOutputOrDoorNameAssigned(output.Number)</DropdownItem>
                                                 }
                                                 <DropdownDivider />
                                                 @if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && _outputStates[output.Number].Value)
@@ -287,6 +287,7 @@ else
     private IEnumerable<Input> _inputs;
     private IEnumerable<Output> _outputs;
     private IEnumerable<Door> _doors;
+    private IEnumerable<Endpoint> _outputEndPoints;
 
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -305,6 +306,7 @@ else
         await InitializeAvailableEndpoints();
 
         _outputs = await OutputCalls.GetAllOutputs();
+        _outputEndPoints = await OutputCalls.GetAllOutputEndpoints();
         _inputs = await InputCalls.GetAllInputs();
         _doors = await DoorCalls.GetAllDoors();
 
@@ -403,7 +405,7 @@ else
         _addEditDeviceDialog.Number = 0;
         _addEditDeviceDialog.Name = string.Empty;
         _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Reader;
-        
+
         await _addEditDeviceDialog.ShowDialog();
     }
 
@@ -435,7 +437,7 @@ else
             await InitializeAvailableEndpoints(); 
         }
     }
-    
+
     private async Task BadgeSwipe()
     {
         await PerformAction(ActionType.BadgeSwipe, JsonConvert.SerializeObject(new BadgeSwipeAction
@@ -444,17 +446,17 @@ else
             CardData = _badgeSwipeDialog.CardDataToSwipe
         }));
     }
-    
+
     private async Task ShowAddInputModal()
     {
         _addEditDeviceDialog.IsAdding = true;
         _addEditDeviceDialog.Number = 0;
         _addEditDeviceDialog.Name = string.Empty;
         _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Input;
-        
+
         await _addEditDeviceDialog.ShowDialog();
     }
-    
+
     private async Task ShowEditInputModal(Device input)
     {
         _addEditDeviceDialog.IsAdding = false;
@@ -483,17 +485,17 @@ else
             await InitializeAvailableEndpoints();
         }
     }
-    
+
     private async Task ShowAddOutputModal()
     {
         _addEditDeviceDialog.IsAdding = true;
         _addEditDeviceDialog.Number = 0;
         _addEditDeviceDialog.Name = string.Empty;
         _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Output;
-        
+
         await _addEditDeviceDialog.ShowDialog();
     }
-    
+
     private async Task ShowEditOutputModal(Device output)
     {
         _addEditDeviceDialog.IsAdding = false;
@@ -503,7 +505,7 @@ else
 
         await _addEditDeviceDialog.ShowDialog();
     }
-    
+
     private async Task RemoveOutput(Device outputToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete output '{outputToRemove.Name}'?", "Delete output", options =>
@@ -522,7 +524,7 @@ else
             await InitializeAvailableEndpoints();
         }
     }
-    
+
     private async Task AddEditDevice()
     {
         var actionTypeList = new Dictionary<AddEditDeviceDialog.DeviceType, ActionType>
@@ -538,7 +540,7 @@ else
             await InitializeAvailableEndpoints();
         }
     }
-    
+
     private bool IsReaderAvailableForDelete(Device reader)
     {
         return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
@@ -554,5 +556,19 @@ else
         return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
     }
 
+    private string GetOutputOrDoorNameAssigned(int outputID)
+    {
+        var output = _outputs.FirstOrDefault(o => o.Id == outputID);
+        if (output != null) return output.Name;
+
+        var outputEndPoint = _outputEndPoints.FirstOrDefault(endpoint => endpoint.DriverEndpointId == $"VO{outputID}");
+
+        if (outputEndPoint == null) return string.Empty;
+
+        var door = _doors.FirstOrDefault(d => d.DoorStrikeEndpointId == outputEndPoint.Id || d.DoorContactEndpointId == outputEndPoint.Id);
+        if (door != null) return door.Name;
+
+        return string.Empty;
+    }
 
 }
