@@ -11,15 +11,28 @@ Use [sqlitebrowser](https://sqlitebrowser.org/) to view the database tables.
 ![sqlitebrowser view aporta](images/sqlitebrowser_view_aporta.jpg)
 
 
-# Database table creation
+## Database table creation
 
-The database table create scripts are stored in the Aporta.Core/DataAccess/Migrations folder
+The database table create scripts are stored in the Aporta.Core/DataAccess/Migrations folder. 
+
+Each of these scripts is a C# class that implements the IMigration interface.
 
 ![Database Table Creation Script Files](images/DatabaseTableCreationScriptFiles.jpg)
 
 ![Database Table Creation](images/DatabaseTableCreation.jpg)
 
-# About the tables
+## SQL Script Version Number
+
+ As part of the IMigration contract, the class must have a Version number. The Version number must be unique. The Aporta convention is to prefix the script with the version number.
+ 
+For example, class _0002_AddEndPointTable is Version number 2. 
+
+A non-unique version number will cause Aporta to raise a unique constraint error:
+```
+'UNIQUE constraint failed: schema_info.id'
+```
+
+## About the tables
 
 In the database, **Drivers** are stored in the Extensions table.
 
