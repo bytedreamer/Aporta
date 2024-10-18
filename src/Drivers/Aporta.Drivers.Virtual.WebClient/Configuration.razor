@@ -1,9 +1,9 @@
-﻿@using Blazorise.Snackbar
+﻿@using Aporta.Drivers.Virtual.Shared
+@using Blazorise.Snackbar
 @using Newtonsoft.Json
 
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Models
-@using Aporta.Drivers.Virtual.Shared
 @using Aporta.Drivers.Virtual.Shared.Actions
 @using Aporta.Drivers.Virtual.WebClient.Dialogs
 
@@ -22,7 +22,7 @@ else
                 <CardTitle Margin="Margin.Is4.OnX">
                     <Row Margin="Margin.Is2.OnY">
                         <Column>
-                            <Heading>Virtual Readers</Heading>
+                            <Heading>Virtual Reader Configuration</Heading>
                         </Column>
                     </Row>
                     <Row>
@@ -56,11 +56,9 @@ else
                                                 Action
                                             </DropdownToggle>
                                             <DropdownMenu>
-                                                @if (IsReaderAvailableForDelete(reader))
-                                                {
-                                                    <DropdownItem Clicked="@(async () => await RemoveReader(reader))">Delete</DropdownItem>
-                                                    <DropdownDivider/>
-                                                }
+                                                <DropdownItem Clicked="@(async () => await ShowEditReaderModal(reader))">Edit</DropdownItem>
+                                                <DropdownItem Clicked="@(async () => await RemoveReader(reader))" Disabled="@(!IsReaderAvailableForDelete(reader))">Delete</DropdownItem>
+                                                <DropdownDivider/>
                                                 <DropdownItem Clicked="@(async () => await ShowSwipeBadgeModal(reader.Number))">Swipe Badge</DropdownItem>
                                             </DropdownMenu>
                                         </Dropdown>
@@ -73,42 +71,118 @@ else
             </Card>
         </Column>
     </Row>
-    
-    <BadgeSwipeDialog @ref="_badgeSwipeDialog"
-                   PerformSwipeBadgeAction="@BadgeSwipe" />
 
-    <Modal @ref="_addVirtualReaderModal">
-        <ModalContent Size="ModalSize.Default" Centered="true">
-            <ModalHeader>
-                <ModalTitle>
-                    Add Virtual Reader
-                </ModalTitle>
-                <CloseButton Clicked="@_addVirtualReaderModal.Hide" />
-            </ModalHeader>
-            <ModalBody>
-                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addReaderValidations">
-                    <Validation Validator="@ValidationRule.IsNotEmpty">
-                        <Field>
-                            <FieldLabel>Name</FieldLabel>
-                            <FieldBody>
-                                <TextEdit @bind-Text="_readerToAdd.Name" id="AddReaderTextEdit">
-                                    <Feedback>
-                                        <ValidationError>
-                                            Please enter a name for the virtual reader
-                                        </ValidationError>
-                                    </Feedback>
-                                </TextEdit>
-                            </FieldBody>
-                        </Field>
-                    </Validation>
-                </Validations>
-            </ModalBody>
-            <ModalFooter>
-                <Button Color="Color.Secondary" Clicked="@_addVirtualReaderModal.Hide">Cancel</Button>
-                <Button Color="Color.Primary" Clicked="@(async () => await AddReader())">Add</Button>
-            </ModalFooter>
-        </ModalContent>
-    </Modal>
+    <Row>
+        <Column ColumnSize="ColumnSize.IsFull">
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    <Row Margin="Margin.Is2.OnY">
+                        <Column>
+                            <Heading>Virtual Input Configuration</Heading>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column>
+                            <Button Color="Color.Primary" Clicked="ShowAddInputModal">Add Virtual Input</Button>
+                        </Column>
+                    </Row>
+                </CardTitle>
+                <CardBody>
+                    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Input Name</TableHeaderCell>
+                                <TableHeaderCell>Input Number</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var input in _configuration.Inputs)
+                            {
+                                <TableRow ElementId="@("Input:" + @input.Name)">
+                                    <TableRowHeader>
+                                        @input.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @input.Number
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                Action
+                                            </DropdownToggle>
+                                            <DropdownMenu>
+                                                <DropdownItem Clicked="@(async () => await ShowEditInputModal(input))">Edit</DropdownItem>
+                                                <DropdownItem Clicked="@(async () => await RemoveInput(input))" Disabled="@(!IsInputAvailableForDelete(input))">Delete</DropdownItem>
+                                            </DropdownMenu>
+                                        </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
+    <Row>
+        <Column ColumnSize="ColumnSize.IsFull">
+            <Card Margin="Margin.Is4.OnY">
+                <CardTitle Margin="Margin.Is4.OnX">
+                    <Row Margin="Margin.Is2.OnY">
+                        <Column>
+                            <Heading>Virtual Output Configuration</Heading>
+                        </Column>
+                    </Row>
+                    <Row>
+                        <Column>
+                            <Button Color="Color.Primary" Clicked="ShowAddOutputModal">Add Virtual Output</Button>
+                        </Column>
+                    </Row>
+                </CardTitle>
+                <CardBody>
+                    <Table Narrow="true" Hoverable="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Output Name</TableHeaderCell>
+                                <TableHeaderCell>Output Number</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var output in _configuration.Outputs)
+                            {
+                                <TableRow ElementId="@("Output:" + @output.Name)">
+                                    <TableRowHeader>
+                                        @output.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @output.Number
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Dropdown>
+                                            <DropdownToggle Color="Color.Primary" Size="Size.Small">
+                                                Action
+                                            </DropdownToggle>
+                                            <DropdownMenu>
+                                                <DropdownItem Clicked="@(async () => await ShowEditOutputModal(output))">Edit</DropdownItem>
+                                                <DropdownItem Clicked="@(async () => await RemoveOutput(output))" Disabled="@(!IsOutputAvailableForDelete(output))">Delete</DropdownItem>
+                                            </DropdownMenu>
+                                        </Dropdown>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
+    <AddEditDeviceDialog @ref="_addEditDeviceDialog" PerformAction="@AddEditDevice" />
+
+    <BadgeSwipeDialog @ref="_badgeSwipeDialog" PerformSwipeBadgeAction="@BadgeSwipe" />
 
     <Snackbar @ref="_snackbar" Color="@_snackbarColor">
         <SnackbarBody>
@@ -127,14 +201,12 @@ else
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
 
-    private Modal _addVirtualReaderModal;
-    private Validations _addReaderValidations;
-    private Shared.AddReaderParameter _readerToAdd;
-
+    private AddEditDeviceDialog _addEditDeviceDialog;
+    
     private BadgeSwipeDialog _badgeSwipeDialog;
 
-    private Endpoint[] _availableAccessPoints;
-    
+    private Endpoint[] _availableEndPoints;
+
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
     [Parameter]
@@ -150,14 +222,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _readerToAdd = new Shared.AddReaderParameter();
-
-        await InitializedAvailableEndpoints();
+        await InitializeAvailableEndpoints();
     }
 
-    private async Task InitializedAvailableEndpoints()
+    private async Task InitializeAvailableEndpoints()
     {
-        _availableAccessPoints = await DoorCalls.GetAvailableEndpoints();
+        _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
 
         StateHasChanged();
     }
@@ -182,29 +252,34 @@ else
 
         return true;
     }
-    
+
     private async Task ShowSwipeBadgeModal(byte readerNumber)
     {
         _badgeSwipeDialog.ReaderNumberToSwipe = readerNumber;
         await _badgeSwipeDialog.ShowDialog();
     }
-    
+
     private async Task ShowAddReaderModal()
     {
-        _readerToAdd = new Shared.AddReaderParameter();
-        await _addVirtualReaderModal.Show();
-    }
-    
-    private async Task BadgeSwipe()
-    {
-        await PerformAction(ActionType.BadgeSwipe, JsonConvert.SerializeObject(new BadgeSwipeAction
-        {
-            ReaderNumber = _badgeSwipeDialog.ReaderNumberToSwipe,
-            CardData = _badgeSwipeDialog.CardDataToSwipe
-        }));
+        _addEditDeviceDialog.IsAdding = true;
+        _addEditDeviceDialog.Number = 0;
+        _addEditDeviceDialog.Name = string.Empty;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Reader;
+        
+        await _addEditDeviceDialog.ShowDialog();
     }
 
-    private async Task RemoveReader(Reader readerToRemove)
+    private async Task ShowEditReaderModal(Device reader)
+    {
+        _addEditDeviceDialog.IsAdding = false;
+        _addEditDeviceDialog.Number = reader.Number;
+        _addEditDeviceDialog.Name = reader.Name;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Reader;
+
+        await _addEditDeviceDialog.ShowDialog();
+    }
+
+    private async Task RemoveReader(Device readerToRemove)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete reader '{readerToRemove.Name}'?", "Delete reader", options =>
         {
@@ -219,26 +294,125 @@ else
 
         if (await PerformAction(ActionType.RemoveReader, readerToRemoveSerialized))
         {
-            await InitializedAvailableEndpoints(); 
+            await InitializeAvailableEndpoints(); 
         }
     }
-
-    private async Task AddReader()
+    
+    private async Task BadgeSwipe()
     {
-        if (!await _addReaderValidations.ValidateAll())
+        await PerformAction(ActionType.BadgeSwipe, JsonConvert.SerializeObject(new BadgeSwipeAction
+        {
+            ReaderNumber = _badgeSwipeDialog.ReaderNumberToSwipe,
+            CardData = _badgeSwipeDialog.CardDataToSwipe
+        }));
+    }
+    
+    private async Task ShowAddInputModal()
+    {
+        _addEditDeviceDialog.IsAdding = true;
+        _addEditDeviceDialog.Number = 0;
+        _addEditDeviceDialog.Name = string.Empty;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Input;
+        
+        await _addEditDeviceDialog.ShowDialog();
+    }
+    
+    private async Task ShowEditInputModal(Device input)
+    {
+        _addEditDeviceDialog.IsAdding = false;
+        _addEditDeviceDialog.Number = input.Number;
+        _addEditDeviceDialog.Name = input.Name;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Input;
+
+        await _addEditDeviceDialog.ShowDialog();
+    }
+
+    private async Task RemoveInput(Device inputToRemove)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete input '{inputToRemove.Name}'?", "Delete input", options =>
+            {
+                options.ShowMessageIcon = false;
+                options.ConfirmButtonColor = Color.Danger;
+            }))
         {
             return;
         }
-        await _addVirtualReaderModal.Hide();
 
-        if (await PerformAction(ActionType.AddReader, JsonConvert.SerializeObject(_readerToAdd)))
+        var inputToRemoveSerialized = JsonConvert.SerializeObject(inputToRemove);
+
+        if (await PerformAction(ActionType.RemoveInput, inputToRemoveSerialized))
         {
-            await InitializedAvailableEndpoints(); 
+            await InitializeAvailableEndpoints();
         }
     }
-
-    private bool IsReaderAvailableForDelete(Reader reader)
+    
+    private async Task ShowAddOutputModal()
     {
-        return  _availableAccessPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
+        _addEditDeviceDialog.IsAdding = true;
+        _addEditDeviceDialog.Number = 0;
+        _addEditDeviceDialog.Name = string.Empty;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Output;
+        
+        await _addEditDeviceDialog.ShowDialog();
+    }
+    
+    private async Task ShowEditOutputModal(Device output)
+    {
+        _addEditDeviceDialog.IsAdding = false;
+        _addEditDeviceDialog.Number = output.Number;
+        _addEditDeviceDialog.Name = output.Name;
+        _addEditDeviceDialog.Type = AddEditDeviceDialog.DeviceType.Output;
+
+        await _addEditDeviceDialog.ShowDialog();
+    }
+    
+    private async Task RemoveOutput(Device outputToRemove)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete output '{outputToRemove.Name}'?", "Delete output", options =>
+            {
+                options.ShowMessageIcon = false;
+                options.ConfirmButtonColor = Color.Danger;
+            }))
+        {
+            return;
+        }
+
+        var outputToRemoveSerialized = JsonConvert.SerializeObject(outputToRemove);
+
+        if (await PerformAction(ActionType.RemoveOutput, outputToRemoveSerialized))
+        {
+            await InitializeAvailableEndpoints();
+        }
+    }
+    
+    private async Task AddEditDevice()
+    {
+        var actionTypeList = new Dictionary<AddEditDeviceDialog.DeviceType, ActionType>
+        {
+            { AddEditDeviceDialog.DeviceType.Reader, ActionType.AddUpdateReader },
+            { AddEditDeviceDialog.DeviceType.Input, ActionType.AddUpdateInput },
+            { AddEditDeviceDialog.DeviceType.Output, ActionType.AddUpdateOutput }
+        };
+
+        if (await PerformAction(actionTypeList[_addEditDeviceDialog.Type], JsonConvert.SerializeObject(
+                new Device{Name = _addEditDeviceDialog.Name, Number = _addEditDeviceDialog.Number})))
+        {
+            await InitializeAvailableEndpoints();
+        }
+    }
+    
+    private bool IsReaderAvailableForDelete(Device reader)
+    {
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
+    }
+
+    private bool IsInputAvailableForDelete(Device input)
+    {
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
+    }
+
+    private bool IsOutputAvailableForDelete(Device output)
+    {
+        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
     }
 }

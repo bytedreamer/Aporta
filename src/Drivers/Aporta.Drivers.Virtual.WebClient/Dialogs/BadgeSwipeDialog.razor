@@ -1,4 +1,4 @@
-<Modal @ref="_badgeSwipeModal">
+<Modal @ref="_badgeSwipeModal" Closing="@OnModalClosing">
     <ModalContent Size="ModalSize.Default" Centered="true">
         <ModalHeader>
             <ModalTitle>
@@ -57,5 +57,12 @@
     public async Task ShowDialog()
     {
         await _badgeSwipeModal.Show();
+    }
+    
+    private Task OnModalClosing( ModalClosingEventArgs eventArgs )
+    {
+        eventArgs.Cancel = eventArgs.CloseReason == CloseReason.FocusLostClosing;
+
+        return Task.CompletedTask;
     }
 }

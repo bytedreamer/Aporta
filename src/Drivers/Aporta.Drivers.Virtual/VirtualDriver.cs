@@ -76,58 +76,137 @@ public class VirtualDriver : IHardwareDriver
     /// <inheritdoc />
     public Task<string> PerformAction(string action, string parameters)
     {
-        if (Enum.TryParse(action, out ActionType actionType))
+        if (!Enum.TryParse(action, out ActionType actionType))
         {
-            switch (actionType)
-            {
-                case ActionType.BadgeSwipe:
-                    ProcessBadgeSwipe(parameters);
-                    break;
+            throw new ArgumentException("Invalid action type");
+        }
+        
+        switch (actionType)
+        {
+            case ActionType.BadgeSwipe:
+                ProcessBadgeSwipe(parameters);
+                break;
 
-                case ActionType.AddReader:
+            case ActionType.AddUpdateReader:
+                AddUpdateReader(parameters);
+                break;
 
-                    var readerToAdd = JsonConvert.DeserializeObject<AddReaderParameter>(parameters);
-                    if (readerToAdd != null && AddReader(readerToAdd))
+            case ActionType.RemoveReader:
+                var requestedReaderToRemove = JsonConvert.DeserializeObject<Device>(parameters);
+                if (requestedReaderToRemove != null)
+                {
+                    var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
+                    if (readerToRemove != null && RemoveReader(readerToRemove))
                     {
                         OnUpdatedEndpoints();
                     }
+                }
+                break;
 
-                    break;
+            case ActionType.AddUpdateInput:
+                AddUpdateInput(parameters);
+                break;
 
-                case ActionType.RemoveReader:
-
-                    var requestedReaderToRemove = JsonConvert.DeserializeObject<Reader>(parameters);
-                    if (requestedReaderToRemove != null)
+            case ActionType.RemoveInput:
+                var requestedInputToRemove = JsonConvert.DeserializeObject<Device>(parameters);
+                if (requestedInputToRemove != null)
+                {
+                    var inputToRemove = _configuration.Inputs.Find(rdr => rdr.Number == requestedInputToRemove.Number);
+                    if (inputToRemove != null && RemoveInput(inputToRemove))
                     {
-                        var readerToRemove = _configuration.Readers.Find(rdr => rdr.Number == requestedReaderToRemove.Number);
-                        if (readerToRemove != null && RemoveReader(readerToRemove))
-                        {
-                            OnUpdatedEndpoints();
-                        }
+                        OnUpdatedEndpoints();
                     }
+                }
+                break;
 
+            case ActionType.AddUpdateOutput:
+                AddUpdateOutput(parameters);
+                break;
 
-                    break;
-            }
+            case ActionType.RemoveOutput:
+
+                var requestedOutputToRemove = JsonConvert.DeserializeObject<Device>(parameters);
+                if (requestedOutputToRemove != null)
+                {
+                    var outputToRemove = _configuration.Outputs.Find(rdr => rdr.Number == requestedOutputToRemove.Number);
+                    if (outputToRemove != null && RemoveOutput(outputToRemove))
+                    {
+                        OnUpdatedEndpoints();
+                    }
+                }
+                break;
         }
 
         return Task.FromResult(string.Empty);
     }
 
-    private bool AddReader(AddReaderParameter requestedReaderToAdd)
+    private void AddUpdateReader(string parameters)
     {
-        try
+        var reader = JsonConvert.DeserializeObject<Device>(parameters);
+        if (reader == null)
         {
-            var readerToAdd = new Reader() { Name = requestedReaderToAdd.Name, Number = GetNextReaderNumber()};
+            throw new NullReferenceException($"Cannot add reader {parameters}");
+        }
+        
+        var foundReader = _configuration.Readers.Find(rdr => rdr.Number == reader.Number);
+        if (foundReader != null)
+        {
+            _configuration.Readers[_configuration.Readers.IndexOf(foundReader)] = reader;
+        }
+        else
+        {
+            var readerToAdd = new Device { Name = reader.Name, Number = GetNextReaderNumber() };
             _configuration.Readers.Add(readerToAdd);
             _endpoints.Add(new VirtualReader(readerToAdd.Name, Id, $"VR{readerToAdd.Number}"));
-        } catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Exception occurred adding a new reader");
-            return false;
         }
+        
+        OnUpdatedEndpoints();
+    }
+    
+    private void AddUpdateInput(string parameters)
+    {
+        var input = JsonConvert.DeserializeObject<Device>(parameters);
+        if (input == null)
+        {
+            throw new NullReferenceException($"Cannot add input {parameters}");
+        }
+        
+        var foundInput = _configuration.Inputs.Find(rdr => rdr.Number == input.Number);
+        if (foundInput != null)
+        {
+            _configuration.Inputs[_configuration.Inputs.IndexOf(foundInput)] = input;
+        }
+        else
+        {
+            var inputToAdd = new Device { Name = input.Name, Number = GetNextInputNumber() };
+            _configuration.Inputs.Add(inputToAdd);
+            _endpoints.Add(new VirtualInput(inputToAdd.Name, Id, $"VI{inputToAdd.Number}"));
+        }
+        
+        OnUpdatedEndpoints();
+    }
 
-        return true;
+    private void AddUpdateOutput(string parameters)
+    {
+        var output = JsonConvert.DeserializeObject<Device>(parameters);
+        if (output == null)
+        {
+            throw new NullReferenceException($"Cannot add output {parameters}");
+        }
+        
+        var foundOutput = _configuration.Outputs.Find(rdr => rdr.Number == output.Number);
+        if (foundOutput != null)
+        {
+            _configuration.Outputs[_configuration.Outputs.IndexOf(foundOutput)] = output;
+        }
+        else
+        {
+            var ouptutToAdd = new Device { Name = output.Name, Number = GetNextOutputNumber() };
+            _configuration.Outputs.Add(ouptutToAdd);
+            _endpoints.Add(new VirtualOutput(ouptutToAdd.Name, Id, $"VO{ouptutToAdd.Number}"));
+        }
+        
+        OnUpdatedEndpoints();
     }
 
     private byte GetNextReaderNumber()
@@ -137,7 +216,21 @@ public class VirtualDriver : IHardwareDriver
         return (maxReader == null) ? (byte) 1 : (byte)(maxReader.Number + 1);
     }
 
-    private bool RemoveReader(Reader readerToRemove)
+    private byte GetNextInputNumber()
+    {
+        if (_configuration.Inputs.Count == 0) { return 1; }
+        var maxInput = _configuration.Inputs.MaxBy(x => x.Number);
+        return (maxInput == null) ? (byte)1 : (byte)(maxInput.Number + 1);
+    }
+
+    private byte GetNextOutputNumber()
+    {
+        if (_configuration.Outputs.Count == 0) { return 1; }
+        var maxOutput = _configuration.Outputs.MaxBy(x => x.Number);
+        return (maxOutput == null) ? (byte)1 : (byte)(maxOutput.Number + 1);
+    }
+
+    private bool RemoveReader(Device readerToRemove)
     {
         try
         {
@@ -152,6 +245,51 @@ public class VirtualDriver : IHardwareDriver
         } catch (Exception exception)
         {
             _logger?.LogError(exception, "Exception occurred removing a reader");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool RemoveInput(Device inputToRemove)
+    {
+        try
+        {
+            _configuration.Inputs.Remove(inputToRemove);
+
+            var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VI{inputToRemove.Number}");
+            if (endPointToRemove != null)
+            {
+                _endpoints.Remove(endPointToRemove);
+            }
+
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogError(exception, "Exception occurred removing an input");
+            return false;
+        }
+
+        return true;
+
+    }
+
+    private bool RemoveOutput(Device outputToRemove)
+    {
+        try
+        {
+            _configuration.Outputs.Remove(outputToRemove);
+
+            var endPointToRemove = _endpoints.Find(endpoint => endpoint.Id == $"VO{outputToRemove.Number}");
+            if (endPointToRemove != null)
+            {
+                _endpoints.Remove(endPointToRemove);
+            }
+
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogError(exception, "Exception occurred removing an input");
             return false;
         }
 

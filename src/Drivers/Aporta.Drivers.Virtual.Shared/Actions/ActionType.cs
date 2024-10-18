@@ -6,8 +6,13 @@ namespace Aporta.Drivers.Virtual.Shared.Actions
     {
         [Description("Badge Swipe")]
         BadgeSwipe,
-        AddReader,
+        AddUpdateReader,
         EditReader,
-        RemoveReader
+        RemoveReader,
+        AddUpdateInput,
+        RemoveInput,
+        AddUpdateOutput,
+        RemoveOutput,
+        
     }
 }

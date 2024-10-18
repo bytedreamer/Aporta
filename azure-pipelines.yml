@@ -22,7 +22,7 @@ variables:
 - name: minor
   value: '2'
 - name: patch
-  value: '11'
+  value: '12'
 - name: AssemblyVersion
   value: '$(major).$(minor).$(patch)'
   

@@ -11,21 +11,15 @@ using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services;
 
-public class DoorConfigurationService
+public class DoorConfigurationService(
+    IDataAccess dataAccess,
+    IHubContext<DataChangeNotificationHub> hubContext,
+    ILogger<DoorConfigurationService> logger)
 {
-    private readonly DoorRepository _doorRepository;
-    private readonly EndpointRepository _endpointRepository;
-    private readonly IHubContext<DataChangeNotificationHub> _hubContext;
-    private readonly ILogger<DoorConfigurationService> _logger;
-
-    public DoorConfigurationService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
-        ILogger<DoorConfigurationService> logger)
-    {
-        _hubContext = hubContext;
-        _logger = logger;
-        _doorRepository = new DoorRepository(dataAccess);
-        _endpointRepository = new EndpointRepository(dataAccess);
-    }
+    private readonly DoorRepository _doorRepository = new(dataAccess);
+    private readonly EndpointRepository _endpointRepository = new(dataAccess);
+    private readonly OutputRepository _outputRepository = new(dataAccess);
+    private readonly InputRepository _inputRepository = new(dataAccess);
 
     public async Task<IEnumerable<Endpoint>> AvailableAccessPoints()
     {
@@ -35,6 +29,30 @@ public class DoorConfigurationService
             endpoint.Type == EndpointType.Reader &&
             !doors.Select(door => door.InAccessEndpointId).Contains(endpoint.Id) &&
             !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id));
+    }
+
+    public async Task<IEnumerable<Endpoint>> AvailableEndPoints()
+    {
+        var endpoints = await _endpointRepository.GetAll();
+        var doors = (await _doorRepository.GetAll()).ToArray();
+        var inputs = (await _inputRepository.GetAll()).ToArray();
+        var outputs = (await _outputRepository.GetAll()).ToArray();
+        return endpoints.Where(endpoint =>
+            //Find readers not assigned to a door
+            (endpoint.Type == EndpointType.Reader &&
+            !doors.Select(door => door.InAccessEndpointId).Contains(endpoint.Id) &&
+            !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id))            
+            ||
+            //Find input endpoints not assigned to a door or input
+            (endpoint.Type == EndpointType.Input 
+            && !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id)
+            && !inputs.Select(input => input.EndpointId).Contains(endpoint.Id))            
+            ||
+            //Find output endpoints not assigned to a door or output
+            (endpoint.Type == EndpointType.Output 
+            && !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id)
+            && !outputs.Select(output => output.EndpointId).Contains(endpoint.Id))            
+            );
     }
 
     public async Task<IEnumerable<Door>> GetAll()
@@ -49,19 +67,19 @@ public class DoorConfigurationService
 
     public async Task Insert(Door door)
     {
-        _logger.LogDebug("Request to insert door {Name}", door.Name);
+        logger.LogDebug("Request to insert door {Name}", door.Name);
             
         await _doorRepository.Insert(door);
             
-        await _hubContext.Clients.All.SendAsync(Methods.DoorInserted, door.Id);
+        await hubContext.Clients.All.SendAsync(Methods.DoorInserted, door.Id);
     }
 
     public async Task Delete(int id)
     {
-        _logger.LogDebug("Request to delete door with id of {Id}", id);
+        logger.LogDebug("Request to delete door with id of {Id}", id);
             
         await _doorRepository.Delete(id);
             
-        await _hubContext.Clients.All.SendAsync(Methods.DoorDeleted, id);
+        await hubContext.Clients.All.SendAsync(Methods.DoorDeleted, id);
     }
 }

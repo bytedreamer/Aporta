@@ -10,13 +10,13 @@
         <ApplicationURL>https://localhost:5001;http://localhost:5000</ApplicationURL>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Blazorise.Bootstrap" Version="1.5.0" />
-        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.5.0" />
-        <PackageReference Include="Blazorise.Snackbar" Version="1.5.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.3" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.3" PrivateAssets="all" />
+        <PackageReference Include="Blazorise.Bootstrap" Version="1.6.1" />
+        <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.6.1" />
+        <PackageReference Include="Blazorise.Snackbar" Version="1.6.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.8" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.8" PrivateAssets="all" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.8" />
-        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />
         <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
     </ItemGroup>
     <ItemGroup>

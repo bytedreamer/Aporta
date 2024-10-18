@@ -5,7 +5,7 @@ steps:
     packageType: 'sdk'
     version: '8.x'
     
-- task: DotNetCoreCLI@2
+- task: DotNetCoreCLI@2.242.1
   displayName: 'Build Aporta'
   inputs:
     command: 'build'
@@ -14,7 +14,7 @@ steps:
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'AssemblyVersion'
     
-- task: DotNetCoreCLI@2
+- task: DotNetCoreCLI@2.242.1
   displayName: 'Unit Test Aporta'
   inputs:
     command: 'test'
