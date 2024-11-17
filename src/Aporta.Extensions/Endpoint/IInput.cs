@@ -5,4 +5,6 @@ namespace Aporta.Extensions.Endpoint;
 public interface IInput : IEndpoint
 {
     Task<bool> GetState();
+
+    Task SetState(bool state);
 }

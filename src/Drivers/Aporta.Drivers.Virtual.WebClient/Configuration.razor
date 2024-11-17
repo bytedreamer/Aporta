@@ -9,11 +9,18 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using Aporta.Shared.Messaging
 
+@using Microsoft.AspNetCore.SignalR.Client
+
+@using Aporta.Shared.Models
+@using Aporta.Shared.Calls
+@using Aporta.Shared.Messaging
+@using Aporta.Drivers.Virtual.Messaging;
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls DoorCalls;
 @inject IInputCalls InputCalls;
 @inject IOutputCalls OutputCalls;
+
 
 @if (_configuration == null)
 {
@@ -279,15 +286,21 @@ else
     private BadgeSwipeDialog _badgeSwipeDialog;
 
     private Endpoint[] _availableEndPoints;
-    private readonly Dictionary<int, bool?> _inputStates = new();
-    private readonly Dictionary<int, bool?> _outputStates = new();
+    // private readonly Dictionary<int, bool?> _inputStates = new();
+    // private readonly Dictionary<int, bool?> _outputStates = new();
 
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
-    private IEnumerable<Input> _inputs;
-    private IEnumerable<Output> _outputs;
+    // private IEnumerable<Input> _inputs;
+    // private IEnumerable<Output> _outputs;
     private IEnumerable<Door> _doors;
     private IEnumerable<Endpoint> _outputEndPoints;
+
+    private List<Input> _inputs;
+    private readonly Dictionary<int, bool?> _inputStates = new();
+
+    private List<Output> _outputs;
+    private readonly Dictionary<int, bool?> _outputStates = new();
 
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -320,22 +333,57 @@ else
             _inputStates[input.Id] = await InputCalls.GetInputState(input.Id);
         }
 
-        // _hubConnection = new HubConnectionBuilder()
-        //     .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
-        //     .WithAutomaticReconnect(new SignalRRetryPolicy())
-        //     .Build();
-        // _hubConnection.On<int, bool>(Methods.OutputStateChanged, (outputId, newState) =>
-        // {
-        //     //_outputStates[outputId] = newState;
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithAutomaticReconnect(new SignalRRetryPolicy())
+            .Build();
+        _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
+        {
+            _outputs.Add(await OutputCalls.GetOutput(outputId));
+            _outputStates[outputId] = await OutputCalls.GetOutputState(outputId); 
 
-        //     StateHasChanged();
-        // });
-        // _hubConnection.On<int, bool>(Methods.InputStateChanged, (input, newState) =>
-        // {
-        //     //_inputStates[input] = newState;
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.OutputDeleted, outputId =>
+        {
+            var output = _outputs.FirstOrDefault(o => o.Id == outputId);
+            if (output == null) return;
 
-        //     StateHasChanged();
-        // });
+            _outputs.Remove(output);
+            _outputStates.Remove(output.Id);
+
+            StateHasChanged();
+        });
+        _hubConnection.On<int, bool>(Methods.OutputStateChanged, (outputId, newState) =>
+        {
+            _outputStates[outputId] = newState;
+
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.InputInserted, async inputId =>
+        {
+            _inputs.Add(await InputCalls.GetInput(inputId));
+            _inputStates[inputId] = await InputCalls.GetInputState(inputId); //await GetInputState(inputId);
+
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.InputDeleted, inputId =>
+        {
+            var input = _inputs.FirstOrDefault(i => i.Id == inputId);
+            if (input == null) return;
+
+            _inputs.Remove(input);
+            _inputStates.Remove(input.Id);
+
+            StateHasChanged();
+        });
+        _hubConnection.On<int, bool>(Methods.InputStateChanged, (input, newState) =>
+        {
+            _inputStates[input] = newState;
+
+            StateHasChanged();
+        });
+        await _hubConnection.StartAsync();
 
     }
 

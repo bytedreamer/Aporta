@@ -294,7 +294,7 @@ else
     
     private async Task<bool?> GetInputState(int inputId)
     {
-        string url = $"{Paths.Inputs}/state/{inputId}";
+        string url = $"{Paths.Inputs}/get/{inputId}";
         var response = await Http.GetAsync(url);
         if (!response.IsSuccessStatusCode)
         {
@@ -306,7 +306,7 @@ else
     
     private async Task<bool?> GetOutputState(int outputId)
     {
-        string url = $"{Paths.Outputs}/set/{outputId}";
+        string url = $"{Paths.Outputs}/get/{outputId}";
         var response = await Http.GetAsync(url);
         if (!response.IsSuccessStatusCode)
         {

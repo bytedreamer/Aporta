@@ -34,7 +34,12 @@ public class OSDPInput : IInput
         return (await _controlPanel.InputStatus(_connectionId, _device.Address).ConfigureAwait(false)).InputStatuses.ToArray()[
             _input.Number];
     }
-        
+
+    public async Task SetState(bool value)
+    {
+        return; //Do nothing
+    }
+
     public Task<bool> GetOnlineStatus()
     {
         return Task.FromResult(true);

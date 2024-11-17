@@ -82,6 +82,15 @@ public class InputService
             !doors.Select(door => door.RequestToExitEndpointId).Contains(endpoint.Id));
     }
 
+    public async Task SetState(int inputId, bool state)
+    {
+        var input = await _inputRepository.Get(inputId);
+        var endpoint = await _endpointRepository.Get(input.EndpointId);
+        await _extensionService.GetMonitorPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
+
+        await _hubContext.Clients.All.SendAsync(Methods.InputStateChanged, input.Id, state);
+    }
+
     public async Task<bool?> GetState(int inputId)
     {
         var input = await _inputRepository.Get(inputId);

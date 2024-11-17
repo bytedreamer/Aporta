@@ -23,7 +23,7 @@ namespace Aporta.Shared.Calls
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<Door>> GetAllDoors()
+        public async Task<List<Door>> GetAllDoors()
         {
             return await httpClient.GetFromJsonAsync<List<Door>>(Paths.Doors);
         }
@@ -48,7 +48,7 @@ namespace Aporta.Shared.Calls
         /// <summary>
         /// Return all doors
         /// </summary>
-        public Task<IEnumerable<Door>> GetAllDoors();
+        public Task<List<Door>> GetAllDoors();
     }
 
 }

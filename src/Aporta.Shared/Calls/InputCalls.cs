@@ -15,14 +15,19 @@ namespace Aporta.Shared.Calls
     {
 
 
-        public async Task<IEnumerable<Input>> GetAllInputs()
+        public async Task<List<Input>> GetAllInputs()
         {
             return await httpClient.GetFromJsonAsync<List<Input>>(Paths.Inputs);
         }
 
+        public async Task<Input> GetInput(int inputId)
+        {
+            return await httpClient.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}");
+        }
+
         public async Task<bool?> GetInputState(int inputId)
         {
-            string url = $"{Paths.Inputs}/state/{inputId}";
+            string url = $"{Paths.Inputs}/get/{inputId}";
             var response = await httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
@@ -45,12 +50,12 @@ namespace Aporta.Shared.Calls
                 //await _snackbar.Show();
             }
         }
-
     }
 
     public interface IInputCalls
     {
-        public Task<IEnumerable<Input>> GetAllInputs();
+        public Task<List<Input>> GetAllInputs();
+        public Task<Input> GetInput(int inputId);
         public Task<bool?> GetInputState(int inputId);
         public Task SetInputState(int inputId, bool? checkedValue);
     }

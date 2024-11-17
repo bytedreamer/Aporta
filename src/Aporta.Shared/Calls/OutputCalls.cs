@@ -21,14 +21,19 @@ namespace Aporta.Shared.Calls
             return await httpClient.GetFromJsonAsync<List<Endpoint>>(url);
         }
 
-        public async Task<IEnumerable<Output>> GetAllOutputs()
+        public async Task<List<Output>> GetAllOutputs()
         {
             return await httpClient.GetFromJsonAsync<List<Output>>(Paths.Outputs);
         }
 
+        public async Task<Output> GetOutput(int outputId)
+        {
+            return await httpClient.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}");
+        }
+
         public async Task<bool?> GetOutputState(int outputId)
         {
-            string url = $"{Paths.Outputs}/set/{outputId}";
+            string url = $"{Paths.Outputs}/get/{outputId}";
             var response = await httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
@@ -56,7 +61,8 @@ namespace Aporta.Shared.Calls
     public interface IOutputCalls
     {
         public Task<IEnumerable<Endpoint>> GetAllOutputEndpoints();
-        public Task<IEnumerable<Output>> GetAllOutputs();
+        public Task<List<Output>> GetAllOutputs();
+        public Task<Output> GetOutput(int outputId);
         public Task<bool?> GetOutputState(int outputId);
         public Task SetOutputState(int outputId, bool? checkedValue);
     }
