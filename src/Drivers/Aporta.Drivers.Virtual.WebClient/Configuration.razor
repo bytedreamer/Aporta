@@ -237,15 +237,6 @@ else
                                                 {
                                                     <DropdownItem Disabled="true">Assigned to @GetOutputOrDoorNameAssigned(output.Number)</DropdownItem>
                                                 }
-                                                <DropdownDivider />
-                                                @if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && _outputStates[output.Number].Value)
-                                                {
-                                                    <DropdownItem Clicked="@(async () => await OutputCalls.SetOutputState(output.Number, false))">Deactivate</DropdownItem>                                                    
-                                                }
-                                                else if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && !_outputStates[output.Number].Value)
-                                                {
-                                                    <DropdownItem Clicked="@(async () => await OutputCalls.SetOutputState(output.Number, true))">Activate</DropdownItem>
-                                                }
                                             </DropdownMenu>
                                         </Dropdown>
                                     </TableRowCell>
