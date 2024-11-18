@@ -82,6 +82,12 @@ public class InputService
             !doors.Select(door => door.RequestToExitEndpointId).Contains(endpoint.Id));
     }
 
+    public async Task<IEnumerable<Endpoint>> AllInputEndPoints()
+    {
+        var endpoints = await _endpointRepository.GetAll();
+        return endpoints.Where(endpoint => endpoint.Type == EndpointType.Input);
+    }
+
     public async Task SetState(int inputId, bool state)
     {
         var input = await _inputRepository.Get(inputId);

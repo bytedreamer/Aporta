@@ -116,21 +116,26 @@ else
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            @foreach (var input in _configuration.Inputs)
+                            @foreach (var configDeviceInput in _configuration.Inputs)
                             {
-                                <TableRow ElementId="@("Input:" + @input.Name)">
+                                var inputToDisplay = GetInput(configDeviceInput.Number);
+                                <TableRow ElementId="@("Input:" + @configDeviceInput.Name)">
                                     <TableRowHeader>
-                                        @input.Name
+                                        @configDeviceInput.Name                                        
                                     </TableRowHeader>
                                     <TableRowCell>
-                                        @input.Number
+                                        @configDeviceInput.Number
                                     </TableRowCell>
                                     <TableRowCell>
-                                        @if (_inputStates.ContainsKey(input.Number) && _inputStates[input.Number].HasValue && _inputStates[input.Number].Value)
+                                        @if (inputToDisplay == null)
+                                        {
+                                            <Icon Name="IconName.Clear" Style="color: white"></Icon>
+                                        }
+                                        else if (_inputStates.ContainsKey(inputToDisplay.Id) && _inputStates[inputToDisplay.Id].HasValue && _inputStates[inputToDisplay.Id].Value)
                                         {
                                             <Icon Name="IconName.ArrowUp" Style="color: red" />
                                         }
-                                        else if (_inputStates.ContainsKey(input.Number) && _inputStates[input.Number].HasValue && !_inputStates[input.Number].Value)
+                                        else if (_inputStates.ContainsKey(inputToDisplay.Id) && _inputStates[inputToDisplay.Id].HasValue && !_inputStates[inputToDisplay.Id].Value)
                                         {
                                             <Icon Name="IconName.ArrowDown" Style="color: green" />
                                         }
@@ -145,24 +150,32 @@ else
                                                 Action
                                             </DropdownToggle>
                                             <DropdownMenu>
-                                                <DropdownItem Clicked="@(async () => await ShowEditInputModal(input))">Edit</DropdownItem>
-                                                @if (IsInputAvailableForDelete(input))
+                                                <DropdownItem Clicked="@(async () => await ShowEditInputModal(configDeviceInput))">Edit</DropdownItem>
+                                                @if (IsInputAvailableForDelete(configDeviceInput))
                                                 {
-                                                    <DropdownItem Clicked="@(async () => await RemoveInput(input))" Disabled="false">Delete</DropdownItem>
+                                                    <DropdownItem Clicked="@(async () => await RemoveInput(configDeviceInput))" Disabled="false">Delete</DropdownItem>
                                                 }
                                                 else
                                                 {
-                                                    <DropdownItem Disabled="true">Assigned to @_inputs.First(i => i.Id == input.Number).Name</DropdownItem>
+                                                    @if (inputToDisplay != null)
+                                                    {
+                                                        <DropdownItem Disabled="true">Assigned to @_inputs.First(i => i.Id == inputToDisplay.Id).Name</DropdownItem>
+                                                    }
+                                                    
                                                 }
-                                                <DropdownDivider />
-                                                @if (_inputStates.ContainsKey(input.Number) && _inputStates[input.Number].HasValue && _inputStates[input.Number].Value)
+                                                @if (inputToDisplay != null)
                                                 {
-                                                    <DropdownItem Clicked="@(async () => await InputCalls.SetInputState(input.Number, false))">Deactivate</DropdownItem>
+                                                    <DropdownDivider />
+                                                    @if (_inputStates.ContainsKey(inputToDisplay.Id) && _inputStates[inputToDisplay.Id].HasValue && _inputStates[inputToDisplay.Id].Value)
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await InputCalls.SetInputState(inputToDisplay.Id, false))">Deactivate</DropdownItem>
+                                                    }
+                                                    else if (_inputStates.ContainsKey(inputToDisplay.Id) && _inputStates[inputToDisplay.Id].HasValue && !_inputStates[inputToDisplay.Id].Value)
+                                                    {
+                                                        <DropdownItem Clicked="@(async () => await InputCalls.SetInputState(inputToDisplay.Id, true))">Activate</DropdownItem>
+                                                    }
                                                 }
-                                                else if (_inputStates.ContainsKey(input.Number) && _inputStates[input.Number].HasValue && !_inputStates[input.Number].Value)
-                                                {
-                                                    <DropdownItem Clicked="@(async () => await InputCalls.SetInputState(input.Number, true))">Activate</DropdownItem>
-                                                }
+
                                             </DropdownMenu>
                                         </Dropdown>
                                     </TableRowCell>
@@ -201,21 +214,25 @@ else
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            @foreach (var output in _configuration.Outputs)
+                            @foreach (var configDeviceOutput in _configuration.Outputs)
                             {
-                                <TableRow ElementId="@("Output:" + @output.Name)">
+                                var output = GetOutput(configDeviceOutput.Number);
+                                <TableRow ElementId="@("Output:" + @configDeviceOutput.Name)">
                                     <TableRowHeader>
-                                        @output.Name
+                                        @configDeviceOutput.Name
                                     </TableRowHeader>
                                     <TableRowCell>
-                                        @output.Number
+                                        @configDeviceOutput.Number
                                     </TableRowCell>
                                     <TableRowCell>
-                                        @if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && _outputStates[output.Number].Value)
+                                        @if (output == null)
+                                        {
+                                            <Icon Name="IconName.Clear" Style="color: white"></Icon>
+                                        }else if (_outputStates.ContainsKey(output.Id) && _outputStates[output.Id].HasValue && _outputStates[output.Id].Value)
                                         {
                                             <Icon Name="IconName.ArrowUp" Style="color: red" />
                                         }
-                                        else if (_outputStates.ContainsKey(output.Number) && _outputStates[output.Number].HasValue && !_outputStates[output.Number].Value)
+                                        else if (_outputStates.ContainsKey(output.Id) && _outputStates[output.Id].HasValue && !_outputStates[output.Id].Value)
                                         {
                                             <Icon Name="IconName.ArrowDown" Style="color: green" />
                                         } else
@@ -229,13 +246,13 @@ else
                                                 Action
                                             </DropdownToggle>
                                             <DropdownMenu>
-                                                <DropdownItem Clicked="@(async () => await ShowEditOutputModal(output))">Edit</DropdownItem>
-                                                @if (IsOutputAvailableForDelete(output))
+                                                <DropdownItem Clicked="@(async () => await ShowEditOutputModal(configDeviceOutput))">Edit</DropdownItem>
+                                                @if (IsOutputAvailableForDelete(configDeviceOutput))
                                                 {
-                                                    <DropdownItem Clicked="@(async () => await RemoveOutput(output))" Disabled="false">Delete</DropdownItem>
+                                                    <DropdownItem Clicked="@(async () => await RemoveOutput(configDeviceOutput))" Disabled="false">Delete</DropdownItem>
                                                 } else
                                                 {
-                                                    <DropdownItem Disabled="true">Assigned to @GetOutputOrDoorNameAssigned(output.Number)</DropdownItem>
+                                                    <DropdownItem Disabled="true">Assigned to @GetOutputOrDoorNameAssigned(configDeviceOutput.Number)</DropdownItem>
                                                 }
                                             </DropdownMenu>
                                         </Dropdown>
@@ -286,6 +303,7 @@ else
     // private IEnumerable<Output> _outputs;
     private IEnumerable<Door> _doors;
     private IEnumerable<Endpoint> _outputEndPoints;
+    private IEnumerable<Endpoint> _inputEndPoints;
 
     private List<Input> _inputs;
     private readonly Dictionary<int, bool?> _inputStates = new();
@@ -311,6 +329,7 @@ else
 
         _outputs = await OutputCalls.GetAllOutputs();
         _outputEndPoints = await OutputCalls.GetAllOutputEndpoints();
+        _inputEndPoints = await InputCalls.GetAllInputEndpoints();
         _inputs = await InputCalls.GetAllInputs();
         _doors = await DoorCalls.GetAllDoors();
 
@@ -332,17 +351,19 @@ else
         {
             _outputs.Add(await OutputCalls.GetOutput(outputId));
             _outputStates[outputId] = await OutputCalls.GetOutputState(outputId); 
-
+            _outputEndPoints = await OutputCalls.GetAllOutputEndpoints();
+            _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
             StateHasChanged();
         });
-        _hubConnection.On<int>(Methods.OutputDeleted, outputId =>
+        _hubConnection.On<int>(Methods.OutputDeleted, async outputId =>
         {
             var output = _outputs.FirstOrDefault(o => o.Id == outputId);
             if (output == null) return;
 
             _outputs.Remove(output);
             _outputStates.Remove(output.Id);
-
+            _outputEndPoints = await OutputCalls.GetAllOutputEndpoints();
+            _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
             StateHasChanged();
         });
         _hubConnection.On<int, bool>(Methods.OutputStateChanged, (outputId, newState) =>
@@ -354,18 +375,20 @@ else
         _hubConnection.On<int>(Methods.InputInserted, async inputId =>
         {
             _inputs.Add(await InputCalls.GetInput(inputId));
-            _inputStates[inputId] = await InputCalls.GetInputState(inputId); //await GetInputState(inputId);
-
+            _inputStates[inputId] = await InputCalls.GetInputState(inputId); 
+            _inputEndPoints = await InputCalls.GetAllInputEndpoints();
+            _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
             StateHasChanged();
         });
-        _hubConnection.On<int>(Methods.InputDeleted, inputId =>
+        _hubConnection.On<int>(Methods.InputDeleted, async inputId =>
         {
             var input = _inputs.FirstOrDefault(i => i.Id == inputId);
             if (input == null) return;
 
             _inputs.Remove(input);
             _inputStates.Remove(input.Id);
-
+            _inputEndPoints = await InputCalls.GetAllInputEndpoints();
+            _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
             StateHasChanged();
         });
         _hubConnection.On<int, bool>(Methods.InputStateChanged, (input, newState) =>
@@ -385,31 +408,26 @@ else
         StateHasChanged();
     }
 
-    private int? GetOutputEndpointId(byte outputNumber)
+
+    private Output GetOutput(int configuredOutputDeviceID)
     {
-        try
-        {
-            var endpoint = _availableEndPoints.First(endpoint => endpoint.DriverEndpointId == $"VO{outputNumber}");
-            return endpoint.Id;
-        } catch (Exception ex)
-        {
-            return null;
-        }
+        var outputEndPoint = _outputEndPoints.FirstOrDefault(endpoint => endpoint.DriverEndpointId == $"VO{configuredOutputDeviceID}");
+
+        if (outputEndPoint == null) return null;
+
+        return _outputs.FirstOrDefault(o => o.EndpointId == outputEndPoint.Id);
+    }
+
+    private Input GetInput(int configuredInputDeviceID)
+    {
+        var inputEndPoint = _inputEndPoints.FirstOrDefault(endpoint => endpoint.DriverEndpointId == $"VI{configuredInputDeviceID}");
+
+        if (inputEndPoint == null) return null;
+
+        return _inputs.FirstOrDefault(i => i.EndpointId == inputEndPoint.Id);
 
     }
 
-    private int? GetInputEndpointId(byte inputNumber)
-    {
-        try
-        {
-            var endpoint = _availableEndPoints.First(endpoint => endpoint.DriverEndpointId == $"VI{inputNumber}");
-            return endpoint.Id;
-        } catch (Exception ex)
-        {
-            return null;
-        }
-
-    }
 
     private async Task<bool> PerformAction(ActionType actionType, string parameters)
     {
@@ -597,12 +615,12 @@ else
 
     private string GetOutputOrDoorNameAssigned(int outputID)
     {
-        var output = _outputs.FirstOrDefault(o => o.Id == outputID);
-        if (output != null) return output.Name;
-
         var outputEndPoint = _outputEndPoints.FirstOrDefault(endpoint => endpoint.DriverEndpointId == $"VO{outputID}");
 
         if (outputEndPoint == null) return string.Empty;
+
+        var output = _outputs.FirstOrDefault(o => o.EndpointId == outputEndPoint.Id);
+        if (output != null) return output.Name;
 
         var door = _doors.FirstOrDefault(d => d.DoorStrikeEndpointId == outputEndPoint.Id || d.DoorContactEndpointId == outputEndPoint.Id);
         if (door != null) return door.Name;

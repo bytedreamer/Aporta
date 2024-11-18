@@ -46,7 +46,13 @@ public class InputsController : ControllerBase
     {
         return await _inputService.AvailableMonitorPoints();
     }
-        
+
+    [HttpGet("inputendpoints")]
+    public async Task<IEnumerable<Endpoint>> AllInputEndpoints()
+    {
+        return await _inputService.AllInputEndPoints();
+    }
+
     [HttpGet("get/{inputId:int}")]
     public async Task<bool?> GetState(int inputId)
     {

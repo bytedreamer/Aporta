@@ -14,6 +14,11 @@ namespace Aporta.Shared.Calls
     public class InputCalls(HttpClient httpClient) : IInputCalls
     {
 
+        public async Task<IEnumerable<Endpoint>> GetAllInputEndpoints()
+        {
+            string url = $"{Paths.Inputs}/inputendpoints";
+            return await httpClient.GetFromJsonAsync<List<Endpoint>>(url);
+        }
 
         public async Task<List<Input>> GetAllInputs()
         {
@@ -54,6 +59,7 @@ namespace Aporta.Shared.Calls
 
     public interface IInputCalls
     {
+        public Task<IEnumerable<Endpoint>> GetAllInputEndpoints();
         public Task<List<Input>> GetAllInputs();
         public Task<Input> GetInput(int inputId);
         public Task<bool?> GetInputState(int inputId);
