@@ -95,7 +95,7 @@ public class ExtensionService(
 
         logger.LogInformation("Saving configuration for extension {Name}", matchingExtension.Name);
 
-        //await SaveCurrentConfiguration(matchingExtension);
+        await SaveCurrentConfiguration(matchingExtension);
 
         return result;
     }
