@@ -9,5 +9,6 @@ public static class Paths
     public const string Outputs = "api/Outputs";
     public const string Inputs = "api/Inputs";
     public const string People = "/api/People";
+    public const string User = "/api/User";
     public const string Credentials = "/api/Credentials";
 }

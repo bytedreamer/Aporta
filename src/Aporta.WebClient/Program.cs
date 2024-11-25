@@ -35,6 +35,15 @@ public class Program
         builder.Services.AddScoped<IDoorCalls, DoorCalls>(_ => new DoorCalls(new HttpClient
         { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
 
+        builder.Services.AddScoped<IOutputCalls, OutputCalls>(_ => new OutputCalls(new HttpClient
+        { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
+
+        builder.Services.AddScoped<IInputCalls, InputCalls>(_ => new InputCalls(new HttpClient
+        { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
+
+        builder.Services.AddScoped<IUserCalls, UserCalls>(_ => new UserCalls(new HttpClient
+        { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
+
         builder.Services.AddScoped<IHubProxyFactory, HubProxyFactory>();
         
         builder.Services.AddScoped(_ => new HttpClient

@@ -34,4 +34,10 @@ public class VirtualInput : IInput
     {
         return Task.FromResult(true);
     }
+
+    /// <inheritdoc/>
+    public async Task SetState(bool value)
+    {
+        return; //Do nothing
+    }
 }

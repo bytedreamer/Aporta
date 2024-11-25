@@ -34,4 +34,10 @@ public class DigitalInput : IInput
     {
         return (await File.ReadAllTextAsync(Id).ConfigureAwait(false)).Trim() == "1";
     }
+
+    /// <inheritdoc/>
+    public async Task SetState(bool value)
+    {
+        await File.WriteAllTextAsync(Id, value ? "1" : "0").ConfigureAwait(false);
+    }
 }

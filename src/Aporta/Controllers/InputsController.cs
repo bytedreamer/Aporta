@@ -46,10 +46,24 @@ public class InputsController : ControllerBase
     {
         return await _inputService.AvailableMonitorPoints();
     }
-        
-    [HttpGet("state/{inputId:int}")]
+
+    [HttpGet("inputendpoints")]
+    public async Task<IEnumerable<Endpoint>> AllInputEndpoints()
+    {
+        return await _inputService.AllInputEndPoints();
+    }
+
+    [HttpGet("get/{inputId:int}")]
     public async Task<bool?> GetState(int inputId)
     {
         return await _inputService.GetState(inputId);
+    }
+
+    [HttpPost("set/{inputId:int}")]
+    public async Task<IActionResult> SetState(int inputId, [FromQuery] bool state)
+    {
+        await _inputService.SetState(inputId, state);
+
+        return NoContent();
     }
 }
