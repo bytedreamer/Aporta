@@ -18,6 +18,8 @@ public class ConfigurationTest : AportaTestContext
 
     private readonly Mock<IDriverConfigurationCalls> _mockConfigurationCalls = new();
     private readonly Mock<IDoorCalls> _mockDoorCalls = new();
+    private readonly Mock<IOutputCalls> _mockOutputCalls = new();
+    private readonly Mock<IInputCalls> _mockInputCalls = new();
 
     private readonly Guid _extensionId = Guid.NewGuid();
 
@@ -29,6 +31,53 @@ public class ConfigurationTest : AportaTestContext
         BlazoriseConfig.JSInterop.AddButton(JSInterop);
 
         Services.AddScoped<IDriverConfigurationCalls>(_ => _mockConfigurationCalls.Object);
+
+
+        var inputsOnRazorPage = new List<Input>
+        {
+            new() { Name = "Virtual Input 1", EndpointId = 1 },
+            new() { Name = "Virtual Input 2", EndpointId = 2 },
+            new() { Name = "Virtual Input 3", EndpointId = 3 }
+        };
+
+        Endpoint[] availableInputEndPoints =
+        {
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Input,
+                DriverEndpointId = $"VI{inputsOnRazorPage[1].EndpointId}", Id = inputsOnRazorPage[1].EndpointId
+            },
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Input,
+                DriverEndpointId = $"VI{inputsOnRazorPage[2].EndpointId}", Id = inputsOnRazorPage[2].EndpointId
+            }
+        };
+
+
+        var outputsOnRazorPage = new List<Output>
+        {
+            new() { Name = "Virtual Output 1", EndpointId = 1 },
+            new() { Name = "Virtual Output 2", EndpointId = 2 },
+            new() { Name = "Virtual Output 3", EndpointId = 3 }
+        };
+
+        Endpoint[] availableOutputEndPoints =
+        {
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Input,
+                DriverEndpointId = $"VO{outputsOnRazorPage[1].EndpointId}", Id = outputsOnRazorPage[1].EndpointId
+            },
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Input,
+                DriverEndpointId = $"VO{outputsOnRazorPage[2].EndpointId}", Id = outputsOnRazorPage[2].EndpointId
+            }
+        };
+
+        SetUpInputMock(availableInputEndPoints, inputsOnRazorPage);
+        SetUpOutputMock(availableOutputEndPoints, outputsOnRazorPage);
     }
 
     private Shared.Configuration SetUpDeviceConfiguration()
@@ -44,22 +93,76 @@ public class ConfigurationTest : AportaTestContext
 
     private void SetUpDoorMock()
     {
+        _mockDoorCalls.Setup(calls => calls.GetAvailableEndpoints()).ReturnsAsync(new Endpoint[] { });
+        _mockDoorCalls.Setup(calls => calls.GetAllDoors()).ReturnsAsync(new List<Door>() { });
         Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
     }
 
     private void SetUpDoorMock(Endpoint[] endpoints)
     {        
         _mockDoorCalls.Setup(calls => calls.GetAvailableEndpoints()).ReturnsAsync(endpoints);
+        _mockDoorCalls.Setup(calls => calls.GetAllDoors()).ReturnsAsync(new List<Door>() { new Door() { Name = $"Test Door for endpoint id {endpoints[0].Id}", InAccessEndpointId = endpoints[0].Id } });
 
         Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
+    }
+
+    private void SetUpDoorMock(Endpoint[] endpoints, List<Door> doorsAssignedToReaders)
+    {
+        _mockDoorCalls.Setup(calls => calls.GetAvailableEndpoints()).ReturnsAsync(endpoints);
+        _mockDoorCalls.Setup(calls => calls.GetAllDoors()).ReturnsAsync(doorsAssignedToReaders);
+
+        Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
+    }
+
+    private void SetUpOutputMock(Endpoint[] endpoints, List<Output> outputs)
+    {
+        _mockOutputCalls.Setup(calls => calls.GetAllOutputEndpoints()).ReturnsAsync(endpoints);
+        _mockOutputCalls.Setup(calls => calls.GetAllOutputs()).ReturnsAsync(outputs);
+
+        Services.AddScoped<IOutputCalls>(_ => _mockOutputCalls.Object);
+    }
+
+    private void SetUpInputMock(Endpoint[] endpoints, List<Input> inputs)
+    {
+
+        _mockInputCalls.Setup(calls => calls.GetAllInputEndpoints()).ReturnsAsync(endpoints);
+        _mockInputCalls.Setup(calls => calls.GetAllInputs()).ReturnsAsync(inputs);
+
+        Services.AddScoped<IInputCalls>(_ => _mockInputCalls.Object);
     }
 
     [Test]
     public async Task SwipeBadge()
     {
-        // Arrange
 
-        SetUpDoorMock();
+        // Arrange
+        var readersOnRazorPage = new List<Device>
+        {
+            new() { Name = "Virtual Reader 1", Number = 1 },
+            new() { Name = "Virtual Reader 2", Number = 2 },
+            new() { Name = "Virtual Reader 3", Number = 3 }
+        };
+
+        Endpoint[] availableEndPoints =
+        {
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Reader,
+                DriverEndpointId = $"VR{readersOnRazorPage[1].Number}", Id = readersOnRazorPage[1].Number
+            },
+            new()
+            {
+                ExtensionId = _extensionId, Type = EndpointType.Reader,
+                DriverEndpointId = $"VR{readersOnRazorPage[2].Number}", Id = readersOnRazorPage[2].Number
+            }
+        };
+
+        var doorsAssignedToReaders = new List<Door>()
+        {
+            new(){ Name = $"Test Door for Reader {readersOnRazorPage[0].Number}", InAccessEndpointId = readersOnRazorPage[0].Number}
+        };
+
+        SetUpDoorMock(availableEndPoints, doorsAssignedToReaders);
 
         byte readerNumber = 1;
         var cardData = "2468";
@@ -76,6 +179,8 @@ public class ConfigurationTest : AportaTestContext
             .Add(p => p.RawConfiguration, testConfiguration)
             .Add(p => p.ExtensionId, _extensionId)
             );
+
+
 
         var badgeSwipeShowModalButton = _cut.FindComponents<DropdownItem>().First(button => button.Nodes[0].TextContent.Trim() == "Swipe Badge");
 
@@ -166,7 +271,12 @@ public class ConfigurationTest : AportaTestContext
             }
         };
 
-        SetUpDoorMock(availableEndPoints);
+        var doorsAssignedToReaders = new List<Door>()
+        {
+            new(){ Name = $"Test Door for Reader {readersOnRazorPage[0].Number}", InAccessEndpointId = readersOnRazorPage[0].Number}
+        };
+
+        SetUpDoorMock(availableEndPoints, doorsAssignedToReaders);
 
         var config = new Shared.Configuration();
 
@@ -219,7 +329,12 @@ public class ConfigurationTest : AportaTestContext
             }
         };
 
-        SetUpDoorMock(availableEndPoints);
+        var doorsAssignedToReaders = new List<Door>()
+        {
+            new(){ Name = $"Test Door for Reader {readersOnRazorPage[0].Number}", InAccessEndpointId = readersOnRazorPage[0].Number}
+        };
+
+        SetUpDoorMock(availableEndPoints, doorsAssignedToReaders);
 
         var config = new Shared.Configuration();
 

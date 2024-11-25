@@ -317,7 +317,7 @@ else
     [Parameter]
     public string RawConfiguration { get; set; }
 
-    protected override async void OnParametersSet()
+    protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
 
@@ -332,6 +332,12 @@ else
         _inputEndPoints = await InputCalls.GetAllInputEndpoints();
         _inputs = await InputCalls.GetAllInputs();
         _doors = await DoorCalls.GetAllDoors();
+
+        if (RawConfiguration != null)
+        {
+            _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
+        }
+        
 
         foreach(var output in _outputs)
         {
