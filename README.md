@@ -99,7 +99,7 @@ General information about configuring and setting up the Aporta project for deve
 
 ## Aporta Core Abstractions and Concepts
 
-[A summary of all of the Core Abstractions and Concepts](docs/AportaCoreAbstractions.md) used in the Aporta code.
+[A summary of all of the Core Abstractions and Concepts](https://github.com/bytedreamer/Aporta/wiki/Aporta-Core-Abstractions-and-Concepts) used in the Aporta code.
 
 ## Documentation 
 
