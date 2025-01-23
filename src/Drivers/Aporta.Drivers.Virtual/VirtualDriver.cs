@@ -45,13 +45,13 @@ public class VirtualDriver : IHardwareDriver
         foreach (var output in configToLoad.Outputs)
         {
             _configuration.Outputs.Add(output);
-            _endpoints.Add(new VirtualOutput(output.Name, Id, $"VO{output.Number}"));
+            _endpoints.Add(new VirtualOutput(output.Name, Id, $"VO{output.Number}", SetOutputState));
         }
         
         foreach (var input in configToLoad.Inputs)
         {
             _configuration.Inputs.Add(input);
-            _endpoints.Add(new VirtualInput(input.Name, Id, $"VI{input.Number}"));
+            _endpoints.Add(new VirtualInput(input.Name, Id, $"VI{input.Number}", SetInputState));
         }
     }
 
@@ -107,7 +107,11 @@ public class VirtualDriver : IHardwareDriver
                 AddUpdateInput(parameters);
                 break;
 
-            case ActionType.RemoveInput:
+    //        case ActionType.SetInputState:
+				//SetInputState(parameters);
+    //            break;
+
+			case ActionType.RemoveInput:
                 var requestedInputToRemove = JsonConvert.DeserializeObject<Device>(parameters);
                 if (requestedInputToRemove != null)
                 {
@@ -180,15 +184,65 @@ public class VirtualDriver : IHardwareDriver
         {
             var inputToAdd = new Device { Name = input.Name, Number = GetNextInputNumber() };
             _configuration.Inputs.Add(inputToAdd);
-            _endpoints.Add(new VirtualInput(inputToAdd.Name, Id, $"VI{inputToAdd.Number}"));
+            _endpoints.Add(new VirtualInput(inputToAdd.Name, Id, $"VI{inputToAdd.Number}", SetInputState));
         }
         
         OnUpdatedEndpoints();
     }
 
-    private void AddUpdateOutput(string parameters)
+	private async void SetInputState(VirtualInput virtualInput)
+	{
+
+		var foundInput = _configuration.Inputs.Find(input => input.Name == virtualInput.Name);
+
+		if (foundInput != null)
+		{
+			foundInput.State = await virtualInput.GetState();
+			_configuration.Inputs[_configuration.Inputs.IndexOf(foundInput)] = foundInput; //update the state
+
+			var updatedEndPoint = _endpoints.Find(endPoint => endPoint.Id == $"VI{foundInput.Number}");
+
+			if (updatedEndPoint != null)
+			{
+				OnStateChanged(updatedEndPoint, foundInput.State);
+				OnUpdatedEndpoints();
+			}
+
+
+		}
+
+
+	}
+
+
+	private async void SetOutputState(VirtualOutput virtualOutput)
+	{
+	
+		var foundOutput = _configuration.Outputs.Find(output => output.Name == virtualOutput.Name);
+        
+		if (foundOutput != null)
+		{
+			foundOutput.State = await virtualOutput.GetState();
+			_configuration.Inputs[_configuration.Outputs.IndexOf(foundOutput)] = foundOutput; //update the state
+
+			var updatedEndPoint = _endpoints.Find(endPoint => endPoint.Id == $"VO{foundOutput.Number}");
+
+			if (updatedEndPoint != null)
+			{
+				OnStateChanged(updatedEndPoint, foundOutput.State);
+				OnUpdatedEndpoints();
+			}
+
+
+		}
+
+
+	}
+
+
+	private void AddUpdateOutput(string parameters)
     {
-        var output = JsonConvert.DeserializeObject<Device>(parameters);
+        var output = JsonConvert.DeserializeObject<Device>(parameters);        
         if (output == null)
         {
             throw new NullReferenceException($"Cannot add output {parameters}");
@@ -203,7 +257,7 @@ public class VirtualDriver : IHardwareDriver
         {
             var ouptutToAdd = new Device { Name = output.Name, Number = GetNextOutputNumber() };
             _configuration.Outputs.Add(ouptutToAdd);
-            _endpoints.Add(new VirtualOutput(ouptutToAdd.Name, Id, $"VO{ouptutToAdd.Number}"));
+            _endpoints.Add(new VirtualOutput(ouptutToAdd.Name, Id, $"VO{ouptutToAdd.Number}", SetOutputState));
         }
         
         OnUpdatedEndpoints();

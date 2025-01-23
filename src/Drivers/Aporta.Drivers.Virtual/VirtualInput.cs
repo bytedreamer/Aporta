@@ -7,21 +7,30 @@ namespace Aporta.Drivers.Virtual;
 /// </summary>
 public class VirtualInput : IInput
 {
-    public VirtualInput(string name, Guid extensionId, string id)
+
+	private Action<VirtualInput> SetInputStateInDriver;
+
+	public VirtualInput(string name, Guid extensionId, string id, Action<VirtualInput> SetInputState)
     {
         Name = name;
         ExtensionId = extensionId;
         Id = id;
+        this.SetInputStateInDriver = SetInputState;
+        
     }
 
-    /// <inheritdoc/>
-    public string Name { get; }
+	private bool _state;
+
+	/// <inheritdoc/>
+	public string Name { get; }
     
     /// <inheritdoc/>
     public Guid ExtensionId { get; }
     
     /// <inheritdoc/>
     public string Id { get; }
+
+    
     
     /// <inheritdoc/>
     public Task<bool> GetOnlineStatus()
@@ -32,12 +41,14 @@ public class VirtualInput : IInput
     /// <inheritdoc/>
     public Task<bool> GetState()
     {
-        return Task.FromResult(true);
+        return Task.FromResult(_state);
     }
 
     /// <inheritdoc/>
     public async Task SetState(bool value)
     {
-        return; //Do nothing
+        _state = value;
+        SetInputStateInDriver(this);
+        return; 
     }
 }

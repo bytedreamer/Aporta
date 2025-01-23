@@ -94,7 +94,7 @@ public class InputService
         var endpoint = await _endpointRepository.Get(input.EndpointId);
         await _extensionService.GetMonitorPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
 
-        await _hubContext.Clients.All.SendAsync(Methods.InputStateChanged, input.Id, state);
+		await _hubContext.Clients.All.SendAsync(Methods.InputStateChanged, input.Id, state);
     }
 
     public async Task<bool?> GetState(int inputId)

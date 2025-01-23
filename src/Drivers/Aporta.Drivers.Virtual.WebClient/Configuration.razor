@@ -9,12 +9,6 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using Aporta.Shared.Messaging
 
-@using Microsoft.AspNetCore.SignalR.Client
-
-@using Aporta.Shared.Models
-@using Aporta.Shared.Calls
-@using Aporta.Shared.Messaging
-@using Aporta.Drivers.Virtual.Messaging;
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
 @inject IDoorCalls DoorCalls;
@@ -131,17 +125,13 @@ else
                                         {
                                             <Icon Name="IconName.Clear" Style="color: white"></Icon>
                                         }
-                                        else if (_inputStates.ContainsKey(inputToDisplay.Id) && _inputStates[inputToDisplay.Id].HasValue && _inputStates[inputToDisplay.Id].Value)
+                                        else if (configDeviceInput.State)
                                         {
                                             <Icon Name="IconName.ArrowUp" Style="color: red" />
                                         }
-                                        else if (_inputStates.ContainsKey(inputToDisplay.Id) && _inputStates[inputToDisplay.Id].HasValue && !_inputStates[inputToDisplay.Id].Value)
-                                        {
-                                            <Icon Name="IconName.ArrowDown" Style="color: green" />
-                                        }
                                         else
                                         {
-                                            <Icon Name="IconName.Clear" Style="color: white"></Icon>
+                                            <Icon Name="IconName.ArrowDown" Style="color: green" />
                                         }
                                     </TableRowCell>
                                     <TableRowCell TextAlignment="TextAlignment.End">
@@ -161,16 +151,16 @@ else
                                                     {
                                                         <DropdownItem Disabled="true">Assigned to @_inputs.First(i => i.Id == inputToDisplay.Id).Name</DropdownItem>
                                                     }
-                                                    
+
                                                 }
                                                 @if (inputToDisplay != null)
                                                 {
                                                     <DropdownDivider />
-                                                    @if (_inputStates.ContainsKey(inputToDisplay.Id) && _inputStates[inputToDisplay.Id].HasValue && _inputStates[inputToDisplay.Id].Value)
+                                                    @if (configDeviceInput.State)
                                                     {
                                                         <DropdownItem Clicked="@(async () => await InputCalls.SetInputState(inputToDisplay.Id, false))">Deactivate</DropdownItem>
                                                     }
-                                                    else if (_inputStates.ContainsKey(inputToDisplay.Id) && _inputStates[inputToDisplay.Id].HasValue && !_inputStates[inputToDisplay.Id].Value)
+                                                    else
                                                     {
                                                         <DropdownItem Clicked="@(async () => await InputCalls.SetInputState(inputToDisplay.Id, true))">Activate</DropdownItem>
                                                     }
@@ -228,17 +218,14 @@ else
                                         @if (output == null)
                                         {
                                             <Icon Name="IconName.Clear" Style="color: white"></Icon>
-                                        }else if (_outputStates.ContainsKey(output.Id) && _outputStates[output.Id].HasValue && _outputStates[output.Id].Value)
+                                        }else if (configDeviceOutput.State)
                                         {
                                             <Icon Name="IconName.ArrowUp" Style="color: red" />
                                         }
-                                        else if (_outputStates.ContainsKey(output.Id) && _outputStates[output.Id].HasValue && !_outputStates[output.Id].Value)
+                                        else
                                         {
                                             <Icon Name="IconName.ArrowDown" Style="color: green" />
-                                        } else
-                                        {
-                                            <Icon Name="IconName.Clear" Style="color: white"></Icon>
-                                        }
+                                        } 
                                     </TableRowCell>
                                     <TableRowCell TextAlignment="TextAlignment.End">
                                         <Dropdown>
@@ -294,22 +281,16 @@ else
     private BadgeSwipeDialog _badgeSwipeDialog;
 
     private Endpoint[] _availableEndPoints;
-    // private readonly Dictionary<int, bool?> _inputStates = new();
-    // private readonly Dictionary<int, bool?> _outputStates = new();
 
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
-    // private IEnumerable<Input> _inputs;
-    // private IEnumerable<Output> _outputs;
     private IEnumerable<Door> _doors;
     private IEnumerable<Endpoint> _outputEndPoints;
     private IEnumerable<Endpoint> _inputEndPoints;
 
     private List<Input> _inputs;
-    private readonly Dictionary<int, bool?> _inputStates = new();
 
     private List<Output> _outputs;
-    private readonly Dictionary<int, bool?> _outputStates = new();
 
     [Parameter]
     public Guid ExtensionId { get; set; }
@@ -320,7 +301,7 @@ else
     protected override void OnParametersSet()
     {
         _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
-
+        StateHasChanged();
     }
 
     protected override async Task OnInitializedAsync()
@@ -337,73 +318,6 @@ else
         {
             _configuration = JsonConvert.DeserializeObject<Aporta.Drivers.Virtual.Shared.Configuration>(RawConfiguration);
         }
-        
-
-        foreach(var output in _outputs)
-        {
-            _outputStates[output.Id] = await OutputCalls.GetOutputState(output.Id);
-        }
-
-        foreach (var input in _inputs)
-        {
-            _inputStates[input.Id] = await InputCalls.GetInputState(input.Id);
-        }
-
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
-            .WithAutomaticReconnect(new SignalRRetryPolicy())
-            .Build();
-        _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
-        {
-            _outputs.Add(await OutputCalls.GetOutput(outputId));
-            _outputStates[outputId] = await OutputCalls.GetOutputState(outputId); 
-            _outputEndPoints = await OutputCalls.GetAllOutputEndpoints();
-            _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
-            StateHasChanged();
-        });
-        _hubConnection.On<int>(Methods.OutputDeleted, async outputId =>
-        {
-            var output = _outputs.FirstOrDefault(o => o.Id == outputId);
-            if (output == null) return;
-
-            _outputs.Remove(output);
-            _outputStates.Remove(output.Id);
-            _outputEndPoints = await OutputCalls.GetAllOutputEndpoints();
-            _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
-            StateHasChanged();
-        });
-        _hubConnection.On<int, bool>(Methods.OutputStateChanged, (outputId, newState) =>
-        {
-            _outputStates[outputId] = newState;
-
-            StateHasChanged();
-        });
-        _hubConnection.On<int>(Methods.InputInserted, async inputId =>
-        {
-            _inputs.Add(await InputCalls.GetInput(inputId));
-            _inputStates[inputId] = await InputCalls.GetInputState(inputId); 
-            _inputEndPoints = await InputCalls.GetAllInputEndpoints();
-            _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
-            StateHasChanged();
-        });
-        _hubConnection.On<int>(Methods.InputDeleted, async inputId =>
-        {
-            var input = _inputs.FirstOrDefault(i => i.Id == inputId);
-            if (input == null) return;
-
-            _inputs.Remove(input);
-            _inputStates.Remove(input.Id);
-            _inputEndPoints = await InputCalls.GetAllInputEndpoints();
-            _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
-            StateHasChanged();
-        });
-        _hubConnection.On<int, bool>(Methods.InputStateChanged, (input, newState) =>
-        {
-            _inputStates[input] = newState;
-
-            StateHasChanged();
-        });
-        await _hubConnection.StartAsync();
 
     }
 
@@ -529,6 +443,21 @@ else
 
         await _addEditDeviceDialog.ShowDialog();
     }
+
+    // private async Task UpdateInputState(Device inputToUpdate, bool stateSetPoint)
+    // {
+
+    //     inputToUpdate.State = stateSetPoint;
+
+    //     var inputToUpdateSerialized = JsonConvert.SerializeObject(inputToUpdate);
+
+    //     //await InputCalls.SetInputState(inputToUpdate., false)
+
+    //     await PerformAction(ActionType.SetInputState, inputToUpdateSerialized);
+
+    //     StateHasChanged();
+
+    // }
 
     private async Task RemoveInput(Device inputToRemove)
     {

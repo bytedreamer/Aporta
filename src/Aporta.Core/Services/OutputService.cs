@@ -90,9 +90,10 @@ public class OutputService
     {
         var output = await _outputRepository.Get(outputId);
         var endpoint = await _endpointRepository.Get(output.EndpointId);
-        await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
-            
-        await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, state);
+
+		await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
+
+		await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, state);
     }
 
     public async Task<bool?> GetState(int outputId)
