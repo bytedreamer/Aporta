@@ -95,13 +95,9 @@ _appsettings.Production.json_ - Location for Aporta settings
 
 General information about configuring and setting up the Aporta project for development and running locally.
 
-[Aporta HouseKeeping](docs/AportaHouseKeeping.md)
+[Aporta HouseKeeping](https://github.com/bytedreamer/Aporta/wiki/Aporta-Housekeeping-%E2%80%90-Project-Setup)
 
 ## Aporta Core Abstractions and Concepts
 
 [A summary of all of the Core Abstractions and Concepts](https://github.com/bytedreamer/Aporta/wiki/Aporta-Core-Abstractions-and-Concepts) used in the Aporta code.
-
-## Documentation 
-
-
 
