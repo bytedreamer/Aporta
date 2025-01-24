@@ -128,8 +128,6 @@ public class ConfigurationTest : AportaTestContext
         _mockInputCalls.Setup(calls => calls.GetAllInputEndpoints()).ReturnsAsync(endpoints);
         _mockInputCalls.Setup(calls => calls.GetAllInputs()).ReturnsAsync(inputs);
 
-        _mockInputCalls.Setup(calls => calls.SetInputState(0, true)); //set the input with input Id 0 to a state of true
-
 		Services.AddScoped<IInputCalls>(_ => _mockInputCalls.Object);
     }
 
@@ -507,7 +505,7 @@ public class ConfigurationTest : AportaTestContext
     }
 
 	[Test]
-	public async Task SetInputState()
+	public async Task SetInputStateToActive()
 	{
 		// Arrange
 		var inputsOnRazorPage = new List<Device>
@@ -550,6 +548,52 @@ public class ConfigurationTest : AportaTestContext
 
 		// Assert
 		_mockInputCalls.Verify(calls => calls.SetInputState(0, true));
+	}
+
+	[Test]
+	public async Task SetInputStateToInactive()
+	{
+		// Arrange
+		var inputsOnRazorPage = new List<Device>
+		{
+			new() { Name = "Virtual Input 1", Number = 1, State = false },
+			new() { Name = "Virtual Input 2", Number = 2, State = true  },
+			new() { Name = "Virtual Input 3", Number = 3, State = false  }
+		};
+
+		Endpoint[] availableEndPoints =
+		{
+			new()
+			{
+				ExtensionId = _extensionId, Type = EndpointType.Input,
+				DriverEndpointId = $"VI{inputsOnRazorPage[1].Number}", Id = inputsOnRazorPage[1].Number
+			},
+			new()
+			{
+				ExtensionId = _extensionId, Type = EndpointType.Input,
+				DriverEndpointId = $"VI{inputsOnRazorPage[2].Number}", Id = inputsOnRazorPage[2].Number
+			}
+		};
+
+		SetUpDoorMock(availableEndPoints);
+
+		var config = new Shared.Configuration();
+
+		config.Inputs.AddRange(inputsOnRazorPage);
+
+		// Act
+		_cut = RenderComponent<Configuration>(parameters => parameters
+			.Add(p => p.RawConfiguration, JsonConvert.SerializeObject(config))
+			.Add(p => p.ExtensionId, _extensionId));
+
+		var activateButton = _cut.FindComponents<DropdownItem>().First(button =>
+			!button.Instance.Disabled && button.Nodes[0].TextContent.Trim() == "Deactivate");
+
+		await _cut.InvokeAsync(async () => await activateButton.Instance.Clicked.InvokeAsync());
+
+
+		// Assert
+		_mockInputCalls.Verify(calls => calls.SetInputState(0, false));
 	}
 
 
