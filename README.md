@@ -62,6 +62,11 @@ Steps to install and run from Linux DEB packages
 ```shell
 sudo ./Aporta
 ```
+The log files will be placed in the standard Linux logging directory
+
+```
+/var/log/aporta.log
+```
 
 ### Quick Start
 
