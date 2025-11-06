@@ -12,7 +12,7 @@ namespace Aporta.Drivers.Virtual.Shared.Actions
         AddUpdateInput,
         RemoveInput,
         AddUpdateOutput,
-        RemoveOutput,
+        RemoveOutput
         
     }
 }

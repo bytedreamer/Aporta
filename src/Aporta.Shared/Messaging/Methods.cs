@@ -17,5 +17,8 @@ public static class Methods
     public const string PersonInserted = "PersonInserted";
     public const string PersonUpdated = "PersonUpdated";
     public const string PersonDeleted = "PersonDeleted";
+    public const string UserInserted = "UserInserted";
+    public const string UserUpdated = "UserUpdated";
+    public const string UserDeleted = "UserDeleted";
     public const string NewEventReceived  = "AlarmReceived";
 }

@@ -80,13 +80,20 @@ public class OutputService
             !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id));
     }
 
+    public async Task<IEnumerable<Endpoint>> AllOutputEndPoints()
+    {
+        var endpoints = await _endpointRepository.GetAll();
+        return endpoints.Where(endpoint => endpoint.Type == EndpointType.Output);
+    }
+
     public async Task SetState(int outputId, bool state)
     {
         var output = await _outputRepository.Get(outputId);
         var endpoint = await _endpointRepository.Get(output.EndpointId);
-        await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
-            
-        await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, state);
+
+		await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
+
+		await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, state);
     }
 
     public async Task<bool?> GetState(int outputId)

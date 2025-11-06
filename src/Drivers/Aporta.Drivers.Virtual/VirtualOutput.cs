@@ -8,12 +8,16 @@ namespace Aporta.Drivers.Virtual;
 public class VirtualOutput : IOutput
 {
     private bool _state;
-    
-    public VirtualOutput(string name, Guid extensionId, string id)
+
+    private Action<VirtualOutput> SetOutputStateInDriver;
+
+
+	public VirtualOutput(string name, Guid extensionId, string id, Action<VirtualOutput> SetOutputState)
     {
         Name = name;
         ExtensionId = extensionId;
         Id = id;
+        this.SetOutputStateInDriver = SetOutputState;
     }
 
     /// <inheritdoc/>
@@ -24,9 +28,9 @@ public class VirtualOutput : IOutput
     
     /// <inheritdoc/>
     public string Id { get; }
-    
-    /// <inheritdoc/>
-    public Task<bool> GetOnlineStatus()
+
+	/// <inheritdoc/>
+	public Task<bool> GetOnlineStatus()
     {
         return Task.FromResult(true);
     }
@@ -41,6 +45,8 @@ public class VirtualOutput : IOutput
     public Task SetState(bool state)
     {
         _state = state;
-        return Task.CompletedTask;
+		SetOutputStateInDriver(this);
+
+		return Task.CompletedTask;
     }
 }

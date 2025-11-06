@@ -1,53 +1,7 @@
-# Aporta Physical Access Controller Core Abstractions and Concepts
-
-## Controller
-Access into and out of buildings through doors is controlled by a **controller**.
-
-**Aporta** is one example of a controller. Others include the Mercury Board and the Azure Access BLU-IC4.
-
-## Physical Access Control System
-
-A controller, coupled with a card or badge **Reader** for Authenticating and Authorizing access through a door, an **Output** actuator such as a door strike relay for physically locking and unlocking the door, and an **Input** sensor for providing feedback on if the door is opened / closed or locked / unlocked form a **Physical Access Control System**.
-
-```mermaid
-
-flowchart LR
-    subgraph Door
-    READER["fa:fa-id-card Card Reader "]
-    OUTPUT[fa:fa-key Output Actuator]
-    INPUT[fa:fa-door-open Input Sensor]
-    end
-    CONTROLLER[fa:fa-gears Controller 
-    Aporta]
-    
-    READER o-- "Access Request" --o CONTROLLER
-    OUTPUT o-- "Output" --o CONTROLLER
-    INPUT o-- " Input" --o CONTROLLER
-    
-``` 
-
-## EndPoint
-
-In Aporta, readers, outputs and inputs are all types of **EndPoints**.
-
-An EndPoint is the highest level of abstraction of the kinds of physical hardware that the Aporta controller can interact with.
-[Readers](#reader) are a kind of EndPoint. So is the physical [Output]() mechanism used for actually locking the door (Typically a relay), as is the physical [Input](#input) mechanism used for determining if a door is closed.
-
-**Namespace**: Aporta.Extensions.Endpoint
-
-```mermaid
-
-classDiagram
-class IEndpoint{
-    Guid ExtensionId
-    string Id
-    Task<bool> GetOnlineStatus()
-}
-
-```
+# Aporta Core Abstractions and Concepts
 
 ## Door
-A physical door (A "**Porta**"). 
+A physical door (A "**Porta**"). Access into and out of buildings through doors is controlled by **[Devices](#device)**.
 
 In Aporta, Doors are modeled by a Door class.
 
@@ -68,27 +22,18 @@ class Door{
 
 ```
 
-You will notice that most of the attributes of the Door class have the word "EndPoint" in them. These attrributes are ID numbers for different EndPoints that can be assigned to a door.
-
-**InAccessEndpointId** -- This represents a card reader for entering a building.
-
-**OutAccessEndpointId** -- This represents a card reader for exiting a building.
-
-**DoorContactEndpointId** -- This represents an Input sensor that detects if a door is closed.
-
-**RequestToExitEndpointId** -- This represents an Input sensor for detecting if a person is requesting to exit through a door.
-
-**DoorStrikeEndpointId** -- This represents an Output actuator for physicall locking / unlocking a door.
-
-Below is an image of where the Door class is located in the Aporta project.
-
 ![](images/Aporta_Shared_Models_Door.JPG)
 
 **Database:** Doors are saved to the doors table in the Aporta database.
 
+## Device
+The physical hardware device controlling access through a [door](#door). A device typically consists of a card or badge **[Reader](#reader)**, an [Output](#output) mechanism for physically locking and unlocking the door, and an [Input](#input) mechanism for determining if the door is actually closed and locked.
+
+## Virtual Device
+Aporta comes with a built in mock (or "Virtual") device so that you can explore the features of Aporta and learn how it works without needing a physical hardware device. 
 
 ## Driver
-The software in Aporta that actually controls the physical hardware EndPoints. The driver is responsible for orchestrating communication with a device's [readers](#reader), [inputs](#input) and [outputs](#output). Reading the security credentials from a [reader](#reader) when a card or badge is swiped, authorizing access through a door, Issuing a command to the device [Output](#output) to unlock the door upon successful authorization, and querying device [Input](#input) to ensure the door is actually unlocked are all responsibilities of the driver.
+The software in Aporta that controls a [device](#device). The driver is responsible for orchestrating communication with a device's [readers](#reader), [inputs](#input) and [outputs](#output). Reading the security credentials from a [reader](#reader) when a card or badge is swiped, authorizing access through a door, Issuing a command to the device [Output](#output) to unlock the door upon successful authorization, and querying device [Input](#input) to ensure the door is actually unlocked are all responsibilities of the driver.
 
 **Namespace**: Aporta.Drivers
 
@@ -185,7 +130,23 @@ class IOutput{
 
 Outputs are a kind of device [EndPoint](#endpoint).
 
+## EndPoint
 
+An EndPoint is the highest level of abstraction of the "kinds of things" that interact with and comprise a [device](#device).
+[Readers](#reader) are a kind of EndPoint. So is the physical [Output]() mechanism used for actually locking the door (Typically a relay), as is the physical [Input](#input) mechanism used for determining if a door is closed.
+
+**Namespace**: Aporta.Extensions.Endpoint
+
+```mermaid
+
+classDiagram
+class IEndpoint{
+    Guid ExtensionId
+    string Id
+    Task<bool> GetOnlineStatus()
+}
+
+```
 
 ## Database
 
