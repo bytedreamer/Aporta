@@ -98,6 +98,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aporta.Drivers.Virtual.WebC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Drivers.Virtual.Tests", "Aporta.Drivers.Virtual.Tests\Aporta.Drivers.Virtual.Tests.csproj", "{1E07F94D-F040-4C9F-8236-39A679556D59}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Migration", "Aporta.Migration\Aporta.Migration.csproj", "{7024A0B0-6025-49BE-992D-27CE1EA3402A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aporta.Migration.Tests", "..\test\Aporta.Migration.Tests\Aporta.Migration.Tests.csproj", "{3C97ED4A-576C-4EC6-B002-A64351E046B7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -272,6 +276,22 @@ Global
 		{1E07F94D-F040-4C9F-8236-39A679556D59}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1E07F94D-F040-4C9F-8236-39A679556D59}.Release|x86.ActiveCfg = Release|Any CPU
 		{1E07F94D-F040-4C9F-8236-39A679556D59}.Release|x86.Build.0 = Release|Any CPU
+		{7024A0B0-6025-49BE-992D-27CE1EA3402A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7024A0B0-6025-49BE-992D-27CE1EA3402A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7024A0B0-6025-49BE-992D-27CE1EA3402A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7024A0B0-6025-49BE-992D-27CE1EA3402A}.Debug|x86.Build.0 = Debug|Any CPU
+		{7024A0B0-6025-49BE-992D-27CE1EA3402A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7024A0B0-6025-49BE-992D-27CE1EA3402A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7024A0B0-6025-49BE-992D-27CE1EA3402A}.Release|x86.ActiveCfg = Release|Any CPU
+		{7024A0B0-6025-49BE-992D-27CE1EA3402A}.Release|x86.Build.0 = Release|Any CPU
+		{3C97ED4A-576C-4EC6-B002-A64351E046B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C97ED4A-576C-4EC6-B002-A64351E046B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C97ED4A-576C-4EC6-B002-A64351E046B7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3C97ED4A-576C-4EC6-B002-A64351E046B7}.Debug|x86.Build.0 = Debug|Any CPU
+		{3C97ED4A-576C-4EC6-B002-A64351E046B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C97ED4A-576C-4EC6-B002-A64351E046B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C97ED4A-576C-4EC6-B002-A64351E046B7}.Release|x86.ActiveCfg = Release|Any CPU
+		{3C97ED4A-576C-4EC6-B002-A64351E046B7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
