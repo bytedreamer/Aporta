@@ -79,18 +79,45 @@ public abstract class JsonDocumentRepository<T> where T : class
         };
     }
 
-    public async Task<int> Insert(T record)
+    public async Task<int> Insert(T record, int? explicitId = null)
     {
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
 
         var json = SerializeForInsert(record);
-        int id = await connection.QueryFirstAsync<int>(
-            $"INSERT INTO {TableName} (data) VALUES (@data); SELECT last_insert_rowid()",
-            new { data = json });
+        int id;
+
+        if (explicitId.HasValue && explicitId.Value > 0)
+        {
+            // Use provided ID
+            id = explicitId.Value;
+            await connection.ExecuteAsync(
+                $"INSERT INTO {TableName} (id, data) VALUES (@id, @data)",
+                new { id, data = json });
+        }
+        else
+        {
+            // Auto-assign: MAX(id) + 1, or 1 if table is empty
+            id = await connection.QueryFirstAsync<int>(
+                $"INSERT INTO {TableName} (id, data) VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM {TableName}), @data); SELECT last_insert_rowid()",
+                new { data = json });
+        }
 
         SetId(record, id);
         return id;
+    }
+
+    public async Task Upsert(T record, int id)
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        var json = SerializeForInsert(record);
+        await connection.ExecuteAsync(
+            $"INSERT INTO {TableName} (id, data) VALUES (@id, @data) ON CONFLICT(id) DO UPDATE SET data = @data",
+            new { id, data = json });
+
+        SetId(record, id);
     }
 
     public async Task Update(T record)
