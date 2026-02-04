@@ -1,74 +1,69 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
 
 namespace Aporta.Core.DataAccess.Repositories;
 
-public class EndpointRepository : BaseRepository<Endpoint>
+public class EndpointRepository : JsonDocumentRepository<Endpoint>
 {
     public EndpointRepository(IDataAccess dataAccess)
     {
         DataAccess = dataAccess;
-
-        SqlMapper.AddTypeHandler(new GuidHandler());
     }
-        
+
     protected override IDataAccess DataAccess { get; }
-        
-    protected override string SqlSelect => @"select id, name, endpoint_type as type, driver_id as driverEndpointId, extension_id as extensionId
-                                            from endpoint";
-        
-    protected override string SqlInsert => @"insert into endpoint
-                                            (name, endpoint_type, driver_id, extension_id) values 
-                                            (@name, @endpointType, @driverEndpointId, @extensionId)";
 
-    protected override string SqlUpdate => @"update endpoint
-                                            set name = @name
-                                            where driver_id = @driverEndpointId and extension_id = @extensionId";
+    protected override string TableName => "endpoint";
 
-
-    protected override string SqlDelete => @"delete from endpoint
-                                            where id = @id";
-    
-    protected override string SqlRowCount => @"select count(*) from endpoint";
+    protected override string SqlRowCount => "SELECT COUNT(*) FROM endpoint";
 
     public async Task<IEnumerable<Endpoint>> GetForExtension(Guid extensionId)
     {
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryAsync<Endpoint>(SqlSelect + @" where extension_id = @extensionId",
-            new {extensionId});
-    }
+        var results = await connection.QueryAsync<(int Id, string Data)>(
+            @"SELECT id, data FROM endpoint
+              WHERE json_extract(data, '$.extensionId') = @extensionId",
+            new { extensionId = extensionId.ToString() });
 
-    /// <inheritdoc/>
-    protected override object InsertParameters(Endpoint endpoint)
-    {
-        return new
+        return results.Select(r =>
         {
-            name = endpoint.Name, 
-            endpointType = endpoint.Type,
-            driverEndpointId = endpoint.DriverEndpointId, 
-            extensionId = endpoint.ExtensionId
-        };
+            var endpoint = JsonSerializer.Deserialize<Endpoint>(r.Data, GetJsonOptions());
+            endpoint.Id = r.Id;
+            return endpoint;
+        });
     }
 
-    /// <inheritdoc/>
-    protected override object UpdateParameters(Endpoint endpoint)
+    public new async Task Update(Endpoint endpoint)
     {
-        return new
-        {
-            name = endpoint.Name,
-            driverEndpointId = endpoint.DriverEndpointId,
-            extensionId = endpoint.ExtensionId
-        };
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        var json = JsonSerializer.Serialize(endpoint, GetJsonOptions());
+        await connection.ExecuteAsync(
+            @"UPDATE endpoint SET data = @data
+              WHERE json_extract(data, '$.driverEndpointId') = @driverEndpointId
+              AND json_extract(data, '$.extensionId') = @extensionId",
+            new
+            {
+                data = json,
+                driverEndpointId = endpoint.DriverEndpointId,
+                extensionId = endpoint.ExtensionId.ToString()
+            });
     }
 
-    /// <inheritdoc/>
-    protected override void InsertId(Endpoint endpoint, int id)
+    protected override void SetId(Endpoint entity, int id)
     {
-        endpoint.Id = id;
+        entity.Id = id;
+    }
+
+    protected override int GetId(Endpoint entity)
+    {
+        return entity.Id;
     }
 }

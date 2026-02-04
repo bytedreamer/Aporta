@@ -1,69 +1,79 @@
-using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
 
 namespace Aporta.Core.DataAccess.Repositories;
 
-public class CredentialRepository : BaseRepository<Credential>
+public class CredentialRepository : JsonDocumentRepository<Credential>
 {
     public CredentialRepository(IDataAccess dataAccess)
     {
         DataAccess = dataAccess;
     }
-        
+
     protected override IDataAccess DataAccess { get; }
-        
-    protected override string SqlSelect => @"select credential.id, 
-                                                    credential.number, 
-                                                    credential.last_event lastEvent,
-                                                    credential_assignment.person_id assignedPersonId,
-                                                    credential_assignment.enabled
-                                                    from credential
-                                                    left join credential_assignment on credential.id = credential_assignment.credential_id";
-        
-    protected override string SqlInsert => @"insert into credential
-                                                (number, last_event) values 
-                                                (@number, @lastEvent)";
 
-    protected override string SqlUpdate => throw new NotImplementedException();
+    protected override string TableName => "credential";
 
-    private string SqlAssignmentInsert => @"insert into credential_assignment
-                                                (person_id, credential_id, enabled) values 
-                                                (@personId, @credentialId, @enabled)";
-    
-    private string SqlAssignmentDelete => @"delete from credential_assignment
-                                                where person_id = @personId and credential_id = @credentialId";
+    protected override string SqlRowCount => "SELECT COUNT(*) FROM credential";
 
-    private string SqlUpdateLastEvent => @"update credential
-                                               set last_event = @lastEventId
-                                               where id = @credentialId";
-
-    private string SqlAssignedCredentials => SqlSelect + @" where credential.id IN (SELECT credential_id FROM credential_assignment)";
-    private string SqlUnassignedCredentials => SqlSelect + @" where credential.id NOT IN (SELECT credential_id FROM credential_assignment)";
-
-    protected override string SqlDelete => @"delete from credential where id = @id";
-
-    protected override string SqlRowCount => @"select count(*) from credential";
-
-    protected override object InsertParameters(Credential credential)
+    protected override void SetId(Credential entity, int id)
     {
-        return new
+        entity.Id = id;
+    }
+
+    protected override int GetId(Credential entity)
+    {
+        return entity.Id;
+    }
+
+    public new async Task<Credential> Get(int id)
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        var result = await connection.QuerySingleOrDefaultAsync<(int Id, string Data, int? AssignedPersonId, int? Enabled)>(
+            @"SELECT c.id, c.data,
+                (SELECT json_extract(ca.data, '$.personId') FROM credential_assignment ca
+                 WHERE json_extract(ca.data, '$.credentialId') = c.id) as AssignedPersonId,
+                (SELECT json_extract(ca.data, '$.enabled') FROM credential_assignment ca
+                 WHERE json_extract(ca.data, '$.credentialId') = c.id) as Enabled
+              FROM credential c WHERE c.id = @id",
+            new { id });
+
+        if (result.Data == null) return null;
+
+        var credential = JsonSerializer.Deserialize<Credential>(result.Data, GetJsonOptions());
+        credential.Id = result.Id;
+        credential.AssignedPersonId = result.AssignedPersonId;
+        credential.Enabled = result.Enabled.HasValue ? result.Enabled > 0 : (bool?)null;
+        return credential;
+    }
+
+    public new async Task<IEnumerable<Credential>> GetAll()
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        var results = await connection.QueryAsync<(int Id, string Data, int? AssignedPersonId, int? Enabled)>(
+            @"SELECT c.id, c.data,
+                (SELECT json_extract(ca.data, '$.personId') FROM credential_assignment ca
+                 WHERE json_extract(ca.data, '$.credentialId') = c.id) as AssignedPersonId,
+                (SELECT json_extract(ca.data, '$.enabled') FROM credential_assignment ca
+                 WHERE json_extract(ca.data, '$.credentialId') = c.id) as Enabled
+              FROM credential c");
+
+        return results.Select(r =>
         {
-            number = credential.Number,
-            lastEvent = credential.LastEvent
-        };
-    }
-
-    protected override object UpdateParameters(Credential record)
-    {
-        throw new NotImplementedException();
-    }
-
-    protected override void InsertId(Credential credential, int id)
-    {
-        credential.Id = id;
+            var credential = JsonSerializer.Deserialize<Credential>(r.Data, GetJsonOptions());
+            credential.Id = r.Id;
+            credential.AssignedPersonId = r.AssignedPersonId;
+            credential.Enabled = r.Enabled.HasValue ? r.Enabled > 0 : (bool?)null;
+            return credential;
+        });
     }
 
     public async Task<AssignedCredential> AssignedCredential(string cardNumber)
@@ -71,30 +81,37 @@ public class CredentialRepository : BaseRepository<Credential>
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
 
-        var credential = await connection.QuerySingleOrDefaultAsync<AssignedCredential>(
-            $@"{SqlSelect} where number = @number",
-            new {number = cardNumber});
+        var result = await connection.QuerySingleOrDefaultAsync<(int Id, string Data)>(
+            @"SELECT id, data FROM credential
+              WHERE json_extract(data, '$.number') = @number",
+            new { number = cardNumber });
 
-        if (credential == null)
+        if (result.Data == null)
         {
             return null;
         }
 
-        var personAssignment = await connection.QuerySingleOrDefaultAsync(
-            "select person_id as personId, enabled from credential_assignment where credential_id = @credentialId",
-            new {credentialId = credential.Id});
+        var credential = JsonSerializer.Deserialize<AssignedCredential>(result.Data, GetJsonOptions());
+        credential.Id = result.Id;
 
-        if (personAssignment != null)
+        var personAssignment = await connection.QuerySingleOrDefaultAsync<(int PersonId, int Enabled)>(
+            @"SELECT json_extract(data, '$.personId') as PersonId,
+                     json_extract(data, '$.enabled') as Enabled
+              FROM credential_assignment
+              WHERE json_extract(data, '$.credentialId') = @credentialId",
+            new { credentialId = credential.Id });
+
+        if (personAssignment.PersonId > 0)
         {
             var personRepository = new PersonRepository(DataAccess);
-            credential.Person = await personRepository.Get((int)personAssignment.personId);
-            credential.Enabled = personAssignment.enabled > 0 && credential.Person.Enabled;
+            credential.Person = await personRepository.Get(personAssignment.PersonId);
+            credential.Enabled = personAssignment.Enabled > 0 && credential.Person.Enabled;
         }
         else
         {
             credential.Enabled = false;
         }
-           
+
         return credential;
     }
 
@@ -103,9 +120,21 @@ public class CredentialRepository : BaseRepository<Credential>
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryAsync<Credential>(
-            $@"{SqlSelect} where credential_assignment.person_id = @personId",
+        var results = await connection.QueryAsync<(int Id, string Data, int? Enabled)>(
+            @"SELECT c.id, c.data, json_extract(ca.data, '$.enabled') as Enabled
+              FROM credential c
+              INNER JOIN credential_assignment ca ON json_extract(ca.data, '$.credentialId') = c.id
+              WHERE json_extract(ca.data, '$.personId') = @personId",
             new { personId });
+
+        return results.Select(r =>
+        {
+            var credential = JsonSerializer.Deserialize<Credential>(r.Data, GetJsonOptions());
+            credential.Id = r.Id;
+            credential.AssignedPersonId = personId;
+            credential.Enabled = r.Enabled.HasValue ? r.Enabled > 0 : (bool?)null;
+            return credential;
+        });
     }
 
     public async Task<IEnumerable<Credential>> Assigned()
@@ -113,42 +142,69 @@ public class CredentialRepository : BaseRepository<Credential>
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryAsync<Credential>(SqlAssignedCredentials);
+        var results = await connection.QueryAsync<(int Id, string Data, int PersonId, int Enabled)>(
+            @"SELECT c.id, c.data,
+                     json_extract(ca.data, '$.personId') as PersonId,
+                     json_extract(ca.data, '$.enabled') as Enabled
+              FROM credential c
+              INNER JOIN credential_assignment ca ON json_extract(ca.data, '$.credentialId') = c.id");
+
+        return results.Select(r =>
+        {
+            var credential = JsonSerializer.Deserialize<Credential>(r.Data, GetJsonOptions());
+            credential.Id = r.Id;
+            credential.AssignedPersonId = r.PersonId;
+            credential.Enabled = r.Enabled > 0;
+            return credential;
+        });
     }
-        
+
     public async Task<IEnumerable<Credential>> Unassigned()
     {
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryAsync<Credential>(SqlUnassignedCredentials);
+        var results = await connection.QueryAsync<(int Id, string Data)>(
+            @"SELECT c.id, c.data FROM credential c
+              WHERE c.id NOT IN (
+                SELECT json_extract(ca.data, '$.credentialId')
+                FROM credential_assignment ca)");
+
+        return results.Select(r =>
+        {
+            var credential = JsonSerializer.Deserialize<Credential>(r.Data, GetJsonOptions());
+            credential.Id = r.Id;
+            return credential;
+        });
     }
-        
+
     public async Task AssignPerson(int credentialId, int personId, bool enabled = true)
     {
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
-            
-        await connection.ExecuteAsync(SqlAssignmentInsert,
-            new
-            {
-                credentialId,
-                personId, 
-                enabled
-            });
+
+        var json = JsonSerializer.Serialize(new
+        {
+            credentialId,
+            personId,
+            enabled = enabled ? 1 : 0
+        }, GetJsonOptions());
+
+        await connection.ExecuteAsync(
+            "INSERT INTO credential_assignment (data) VALUES (@data)",
+            new { data = json });
     }
-    
+
     public async Task RevokePerson(int credentialId, int personId)
     {
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
-            
-        await connection.ExecuteAsync(SqlAssignmentDelete,
-            new
-            {
-                credentialId,
-                personId, 
-            });
+
+        await connection.ExecuteAsync(
+            @"DELETE FROM credential_assignment
+              WHERE json_extract(data, '$.credentialId') = @credentialId
+              AND json_extract(data, '$.personId') = @personId",
+            new { credentialId, personId });
     }
 
     public async Task UpdateLastEvent(int credentialId, int lastEventId)
@@ -156,10 +212,20 @@ public class CredentialRepository : BaseRepository<Credential>
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
 
-        await connection.ExecuteAsync(SqlUpdateLastEvent,
-            new
-            {
-                credentialId, lastEventId
-            });
+        // Get the current credential data
+        var currentData = await connection.QuerySingleOrDefaultAsync<string>(
+            "SELECT data FROM credential WHERE id = @credentialId",
+            new { credentialId });
+
+        if (currentData != null)
+        {
+            var credential = JsonSerializer.Deserialize<Credential>(currentData, GetJsonOptions());
+            credential.LastEvent = lastEventId;
+            var newJson = JsonSerializer.Serialize(credential, GetJsonOptions());
+
+            await connection.ExecuteAsync(
+                "UPDATE credential SET data = @data WHERE id = @credentialId",
+                new { data = newJson, credentialId });
+        }
     }
 }

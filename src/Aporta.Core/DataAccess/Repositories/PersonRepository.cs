@@ -2,49 +2,26 @@ using Aporta.Shared.Models;
 
 namespace Aporta.Core.DataAccess.Repositories;
 
-public class PersonRepository : BaseRepository<Person>
+public class PersonRepository : JsonDocumentRepository<Person>
 {
     public PersonRepository(IDataAccess dataAccess)
     {
         DataAccess = dataAccess;
     }
-        
+
     protected override IDataAccess DataAccess { get; }
-        
-    protected override string SqlSelect => @"select person.id, 
-                                                    person.first_name as firstName, 
-                                                    person.last_name as lastName,
-                                                    person.enabled
-                                                    from person";
-        
-    protected override string SqlInsert => @"insert into person
-                                                (first_name, last_name, enabled) values 
-                                                (@firstName, @lastName, @enabled)";
 
-    // ReSharper disable once UnassignedGetOnlyAutoProperty
-    protected override string SqlUpdate { get; }
+    protected override string TableName => "person";
 
-    protected override string SqlDelete => @"delete from person where id = @id";
-    
-    protected override string SqlRowCount => @"select count(*) from person";
-        
-    protected override object InsertParameters(Person person)
+    protected override string SqlRowCount => "SELECT COUNT(*) FROM person";
+
+    protected override void SetId(Person entity, int id)
     {
-        return new
-        {
-            firstName = person.FirstName,
-            lastName = person.LastName,
-            enabled = person.Enabled
-        };
+        entity.Id = id;
     }
 
-    protected override object UpdateParameters(Person record)
+    protected override int GetId(Person entity)
     {
-        throw new System.NotImplementedException();
-    }
-
-    protected override void InsertId(Person person, int id)
-    {
-        person.Id = id;
+        return entity.Id;
     }
 }

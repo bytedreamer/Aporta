@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Aporta.Core.Models;
 using Dapper;
@@ -8,34 +11,33 @@ namespace Aporta.Core.DataAccess.Repositories;
 
 public class ExtensionRepository
 {
-    private const string SqlSelect = @"select id, name, enabled, configuration
-                                            from extension";
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
-    private const string SqlInsert = @"insert into extension
-                                            (id, name, enabled, configuration) values 
-                                            (@id, @name, @enabled, @configuration);";
-
-    private const string SqlUpdate = @"update extension
-                                            set enabled = @enabled,
-                                                configuration = @configuration
-                                            where id = @id;";
-        
     private readonly IDataAccess _dataAccess;
 
     public ExtensionRepository(IDataAccess dataAccess)
     {
         _dataAccess = dataAccess;
-            
-        SqlMapper.AddTypeHandler(new GuidHandler());
     }
-        
+
     public async Task<ExtensionHost> Get(Guid id)
     {
         using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryFirstOrDefaultAsync<ExtensionHost>(SqlSelect +
-                                                                        @" where id = @id", new {id});
+        var data = await connection.QueryFirstOrDefaultAsync<string>(
+            "SELECT data FROM extension WHERE id = @id",
+            new { id = id.ToString() });
+
+        if (data == null) return null;
+
+        var extension = JsonSerializer.Deserialize<ExtensionHost>(data, JsonOptions);
+        extension.Id = id;
+        return extension;
     }
 
     public async Task<IEnumerable<ExtensionHost>> GetAll()
@@ -43,7 +45,15 @@ public class ExtensionRepository
         using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryAsync<ExtensionHost>(SqlSelect);
+        var results = await connection.QueryAsync<(string Id, string Data)>(
+            "SELECT id, data FROM extension");
+
+        return results.Select(r =>
+        {
+            var extension = JsonSerializer.Deserialize<ExtensionHost>(r.Data, JsonOptions);
+            extension.Id = Guid.Parse(r.Id);
+            return extension;
+        });
     }
 
     public async Task Insert(ExtensionHost extension)
@@ -51,12 +61,16 @@ public class ExtensionRepository
         using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        await connection.ExecuteAsync(SqlInsert,
-            new
-            {
-                id = extension.Id, name = extension.Name, enabled = extension.Enabled,
-                configuration = extension.Configuration
-            });
+        var json = JsonSerializer.Serialize(new
+        {
+            name = extension.Name,
+            enabled = extension.Enabled,
+            configuration = extension.Configuration
+        }, JsonOptions);
+
+        await connection.ExecuteAsync(
+            "INSERT INTO extension (id, data) VALUES (@id, @data)",
+            new { id = extension.Id.ToString(), data = json });
     }
 
     public async Task Update(ExtensionHost extension)
@@ -64,13 +78,15 @@ public class ExtensionRepository
         using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        await connection.ExecuteAsync(SqlUpdate,
-            new
-            {
-                id = extension.Id, 
-                name = extension.Name, 
-                enabled = extension.Enabled,
-                configuration = extension.Configuration
-            });
+        var json = JsonSerializer.Serialize(new
+        {
+            name = extension.Name,
+            enabled = extension.Enabled,
+            configuration = extension.Configuration
+        }, JsonOptions);
+
+        await connection.ExecuteAsync(
+            "UPDATE extension SET data = @data WHERE id = @id",
+            new { id = extension.Id.ToString(), data = json });
     }
 }

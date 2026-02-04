@@ -1,52 +1,27 @@
-using System;
 using Aporta.Shared.Models;
 
 namespace Aporta.Core.DataAccess.Repositories;
 
-public class EventRepository : BaseRepository<Event>
+public class EventRepository : JsonDocumentRepository<Event>
 {
     public EventRepository(IDataAccess dataAccess)
     {
         DataAccess = dataAccess;
     }
-    
+
     protected override IDataAccess DataAccess { get; }
-    
-    protected override string SqlSelect => @"select event.id,
-                                                    event.endpoint_id as endpointId,
-                                                    event.timestamp,
-                                                    event.event_type as type,
-                                                    event.data
-                                                    from event";
-        
-    protected override string SqlInsert => @"insert into event
-                                                (endpoint_id, timestamp, event_type, data) values 
-                                                (@endpointId, @timestamp, @type, @data)";
 
-    protected override string SqlUpdate => throw new NotImplementedException();
+    protected override string TableName => "event";
 
-    protected override string SqlDelete => @"delete from event where id = @id";
+    protected override string SqlRowCount => "SELECT COUNT(*) FROM event";
 
-    protected override string SqlRowCount => @"select count(*) from event";
-        
-    protected override object InsertParameters(Event @event)
+    protected override void SetId(Event entity, int id)
     {
-        return new
-        {
-            endpointId = @event.EndpointId,
-            timestamp = @event.Timestamp,
-            type = @event.Type,
-            data = @event.Data
-        };
+        entity.Id = id;
     }
 
-    protected override object UpdateParameters(Event record)
+    protected override int GetId(Event entity)
     {
-        throw new NotImplementedException();
-    }
-
-    protected override void InsertId(Event @event, int id)
-    {
-        @event.Id = id;
+        return entity.Id;
     }
 }

@@ -15,19 +15,9 @@ public class SqLiteDataAccess : IDataAccess
     private const string FileName = "Data/Aporta.sqlite";
     private readonly bool _inMemory;
 
-    private readonly IMigration[] _migrations = 
+    private readonly IMigration[] _migrations =
     {
-        new _0000_InitialCreate(),
-        new _0001_AddExtensionTable(),
-        new _0002_AddEndpointTable(),
-        new _0003_AddOutputTable(),
-        new _0004_AddInputTable(),
-        new _0005_AddDoorTable(),
-        new _0006_AddGlobalSettingTable(),
-        new _0007_AddCredentialTable(), 
-        new _0008_AddPersonTable(),
-        new _0009_AddEventTable(),
-        new _0010_AddLastEventToCredentialTable()
+        new _0000_InitialCreate()
     };
 
     /// <summary>

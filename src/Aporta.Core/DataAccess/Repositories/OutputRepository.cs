@@ -1,59 +1,48 @@
-using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
 
 namespace Aporta.Core.DataAccess.Repositories;
 
-public class OutputRepository : BaseRepository<Output>
+public class OutputRepository : JsonDocumentRepository<Output>
 {
     public OutputRepository(IDataAccess dataAccess)
     {
         DataAccess = dataAccess;
     }
-        
+
     protected override IDataAccess DataAccess { get; }
 
-    protected override string SqlSelect => @"select output.id, output.endpoint_id as endpointId, output.name 
-                                                from output";
+    protected override string TableName => "output";
 
-    protected override string SqlInsert => @"insert into output
-                                                (endpoint_id, name) values 
-                                                (@endpointId, @name)";
+    protected override string SqlRowCount => "SELECT COUNT(*) FROM output";
 
-    protected override string SqlUpdate => throw new NotImplementedException();
-
-    protected override string SqlDelete => @"delete from output where id = @id";
-    
-    protected override string SqlRowCount => @"select count(*) from output";
-        
     public async Task<Output> GetForDriverId(string driverId)
     {
         using var connection = DataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryFirstAsync<Output>(SqlSelect + 
-                                                        @" inner join endpoint on output.endpoint_id = endpoint.id 
-                                                            where endpoint.driver_id = @driverId",
-            new {driverId});
-    }
-        
-    protected override object InsertParameters(Output output)
-    {
-        return new
-        {
-            endpointId = output.EndpointId,
-            name = output.Name
-        };
+        var result = await connection.QueryFirstOrDefaultAsync<(int Id, string Data)>(
+            @"SELECT o.id, o.data FROM output o
+              INNER JOIN endpoint e ON json_extract(o.data, '$.endpointId') = e.id
+              WHERE json_extract(e.data, '$.driverEndpointId') = @driverId",
+            new { driverId });
+
+        if (result.Data == null) return null;
+
+        var output = JsonSerializer.Deserialize<Output>(result.Data, GetJsonOptions());
+        output.Id = result.Id;
+        return output;
     }
 
-    protected override object UpdateParameters(Output record)
+    protected override void SetId(Output entity, int id)
     {
-        throw new NotImplementedException();
+        entity.Id = id;
     }
 
-    protected override void InsertId(Output output, int id)
+    protected override int GetId(Output entity)
     {
-        output.Id = id;
+        return entity.Id;
     }
 }
