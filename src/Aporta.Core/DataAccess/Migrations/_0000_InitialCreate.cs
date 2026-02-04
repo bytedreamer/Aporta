@@ -6,7 +6,8 @@ namespace Aporta.Core.DataAccess.Migrations
 {
     public class _0000_InitialCreate : IMigration
     {
-        public int Version => 0;
+        // Version 100 to distinguish from old column-based schema (versions 0-10)
+        public int Version => 100;
 
         public string Name => "Initial create with JSON document storage";
 

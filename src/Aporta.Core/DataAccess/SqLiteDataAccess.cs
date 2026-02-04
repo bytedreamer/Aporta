@@ -82,7 +82,16 @@ public class SqLiteDataAccess : IDataAccess
         }
         else
         {
-            currentVersion = await CurrentVersion(); 
+            currentVersion = await CurrentVersion();
+        }
+
+        // Detect old column-based schema (versions 0-10) and require migration tool
+        if (currentVersion >= 0 && currentVersion <= 10)
+        {
+            throw new InvalidOperationException(
+                $"Database is using old schema (version {currentVersion}). " +
+                "Please run the Aporta.Migration tool to upgrade to JSON document storage before starting the application. " +
+                "Usage: dotnet Aporta.Migration.dll <path-to-database>");
         }
 
         using var connection = CreateDbConnection();

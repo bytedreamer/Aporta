@@ -166,11 +166,11 @@ public class Migrator
         // Update schema_info
         if (!_dryRun)
         {
-            // Clear old schema records and insert new
+            // Clear old schema records and insert new (version 100 = JSON schema)
             await _connection.ExecuteAsync("DELETE FROM schema_info", transaction: transaction);
             await _connection.ExecuteAsync(
                 "INSERT INTO schema_info (id, name, timestamp) VALUES (@id, @name, @timestamp)",
-                new { id = 0, name = "Initial create with JSON document storage", timestamp = DateTime.UtcNow },
+                new { id = 100, name = "Initial create with JSON document storage", timestamp = DateTime.UtcNow },
                 transaction: transaction);
         }
 

@@ -109,7 +109,7 @@ public class MigrationTests
 
         // Schema version should still be 0
         var version = await _connection.QueryFirstAsync<int>("SELECT MAX(id) FROM schema_info");
-        Assert.That(version, Is.EqualTo(0));
+        Assert.That(version, Is.EqualTo(100));
     }
 
     private async Task CreateOldSchemaVersion10()
@@ -164,7 +164,7 @@ public class MigrationTests
     {
         await _connection.ExecuteAsync(@"
             CREATE TABLE schema_info (id INTEGER PRIMARY KEY, name TEXT NOT NULL, timestamp DATETIME NOT NULL);
-            INSERT INTO schema_info VALUES (0, 'Initial create with JSON document storage', '2024-01-01');
+            INSERT INTO schema_info VALUES (100, 'Initial create with JSON document storage', '2024-01-01');
 
             CREATE TABLE extension (id TEXT PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE endpoint (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
@@ -310,6 +310,6 @@ public class MigrationTests
     private async Task VerifySchemaInfo()
     {
         var version = await _connection.QueryFirstAsync<int>("SELECT MAX(id) FROM schema_info");
-        Assert.That(version, Is.EqualTo(0)); // New JSON schema is version 0
+        Assert.That(version, Is.EqualTo(100)); // New JSON schema is version 0
     }
 }
