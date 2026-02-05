@@ -13,6 +13,7 @@
       <ProjectReference Include="..\Aporta.Core\Aporta.Core.csproj" />
       <ProjectReference Include="..\Aporta.Extensions\Aporta.Extensions.csproj" />
       <ProjectReference Include="..\Aporta.WebClient\Aporta.WebClient.csproj" />
+      <ProjectReference Include="..\Drivers\Aporta.Drivers.OSDP.Shared\Aporta.Drivers.OSDP.Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -20,7 +21,7 @@
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
       <PackageReference Include="NReco.Logging.File" Version="1.2.1" />
-      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.2" />
+      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.3" />
     </ItemGroup>
 
     <ItemGroup>

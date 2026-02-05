@@ -16,10 +16,27 @@ namespace Aporta.Core.Services;
 public class Z9OpenCommunityProtocolService : IDisposable
 {
     private const bool AutoCreatePersonForCredential = true;
+    private const int DefaultOsdpTcpPort = 9843;
 
     private readonly ILogger<Z9OpenCommunityProtocolService> _logger;
     private readonly CredentialRepository _credentialRepository;
     private readonly PersonRepository _personRepository;
+
+    // Received OSDP CredReader configurations from Z9
+    private readonly List<OsdpReaderConfig> _osdpReaderConfigs = new();
+
+    /// <summary>
+    /// OSDP reader configuration extracted from Z9 Dev messages.
+    /// </summary>
+    public class OsdpReaderConfig
+    {
+        public int Unid { get; set; }
+        public string Name { get; set; }
+        public string Host { get; set; }
+        public int TcpPort { get; set; } = DefaultOsdpTcpPort;
+        public int OsdpAddress { get; set; }
+        public int BaudRate { get; set; } = 9600;
+    }
     private Thread _thread;
     private volatile bool _stopping;
     private TcpClient _client;
@@ -32,6 +49,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     public bool IsIdentified { get; private set; }
     public List<DbChange> ReceivedDbChanges { get; } = new();
     public List<DevActionReq> ReceivedDevActions { get; } = new();
+    public List<OsdpReaderConfig> OsdpReaderConfigs => _osdpReaderConfigs;
     public Exception LastException { get; private set; }
 
     public Z9OpenCommunityProtocolService(
@@ -132,6 +150,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
     private void HandleMessage(SpCoreMessage message)
     {
+        _logger.LogInformation("Received message type {Type}", message.Type);
+
         switch (message.Type)
         {
             case SpCoreMessage.Types.Type.Ping:
@@ -140,7 +160,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
             case SpCoreMessage.Types.Type.Identification:
                 IsIdentified = true;
                 _logger.LogInformation("Z9/Open Community host identified");
-                SendIdentification();
+                // Don't re-send - we already sent ours as the initiating side
                 break;
 
             case SpCoreMessage.Types.Type.DbChange:
@@ -157,7 +177,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 {
                     ReceivedDevActions.Add(message.DevActionReq);
                 }
-                _logger.LogDebug("Received DevActionReq (requestId={RequestId})", message.DevActionReq.RequestId);
+                _logger.LogInformation("Received DevActionReq (requestId={RequestId})", message.DevActionReq.RequestId);
                 SendDevActionResp(message.DevActionReq.RequestId);
                 break;
 
@@ -165,14 +185,14 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 break;
 
             default:
-                _logger.LogDebug("Ignoring message type {Type}", message.Type);
+                _logger.LogInformation("Ignoring unhandled message type {Type}", message.Type);
                 break;
         }
     }
 
     private void HandleDbChange(DbChange dbChange)
     {
-        _logger.LogDebug("Processing DbChange (requestId={RequestId})", dbChange.RequestId);
+        _logger.LogInformation("Processing DbChange (requestId={RequestId})", dbChange.RequestId);
 
         // Not yet supported by Aporta, accepted silently:
         // Sched, HolCal, HolType, CredTemplate, DataLayout, DataFormat, Priv
@@ -188,8 +208,66 @@ public class Z9OpenCommunityProtocolService : IDisposable
             _credentialRepository.Delete(credDelete).GetAwaiter().GetResult();
         }
 
-        // TODO: Dev - map to Aporta devices/doors
+        // Process Dev messages - extract OSDP reader configurations
+        foreach (var dev in dbChange.Dev)
+        {
+            ProcessDev(dev);
+        }
     }
+
+    private void ProcessDev(Dev dev)
+    {
+        SpCoreProtoUtil.InitRequired(dev);
+
+        // Check if this is an OSDP credential reader
+        if (dev.DevType != DevType.CredReader)
+            return;
+
+        var credReaderConfig = dev.ExtCredReader?.CredReaderConfig;
+        if (credReaderConfig == null)
+            return;
+
+        // Check for OSDP comm type
+        if (credReaderConfig.CommType != CredReaderCommType.OsdpHalfDuplex)
+            return;
+
+        var serialPortAddress = credReaderConfig.SerialPortAddress;
+        if (string.IsNullOrWhiteSpace(serialPortAddress))
+        {
+            _logger.LogWarning("OSDP CredReader {Name} (unid={Unid}) has no serialPortAddress, skipping",
+                dev.Name, dev.Unid);
+            return;
+        }
+
+        var osdpConfig = new OsdpReaderConfig
+        {
+            Unid = dev.Unid,
+            Name = dev.Name ?? $"OSDP Reader {dev.Unid}",
+            Host = serialPortAddress,
+            TcpPort = DefaultOsdpTcpPort,  // Z9 doesn't send TCP port, use default
+            OsdpAddress = dev.Port,  // OSDP polling address (0-126)
+            BaudRate = dev.Speed > 0 ? dev.Speed : 9600
+        };
+
+        _logger.LogInformation(
+            "Received OSDP CredReader config: Name={Name}, Host={Host}:{TcpPort}, OsdpAddress={OsdpAddress}",
+            osdpConfig.Name, osdpConfig.Host, osdpConfig.TcpPort, osdpConfig.OsdpAddress);
+
+        lock (_osdpReaderConfigs)
+        {
+            // Remove existing config with same unid
+            _osdpReaderConfigs.RemoveAll(c => c.Unid == osdpConfig.Unid);
+            _osdpReaderConfigs.Add(osdpConfig);
+        }
+
+        // Notify that OSDP configuration is available
+        OsdpConfigurationReceived?.Invoke(this, osdpConfig);
+    }
+
+    /// <summary>
+    /// Event raised when OSDP reader configuration is received from Z9.
+    /// </summary>
+    public event EventHandler<OsdpReaderConfig> OsdpConfigurationReceived;
 
     private void ProcessCredential(Cred cred)
     {

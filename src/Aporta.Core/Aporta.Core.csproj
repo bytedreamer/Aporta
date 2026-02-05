@@ -11,7 +11,7 @@
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.1.0" />
       <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.2" />
+      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.3" />
     </ItemGroup>
 
     <ItemGroup>

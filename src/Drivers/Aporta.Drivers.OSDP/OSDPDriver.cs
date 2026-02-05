@@ -418,10 +418,20 @@ public class OSDPDriver : IHardwareDriver
     {
         foreach (var bus in _configuration.Buses)
         {
-            var connection = new SerialPortOsdpConnection(bus.PortName, bus.BaudRate); 
-            
+            IOsdpConnection connection;
+
+            if (bus.ConnectionType == ConnectionType.Tcp)
+            {
+                _logger.LogInformation("Starting TCP OSDP connection to {Host}:{Port}", bus.TcpHost, bus.TcpPort);
+                connection = new TcpClientOsdpConnection(bus.TcpHost, bus.TcpPort, bus.BaudRate);
+            }
+            else
+            {
+                connection = new SerialPortOsdpConnection(bus.PortName, bus.BaudRate);
+            }
+
             _connections.TryAdd(bus.PortName, connection);
-           
+
             _portMapping.TryAdd(bus.PortName, _panel.StartConnection(connection, TimeSpan.FromMilliseconds(50), false));
         }
     }
@@ -524,9 +534,22 @@ public class OSDPDriver : IHardwareDriver
 
         if (!_portMapping.ContainsKey(busAction.Bus.PortName))
         {
+            IOsdpConnection connection;
+
+            if (busAction.Bus.ConnectionType == ConnectionType.Tcp)
+            {
+                _logger.LogInformation("Adding TCP OSDP bus connection to {Host}:{Port}",
+                    busAction.Bus.TcpHost, busAction.Bus.TcpPort);
+                connection = new TcpClientOsdpConnection(busAction.Bus.TcpHost, busAction.Bus.TcpPort, busAction.Bus.BaudRate);
+            }
+            else
+            {
+                connection = new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate);
+            }
+
+            _connections.TryAdd(busAction.Bus.PortName, connection);
             _portMapping.TryAdd(busAction.Bus.PortName,
-                _panel.StartConnection(new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate),
-                    TimeSpan.FromMilliseconds(50), false));
+                _panel.StartConnection(connection, TimeSpan.FromMilliseconds(50), false));
         }
 
         return string.Empty;
