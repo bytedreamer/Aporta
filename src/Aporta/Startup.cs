@@ -41,6 +41,7 @@ public class Startup
         services.AddSingleton<InputService, InputService>();
         services.AddSingleton<OutputService, OutputService>();
         services.AddSingleton<PeopleService, PeopleService>();
+        services.AddSingleton<Z9OpenCommunityProtocolService, Z9OpenCommunityProtocolService>();
 
         services.AddSignalR();
         services.AddControllersWithViews();
