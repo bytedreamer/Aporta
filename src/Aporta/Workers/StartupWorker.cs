@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.Services;
 using Aporta.Drivers.OSDP.Shared;
+using Aporta.Extensions.Hardware;
 using Aporta.Drivers.OSDP.Shared.Actions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -61,8 +62,15 @@ public class StartupWorker : BackgroundService
                     : DefaultZ9OpenCommunityPort;
                 var z9OpenCommunityId = _configuration["z9OpenCommunityId"];
 
+                // In Z9 Open Community mode, disable OSDP extension until we receive config from Z9
+                // This prevents the driver from auto-connecting using stale saved configuration
+                await DisableOsdpExtensionForZ9OpenCommunityMode();
+
                 // Subscribe to OSDP configuration events before starting the service
                 _z9OpenCommunityProtocolService.OsdpConfigurationReceived += OnOsdpConfigurationReceived;
+
+                // Subscribe to device online status changes to send events back to Z9
+                _extensionService.OnlineStatusChanged += OnOnlineStatusChanged;
 
                 _z9OpenCommunityProtocolService.Start(z9OpenCommunityHost, z9OpenCommunityPort, z9OpenCommunityId);
             }
@@ -84,11 +92,25 @@ public class StartupWorker : BackgroundService
         stoppingToken.Register(() =>
         {
             _logger.LogWarning("Application is shutting down");
+            _extensionService.OnlineStatusChanged -= OnOnlineStatusChanged;
             _z9OpenCommunityProtocolService.OsdpConfigurationReceived -= OnOsdpConfigurationReceived;
             _z9OpenCommunityProtocolService.Stop();
             _accessService.Shutdown();
             _extensionService.Shutdown();
         });
+    }
+
+    private async Task DisableOsdpExtensionForZ9OpenCommunityMode()
+    {
+        var extensions = _extensionService.GetExtensions().ToList();
+        var osdpExtension = extensions.FirstOrDefault(e => e.Id == OsdpDriverId);
+
+        if (osdpExtension is { Enabled: true })
+        {
+            _logger.LogInformation(
+                "Z9 Open Community mode: Disabling OSDP extension until configuration is received from the host");
+            await _extensionService.EnableExtension(OsdpDriverId, false);
+        }
     }
 
     private void OnOsdpConfigurationReceived(object sender, Z9OpenCommunityProtocolService.OsdpReaderConfig config)
@@ -168,5 +190,22 @@ public class StartupWorker : BackgroundService
             JsonConvert.SerializeObject(deviceAction));
 
         _logger.LogInformation("OSDP driver configured for reader: {Name}", config.Name);
+    }
+
+    private void OnOnlineStatusChanged(object sender, OnlineStatusChangedEventArgs e)
+    {
+        // Get the Z9 config for this endpoint to send event with correct device unid
+        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(e.Endpoint?.Id);
+        if (config == null)
+        {
+            _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping event",
+                e.Endpoint?.Id);
+            return;
+        }
+
+        _logger.LogInformation("OSDP reader {Name} is now {Status}",
+            config.Name, e.IsOnline ? "online" : "offline");
+
+        _z9OpenCommunityProtocolService.SendCredReaderOnlineEvent(config, e.IsOnline);
     }
 }

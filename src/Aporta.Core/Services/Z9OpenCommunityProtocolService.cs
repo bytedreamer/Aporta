@@ -25,6 +25,10 @@ public class Z9OpenCommunityProtocolService : IDisposable
     // Received OSDP CredReader configurations from Z9
     private readonly List<OsdpReaderConfig> _osdpReaderConfigs = new();
 
+    // Mapping from OSDP endpoint ID prefix to Z9 device unid
+    // Key format: "{host}:{port}:{osdpAddress}" (e.g., "localhost:9843:0")
+    private readonly Dictionary<string, OsdpReaderConfig> _endpointToConfig = new();
+
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
     /// </summary>
@@ -260,6 +264,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
             _osdpReaderConfigs.Add(osdpConfig);
         }
 
+        // Store mapping from endpoint ID prefix to config for event correlation
+        var endpointIdPrefix = $"{osdpConfig.Host}:{osdpConfig.TcpPort}:{osdpConfig.OsdpAddress}";
+        lock (_endpointToConfig)
+        {
+            _endpointToConfig[endpointIdPrefix] = osdpConfig;
+        }
+
         // Notify that OSDP configuration is available
         OsdpConfigurationReceived?.Invoke(this, osdpConfig);
     }
@@ -369,6 +380,80 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 RequestId = requestId
             }
         };
+
+        WriteMessage(message);
+    }
+
+    /// <summary>
+    /// Gets the OsdpReaderConfig for an endpoint ID, if available.
+    /// </summary>
+    /// <param name="endpointId">The OSDP endpoint ID (format: "host:port:address:R#")</param>
+    /// <returns>The config if found, null otherwise.</returns>
+    public OsdpReaderConfig GetConfigForEndpoint(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return null;
+
+        // Endpoint ID format: "{host}:{port}:{address}:R{readerNum}"
+        // We need to extract "{host}:{port}:{address}" to match our mapping
+        var parts = endpointId.Split(':');
+        if (parts.Length < 3)
+            return null;
+
+        // For "localhost:9843:0:R0" we want "localhost:9843:0"
+        var endpointIdPrefix = $"{parts[0]}:{parts[1]}:{parts[2]}";
+
+        lock (_endpointToConfig)
+        {
+            return _endpointToConfig.TryGetValue(endpointIdPrefix, out var config) ? config : null;
+        }
+    }
+
+    /// <summary>
+    /// Sends a CRED_READER_ONLINE or CRED_READER_OFFLINE event to Z9.
+    /// </summary>
+    /// <param name="config">The OSDP reader configuration.</param>
+    /// <param name="isOnline">True if reader came online, false if offline.</param>
+    public void SendCredReaderOnlineEvent(OsdpReaderConfig config, bool isOnline)
+    {
+        if (config == null)
+        {
+            _logger.LogWarning("Cannot send cred reader event: config is null");
+            return;
+        }
+
+        if (!IsConnected)
+        {
+            _logger.LogWarning("Cannot send cred reader event: not connected");
+            return;
+        }
+
+        var evtCode = isOnline ? EvtCode.CredReaderOnline : EvtCode.CredReaderOffline;
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var evt = new Evt
+        {
+            EvtCode = evtCode,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            EvtDevRef = new EvtDevRef
+            {
+                Unid = config.Unid,
+                Name = config.Name,
+                DevType = DevType.CredReader
+            }
+        };
+
+        var message = new SpCoreMessage
+        {
+            Type = SpCoreMessage.Types.Type.Evt
+        };
+        message.Evt.Add(evt);
+
+        _logger.LogInformation("Sending {EvtCode} event for reader {Name} (unid={Unid})",
+            evtCode, config.Name, config.Unid);
 
         WriteMessage(message);
     }

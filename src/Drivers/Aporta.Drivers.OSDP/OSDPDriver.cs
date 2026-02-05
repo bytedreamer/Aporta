@@ -107,9 +107,11 @@ public class OSDPDriver : IHardwareDriver
     {
         Task.Run(async () =>
         {
-            var matchingBus = _configuration.Buses.Single(bus =>
-                bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
-            var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
+            try
+            {
+                var matchingBus = _configuration.Buses.Single(bus =>
+                    bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
+                var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
 
             matchingDevice.KeyMismatch = false;
 
@@ -119,6 +121,9 @@ public class OSDPDriver : IHardwareDriver
                     _logger.LogWarning("Device \'{MatchingDeviceName}\' is offline", matchingDevice.Name);
                     matchingDevice.IsConnected = false;
                     matchingDevice.IdentityNotMatched = false;
+
+                    // Notify that all endpoints on this device are now offline
+                    NotifyEndpointOnlineStatus(matchingBus.PortName, matchingDevice.Address, false);
 
                     OnUpdatedEndpoints();
                     return;
@@ -153,6 +158,10 @@ public class OSDPDriver : IHardwareDriver
                     }
 
                     matchingDevice.IsConnected = true;
+
+                    // Notify that all endpoints on this device are now online
+                    NotifyEndpointOnlineStatus(matchingBus.PortName, matchingDevice.Address, true);
+
                     OnUpdatedEndpoints();
 
                     if (matchingDevice.PKOCEnabled)
@@ -172,6 +181,12 @@ public class OSDPDriver : IHardwareDriver
 
                     return;
                 }
+            }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in PanelOnConnectionStatusChanged: ConnectionId={ConnectionId} Address={Address}",
+                    eventArgs.ConnectionId, eventArgs.Address);
             }
         });
     }
@@ -768,5 +783,18 @@ public class OSDPDriver : IHardwareDriver
     protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs e)
     {
         OnlineStatusChanged?.Invoke(this, e);
+    }
+
+    private void NotifyEndpointOnlineStatus(string portName, byte address, bool isOnline)
+    {
+        // Find all endpoints that match the given bus port name and device address
+        // Endpoint ID format: "{portName}:{address}:..." (e.g., "localhost:9843:0:R0")
+        var endpointPrefix = $"{portName}:{address}:";
+
+        foreach (var endpoint in _endpoints.Where(e => e.Id.StartsWith(endpointPrefix)))
+        {
+            _logger.LogInformation("Endpoint {EndpointId} is now {Status}", endpoint.Id, isOnline ? "online" : "offline");
+            OnOnlineStatusChanged(new OnlineStatusChangedEventArgs(endpoint, isOnline));
+        }
     }
 }

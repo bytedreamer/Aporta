@@ -146,8 +146,10 @@ public class ExtensionService(
     }
 
     public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
-        
+
     public event EventHandler<StateChangedEventArgs> StateChanged;
+
+    public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private async Task DiscoverExtensions()
@@ -228,6 +230,7 @@ public class ExtensionService(
             extension.Driver.UpdatedEndpoints += DriverOnUpdatedEndpoints;
             extension.Driver.AccessCredentialReceived += DriverOnAccessCredentialReceived;
             extension.Driver.StateChanged += DriverOnStateChanged;
+            extension.Driver.OnlineStatusChanged += DriverOnOnlineStatusChanged;
 
             extension.Driver.Load(extension.Configuration, dataEncryption, loggerFactory);
             extension.Configuration = extension.Driver.CurrentConfiguration();
@@ -331,6 +334,11 @@ public class ExtensionService(
         StateChanged?.Invoke(this, eventArgs);
     }
 
+    private void DriverOnOnlineStatusChanged(object sender, OnlineStatusChangedEventArgs eventArgs)
+    {
+        OnlineStatusChanged?.Invoke(this, eventArgs);
+    }
+
     private static IEnumerable<IEndpoint> EndpointsToBeInserted(IHardwareDriver driver,
         Endpoint[] existingEndpoints)
     {
@@ -397,6 +405,7 @@ public class ExtensionService(
             extension.Driver.UpdatedEndpoints -= DriverOnUpdatedEndpoints;
             extension.Driver.AccessCredentialReceived -= DriverOnAccessCredentialReceived;
             extension.Driver.StateChanged -= DriverOnStateChanged;
+            extension.Driver.OnlineStatusChanged -= DriverOnOnlineStatusChanged;
 
             extension.Host.Unload();
             extension.Loaded = false;
