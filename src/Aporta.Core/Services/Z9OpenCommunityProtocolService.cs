@@ -26,6 +26,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private SpCoreMessageInputStream _mis;
     private SpCoreMessageOutputStream _mos;
     private readonly object _writeLock = new();
+    private string _id = "aporta-panel";
 
     public bool IsConnected { get; private set; }
     public bool IsIdentified { get; private set; }
@@ -42,11 +43,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
         _personRepository = new PersonRepository(dataAccess);
     }
 
-    public void Start(string host, int port)
+    public void Start(string host, int port, string id = null)
     {
         _stopping = false;
+        if (!string.IsNullOrWhiteSpace(id))
+            _id = id;
 
-        _logger.LogInformation("Z9/Open Community protocol service connecting to {Host}:{Port}", host, port);
+        _logger.LogInformation("Z9/Open Community protocol service connecting to {Host}:{Port} id={Id}", host, port, _id);
 
         _thread = new Thread(() => Run(host, port)) { IsBackground = true, Name = "Z9OpenCommunityProtocolService" };
         _thread.Start();
@@ -77,6 +80,9 @@ public class Z9OpenCommunityProtocolService : IDisposable
             var stream = _client.GetStream();
             _mis = new SpCoreMessageInputStream(stream);
             _mos = new SpCoreMessageOutputStream(stream);
+
+            // Initiating side sends identification first
+            SendIdentification();
 
             while (!_stopping)
             {
@@ -245,15 +251,15 @@ public class Z9OpenCommunityProtocolService : IDisposable
             Type = SpCoreMessage.Types.Type.Identification,
             Identification = new Identification
             {
-                Id = "aporta-panel",
+                Id = _id,
                 SoftwareVersion = "1.0.0",
                 ProtocolVersion = "0.1",
                 MaxBodyLength = SpCoreMessageHeader.MAX_LENGTH,
-                SpCoreDevMod = DevMod.IoControllerZ9Spcore,
+                SpCoreDevMod = DevMod.IoControllerCommunity,
                 ProtocolCapabilities = new ProtocolCapabilities
                 {
-                    SupportsIdentificationPassword = false,
-                    SupportsIdentificationPasswordUpstream = false
+                    SupportsIdentificationPassword = true,
+                    SupportsIdentificationPasswordUpstream = true
                 }
             }
         };

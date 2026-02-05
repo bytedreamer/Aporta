@@ -52,7 +52,8 @@ public class StartupWorker : BackgroundService
                 var z9OpenCommunityPort = int.TryParse(_configuration["z9OpenCommunityPort"], out var port)
                     ? port
                     : DefaultZ9OpenCommunityPort;
-                _z9OpenCommunityProtocolService.Start(z9OpenCommunityHost, z9OpenCommunityPort);
+                var z9OpenCommunityId = _configuration["z9OpenCommunityId"];
+                _z9OpenCommunityProtocolService.Start(z9OpenCommunityHost, z9OpenCommunityPort, z9OpenCommunityId);
             }
             else
             {
