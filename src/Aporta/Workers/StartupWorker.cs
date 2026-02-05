@@ -20,13 +20,13 @@ public class StartupWorker : BackgroundService
     public StartupWorker(IDataAccess dataAccess,
         ExtensionService extensionService,
         AccessService accessService,
-        Z9OpenCommunityProtocolService z9PanelService,
+        Z9OpenCommunityProtocolService z9OpenCommunityProtocolService,
         ILogger<StartupWorker> logger, IHostApplicationLifetime applicationLifetime)
     {
         _dataAccess = dataAccess;
         _extensionService = extensionService;
         _accessService = accessService;
-        _z9OpenCommunityProtocolService = z9PanelService;
+        _z9OpenCommunityProtocolService = z9OpenCommunityProtocolService;
         _logger = logger;
         _applicationLifetime = applicationLifetime;
     }
