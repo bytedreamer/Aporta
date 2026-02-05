@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NReco.Logging.File;
@@ -21,6 +22,13 @@ namespace Aporta;
 
 public class Startup
 {
+    private readonly IConfiguration _configuration;
+
+    public Startup(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     public void ConfigureServices(IServiceCollection services)
@@ -52,12 +60,13 @@ public class Startup
                 new[] { "application/octet-stream" });
         });
 
-        // For nix based OSs, write logs to /var/log
+        // For nix based OSs, write logs to file
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
+            var logFilePath = _configuration.GetValue<string>("Logging:File:Path") ?? "/var/log/aporta.log";
             services.AddLogging(loggingBuilder =>
             {
-                loggingBuilder.AddFile("/var/log/aporta.log", options =>
+                loggingBuilder.AddFile(logFilePath, options =>
                 {
                     options.Append = true;
                     options.MaxRollingFiles = 10;
