@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Net.Sockets;
 using System.Numerics;
 using System.Threading;
@@ -21,7 +20,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private readonly ILogger<Z9OpenCommunityProtocolService> _logger;
     private readonly CredentialRepository _credentialRepository;
     private readonly PersonRepository _personRepository;
-    private TcpListener _listener;
     private Thread _thread;
     private volatile bool _stopping;
     private TcpClient _client;
@@ -29,8 +27,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private SpCoreMessageOutputStream _mos;
     private readonly object _writeLock = new();
 
-    public int Port { get; private set; }
-    public bool IsClientConnected { get; private set; }
+    public bool IsConnected { get; private set; }
     public bool IsIdentified { get; private set; }
     public List<DbChange> ReceivedDbChanges { get; } = new();
     public List<DevActionReq> ReceivedDevActions { get; } = new();
@@ -45,22 +42,19 @@ public class Z9OpenCommunityProtocolService : IDisposable
         _personRepository = new PersonRepository(dataAccess);
     }
 
-    public void Start(int port = 7000)
+    public void Start(string host, int port)
     {
-        _listener = new TcpListener(IPAddress.Any, port);
-        _listener.Start();
-        Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+        _stopping = false;
 
-        _logger.LogInformation("Z9/Open Community protocol service started on port {Port}", Port);
+        _logger.LogInformation("Z9/Open Community protocol service connecting to {Host}:{Port}", host, port);
 
-        _thread = new Thread(Run) { IsBackground = true, Name = "Z9OpenCommunityProtocolService" };
+        _thread = new Thread(() => Run(host, port)) { IsBackground = true, Name = "Z9OpenCommunityProtocolService" };
         _thread.Start();
     }
 
     public void Stop()
     {
         _stopping = true;
-        _listener?.Stop();
         _client?.Close();
         _thread?.Join(TimeSpan.FromSeconds(5));
 
@@ -72,13 +66,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
         Stop();
     }
 
-    private void Run()
+    private void Run(string host, int port)
     {
         try
         {
-            _client = _listener.AcceptTcpClient();
-            IsClientConnected = true;
-            _logger.LogInformation("Z9/Open Community host connected");
+            _client = new TcpClient(host, port);
+            IsConnected = true;
+            _logger.LogInformation("Connected to Z9/Open Community host at {Host}:{Port}", host, port);
 
             var stream = _client.GetStream();
             _mis = new SpCoreMessageInputStream(stream);
@@ -126,7 +120,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         }
         finally
         {
-            IsClientConnected = false;
+            IsConnected = false;
         }
     }
 

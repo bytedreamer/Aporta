@@ -1,4 +1,5 @@
 using System.Data;
+using System.Net;
 using System.Net.Sockets;
 using System.Numerics;
 using System.Threading;
@@ -19,6 +20,7 @@ public class Z9OpenCommunityProtocolServiceTests
     private readonly IDataAccess _dataAccess = new SqLiteDataAccess(true);
     private IDbConnection _persistConnection;
     private Z9OpenCommunityProtocolService _z9OpenCommunityProtocolService;
+    private TcpListener _hostListener;
 
     [SetUp]
     public async Task Setup()
@@ -27,23 +29,28 @@ public class Z9OpenCommunityProtocolServiceTests
         _persistConnection.Open();
         await _dataAccess.UpdateSchema();
 
+        _hostListener = new TcpListener(IPAddress.Loopback, 0);
+        _hostListener.Start();
+        var hostPort = ((IPEndPoint)_hostListener.LocalEndpoint).Port;
+
         _z9OpenCommunityProtocolService = new Z9OpenCommunityProtocolService(
             NullLogger<Z9OpenCommunityProtocolService>.Instance,
             _dataAccess);
-        _z9OpenCommunityProtocolService.Start(0);
+        _z9OpenCommunityProtocolService.Start("127.0.0.1", hostPort);
     }
 
     [TearDown]
     public void TearDown()
     {
         _z9OpenCommunityProtocolService?.Dispose();
+        _hostListener?.Stop();
         _persistConnection?.Close();
         _persistConnection?.Dispose();
     }
 
-    private (TcpClient client, SpCoreMessageInputStream mis, SpCoreMessageOutputStream mos) ConnectAsHost()
+    private (TcpClient client, SpCoreMessageInputStream mis, SpCoreMessageOutputStream mos) AcceptAsHost()
     {
-        var client = new TcpClient("127.0.0.1", _z9OpenCommunityProtocolService.Port);
+        var client = _hostListener.AcceptTcpClient();
         var stream = client.GetStream();
         var mis = new SpCoreMessageInputStream(stream);
         var mos = new SpCoreMessageOutputStream(stream);
@@ -73,9 +80,9 @@ public class Z9OpenCommunityProtocolServiceTests
     }
 
     [Test]
-    public void Identification_HostConnects_BothSidesIdentify()
+    public void Identification_PanelConnects_BothSidesIdentify()
     {
-        var (client, mis, mos) = ConnectAsHost();
+        var (client, mis, mos) = AcceptAsHost();
 
         try
         {
@@ -87,7 +94,7 @@ public class Z9OpenCommunityProtocolServiceTests
             Assert.That(response.Identification.Id, Is.EqualTo("aporta-panel"));
 
             Thread.Sleep(100);
-            Assert.That(_z9OpenCommunityProtocolService.IsClientConnected, Is.True);
+            Assert.That(_z9OpenCommunityProtocolService.IsConnected, Is.True);
             Assert.That(_z9OpenCommunityProtocolService.IsIdentified, Is.True);
         }
         finally
@@ -101,7 +108,7 @@ public class Z9OpenCommunityProtocolServiceTests
     [Test]
     public void DbChange_HostSendsSchedule_PanelRespondsSuccess()
     {
-        var (client, mis, mos) = ConnectAsHost();
+        var (client, mis, mos) = AcceptAsHost();
 
         try
         {
@@ -136,7 +143,7 @@ public class Z9OpenCommunityProtocolServiceTests
     [Test]
     public void DbChange_HostSendsCredential_CredentialAndPersonCreatedInDb()
     {
-        var (client, mis, mos) = ConnectAsHost();
+        var (client, mis, mos) = AcceptAsHost();
 
         try
         {
@@ -194,7 +201,7 @@ public class Z9OpenCommunityProtocolServiceTests
     [Test]
     public void DbChange_HostSendsCredentialWithNoCredNum_CredentialNotCreatedInDb()
     {
-        var (client, mis, mos) = ConnectAsHost();
+        var (client, mis, mos) = AcceptAsHost();
 
         try
         {
@@ -243,7 +250,7 @@ public class Z9OpenCommunityProtocolServiceTests
     [Test]
     public void DbChange_HostSendsCredentialWithBlankName_UsesCardNumberAsName()
     {
-        var (client, mis, mos) = ConnectAsHost();
+        var (client, mis, mos) = AcceptAsHost();
 
         try
         {
@@ -297,7 +304,7 @@ public class Z9OpenCommunityProtocolServiceTests
     [Test]
     public void DevActionReq_HostSendsDoorUnlock_PanelRespondsSuccess()
     {
-        var (client, mis, mos) = ConnectAsHost();
+        var (client, mis, mos) = AcceptAsHost();
 
         try
         {
@@ -334,7 +341,7 @@ public class Z9OpenCommunityProtocolServiceTests
     [Test]
     public void ConnectAndDisconnect_CleanLifecycle()
     {
-        var (client, mis, mos) = ConnectAsHost();
+        var (client, mis, mos) = AcceptAsHost();
 
         try
         {
@@ -343,7 +350,7 @@ public class Z9OpenCommunityProtocolServiceTests
             Assert.That(identResponse.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
 
             Thread.Sleep(100);
-            Assert.That(_z9OpenCommunityProtocolService.IsClientConnected, Is.True);
+            Assert.That(_z9OpenCommunityProtocolService.IsConnected, Is.True);
         }
         finally
         {
@@ -351,7 +358,7 @@ public class Z9OpenCommunityProtocolServiceTests
         }
 
         Thread.Sleep(500);
-        Assert.That(_z9OpenCommunityProtocolService.IsClientConnected, Is.False);
+        Assert.That(_z9OpenCommunityProtocolService.IsConnected, Is.False);
         Assert.That(_z9OpenCommunityProtocolService.LastException, Is.Null);
     }
 }

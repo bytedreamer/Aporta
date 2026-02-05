@@ -20,7 +20,7 @@
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
       <PackageReference Include="NReco.Logging.File" Version="1.2.1" />
-      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.0" />
+      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.2" />
     </ItemGroup>
 
     <ItemGroup>
