@@ -202,6 +202,117 @@ public class AccessService
             return false;
         }
 
+        // Check Z9 Cred status (enabled, effective date)
+        var z9Cred = await _z9CredRepository.Get(assignedCredential.Id);
+        if (z9Cred != null)
+        {
+            // Check if credential is disabled
+            if (z9Cred.EnabledCase == Cred.EnabledOneofCase.Enabled && !z9Cred.Enabled)
+            {
+                _logger.LogInformation("Door '{Name}' denied access - credential disabled", matchingDoor.Name);
+
+                eventId = await _eventRepository.Insert(new Event
+                {
+                    EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
+                    Data = JsonSerializer.Serialize(new EventData
+                    {
+                        Door = matchingDoor,
+                        Endpoint = accessPoint,
+                        Person = assignedCredential.Person,
+                        EventReason = EventReason.CredentialDisabled,
+                        CardNumber = matchingCardData
+                    })
+                });
+                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+                await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
+
+                AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                {
+                    EndpointId = accessPoint.DriverEndpointId,
+                    IsGranted = false,
+                    CardNumber = matchingCardData,
+                    PersonName = assignedCredential.Person.FirstName,
+                    Reason = EventReason.CredentialDisabled
+                });
+
+                return false;
+            }
+
+            // Check if credential is not yet effective
+            if (z9Cred.Effective != null && z9Cred.Effective.MillisCase == DateTimeData.MillisOneofCase.Millis)
+            {
+                var effectiveDate = DateTimeOffset.FromUnixTimeMilliseconds(z9Cred.Effective.Millis).DateTime;
+                if (effectiveDate > DateTime.UtcNow)
+                {
+                    _logger.LogInformation("Door '{Name}' denied access - credential not yet effective (effective {Date})",
+                        matchingDoor.Name, effectiveDate.ToShortDateString());
+
+                    eventId = await _eventRepository.Insert(new Event
+                    {
+                        EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
+                        Data = JsonSerializer.Serialize(new EventData
+                        {
+                            Door = matchingDoor,
+                            Endpoint = accessPoint,
+                            Person = assignedCredential.Person,
+                            EventReason = EventReason.CredentialNotYetEffective,
+                            CardNumber = matchingCardData
+                        })
+                    });
+                    await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+                    await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
+
+                    AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                    {
+                        EndpointId = accessPoint.DriverEndpointId,
+                        IsGranted = false,
+                        CardNumber = matchingCardData,
+                        PersonName = assignedCredential.Person.FirstName,
+                        Reason = EventReason.CredentialNotYetEffective
+                    });
+
+                    return false;
+                }
+            }
+
+            // Check if credential has expired
+            if (z9Cred.Expires != null && z9Cred.Expires.MillisCase == DateTimeData.MillisOneofCase.Millis)
+            {
+                var expiresDate = DateTimeOffset.FromUnixTimeMilliseconds(z9Cred.Expires.Millis).DateTime;
+                if (expiresDate < DateTime.UtcNow)
+                {
+                    _logger.LogInformation("Door '{Name}' denied access - credential expired (expired {Date})",
+                        matchingDoor.Name, expiresDate.ToShortDateString());
+
+                    eventId = await _eventRepository.Insert(new Event
+                    {
+                        EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
+                        Data = JsonSerializer.Serialize(new EventData
+                        {
+                            Door = matchingDoor,
+                            Endpoint = accessPoint,
+                            Person = assignedCredential.Person,
+                            EventReason = EventReason.CredentialExpired,
+                            CardNumber = matchingCardData
+                        })
+                    });
+                    await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+                    await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
+
+                    AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                    {
+                        EndpointId = accessPoint.DriverEndpointId,
+                        IsGranted = false,
+                        CardNumber = matchingCardData,
+                        PersonName = assignedCredential.Person.FirstName,
+                        Reason = EventReason.CredentialExpired
+                    });
+
+                    return false;
+                }
+            }
+        }
+
         if (!await HasAccessPrivilege(assignedCredential.Id, matchingDoor))
         {
             _logger.LogInformation("Door '{Name}' denied access - no privilege", matchingDoor.Name);
@@ -214,7 +325,7 @@ public class AccessService
                     Door = matchingDoor,
                     Endpoint = accessPoint,
                     Person = assignedCredential.Person,
-                    EventReason = EventReason.AccessNotAssigned,
+                    EventReason = EventReason.NoPrivilege,
                     CardNumber = matchingCardData
                 })
             });
@@ -229,7 +340,7 @@ public class AccessService
                 IsGranted = false,
                 CardNumber = matchingCardData,
                 PersonName = assignedCredential.Person.FirstName,
-                Reason = EventReason.AccessNotAssigned
+                Reason = EventReason.NoPrivilege
             });
 
             return false;

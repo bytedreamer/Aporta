@@ -382,6 +382,10 @@ public class StartupWorker : BackgroundService
         {
             EventReason.CredentialNotEnrolled => EvtSubCode.AccessDeniedUnknownCredNum,
             EventReason.AccessNotAssigned => EvtSubCode.AccessDeniedNoPriv,
+            EventReason.NoPrivilege => EvtSubCode.AccessDeniedNoPriv,
+            EventReason.CredentialDisabled => EvtSubCode.AccessDeniedInactive,
+            EventReason.CredentialNotYetEffective => EvtSubCode.AccessDeniedNotEffective,
+            EventReason.CredentialExpired => EvtSubCode.AccessDeniedExpired,
             _ => EvtSubCode.AccessDeniedInactive  // Default value (0); unused for granted events
         };
 

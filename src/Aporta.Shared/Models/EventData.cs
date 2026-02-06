@@ -25,5 +25,13 @@ public enum EventReason
     [Description("Access Not Assigned")]
     AccessNotAssigned,
     [Description("Credential Not Enrolled")]
-    CredentialNotEnrolled
+    CredentialNotEnrolled,
+    [Description("Credential Disabled")]
+    CredentialDisabled,
+    [Description("Credential Not Yet Effective")]
+    CredentialNotYetEffective,
+    [Description("Credential Expired")]
+    CredentialExpired,
+    [Description("No Privilege")]
+    NoPrivilege
 }
