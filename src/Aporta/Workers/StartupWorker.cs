@@ -100,6 +100,9 @@ public class StartupWorker : BackgroundService
                 // Subscribe to access decisions to forward via community protocol
                 _accessService.AccessDecisionMade += OnAccessDecisionMade;
 
+                // Subscribe to device action requests from the host
+                _z9OpenCommunityProtocolService.DevActionRequested += OnDevActionRequested;
+
                 _z9OpenCommunityProtocolService.Start(z9OpenCommunityHost, z9OpenCommunityPort, z9OpenCommunityId);
             }
             else
@@ -121,6 +124,7 @@ public class StartupWorker : BackgroundService
         {
             _logger.LogWarning("Application is shutting down");
             _accessService.AccessDecisionMade -= OnAccessDecisionMade;
+            _z9OpenCommunityProtocolService.DevActionRequested -= OnDevActionRequested;
             _extensionService.OnlineStatusChanged -= OnOnlineStatusChanged;
             _z9OpenCommunityProtocolService.OsdpConfigurationReceived -= OnOsdpConfigurationReceived;
             _z9OpenCommunityProtocolService.Stop();
@@ -273,12 +277,21 @@ public class StartupWorker : BackgroundService
 
     private void OnOnlineStatusChanged(object sender, OnlineStatusChangedEventArgs e)
     {
+        // Only process reader endpoints (e.g., "localhost:9843:0:R0")
+        // Skip output endpoints (e.g., "localhost:9843:0:O0") which share the same prefix
+        var endpointId = e.Endpoint?.Id;
+        if (string.IsNullOrEmpty(endpointId) || !IsReaderEndpoint(endpointId))
+        {
+            _logger.LogDebug("Skipping non-reader endpoint {EndpointId}", endpointId);
+            return;
+        }
+
         // Get the Z9 config for this endpoint to send event with correct device unid
-        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(e.Endpoint?.Id);
+        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(endpointId);
         if (config == null)
         {
             _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping event",
-                e.Endpoint?.Id);
+                endpointId);
             return;
         }
 
@@ -286,14 +299,13 @@ public class StartupWorker : BackgroundService
             config.Name, e.IsOnline ? "online" : "offline");
 
         // When reader comes online, ensure a Door exists for access control decisions
-        if (e.IsOnline && e.Endpoint != null)
+        if (e.IsOnline)
         {
-            var driverEndpointId = e.Endpoint.Id;  // This is the DriverEndpointId (string)
             Task.Run(async () =>
             {
                 try
                 {
-                    await EnsureDoorExistsForReader(driverEndpointId, config.Name);
+                    await EnsureDoorExistsForReader(endpointId, config.Name);
                 }
                 catch (Exception ex)
                 {
@@ -303,6 +315,16 @@ public class StartupWorker : BackgroundService
         }
 
         _z9OpenCommunityProtocolService.SendCredReaderOnlineEvent(config, e.IsOnline);
+    }
+
+    /// <summary>
+    /// Checks if an OSDP endpoint ID represents a reader (vs output, input, etc.).
+    /// Reader endpoint IDs end with ":R{number}" (e.g., "localhost:9843:0:R0").
+    /// </summary>
+    private static bool IsReaderEndpoint(string endpointId)
+    {
+        var lastColon = endpointId.LastIndexOf(':');
+        return lastColon >= 0 && lastColon < endpointId.Length - 1 && endpointId[lastColon + 1] == 'R';
     }
 
     private async Task EnsureDoorExistsForReader(string driverEndpointId, string readerName)
@@ -344,13 +366,113 @@ public class StartupWorker : BackgroundService
         {
             Name = $"Door - {readerName}",
             InAccessEndpointId = readerEndpoint.Id,
-            // Note: DoorStrikeEndpointId is left null - access decisions will still be made
-            // but the strike won't be activated (appropriate for simple test scenario)
         };
 
+        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
+
+        // If the reader has a strike output configured, wire it up
+        if (config?.StrikeOutputNumber != null)
+        {
+            var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
+            _logger.LogInformation("Looking for strike output endpoint: {StrikeEndpointId}", strikeDriverEndpointId);
+
+            Aporta.Shared.Models.Endpoint strikeEndpoint = null;
+            for (int retry = 0; retry < 20; retry++)
+            {
+                var allEndpoints = await _endpointRepository.GetAll();
+                strikeEndpoint = allEndpoints.FirstOrDefault(ep => ep.DriverEndpointId == strikeDriverEndpointId);
+                if (strikeEndpoint != null)
+                    break;
+                await Task.Delay(500);
+            }
+
+            if (strikeEndpoint != null)
+            {
+                door.DoorStrikeEndpointId = strikeEndpoint.Id;
+                _logger.LogInformation("Assigned door strike endpoint {StrikeEndpointId} to door '{DoorName}'",
+                    strikeEndpoint.Id, door.Name);
+            }
+            else
+            {
+                _logger.LogWarning("Strike output endpoint {StrikeEndpointId} not found after retries", strikeDriverEndpointId);
+            }
+        }
+
         await _doorRepository.Insert(door);
-        _logger.LogInformation("Created door '{DoorName}' for reader endpoint {EndpointId}",
-            door.Name, readerEndpoint.Id);
+        _logger.LogInformation("Created door '{DoorName}' for reader endpoint {EndpointId} (strike={StrikeId})",
+            door.Name, readerEndpoint.Id, door.DoorStrikeEndpointId);
+    }
+
+    private void OnDevActionRequested(object sender, DevActionReq req)
+    {
+        if (req.DevActionType == DevActionType.DoorMomentaryUnlock)
+        {
+            var doorUnid = req.DevUnid;
+            _logger.LogInformation("DevActionReq: DOOR_MOMENTARY_UNLOCK for door unid={DoorUnid}", doorUnid);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await HandleDoorMomentaryUnlock(doorUnid);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to handle DOOR_MOMENTARY_UNLOCK for door unid={DoorUnid}", doorUnid);
+                }
+            });
+        }
+        else
+        {
+            _logger.LogInformation("DevActionReq: unhandled action type {Type} for device unid={DevUnid}",
+                req.DevActionType, req.DevUnid);
+        }
+    }
+
+    private async Task HandleDoorMomentaryUnlock(int doorUnid)
+    {
+        // Find the reader config whose DoorUnid matches
+        var config = _z9OpenCommunityProtocolService.OsdpReaderConfigs
+            .FirstOrDefault(c => c.DoorUnid == doorUnid);
+
+        if (config == null)
+        {
+            _logger.LogWarning("No reader config found for door unid={DoorUnid}", doorUnid);
+            return;
+        }
+
+        if (config.StrikeOutputNumber == null)
+        {
+            _logger.LogWarning("No strike output configured for reader {Name}", config.Name);
+            return;
+        }
+
+        var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
+
+        var endpoints = await _endpointRepository.GetAll();
+        var strikeEndpoint = endpoints.FirstOrDefault(ep => ep.DriverEndpointId == strikeDriverEndpointId);
+
+        if (strikeEndpoint == null)
+        {
+            _logger.LogWarning("Strike endpoint {EndpointId} not found in database", strikeDriverEndpointId);
+            return;
+        }
+
+        var controlPoint = _extensionService.GetControlPoint(strikeEndpoint.ExtensionId, strikeEndpoint.DriverEndpointId);
+        if (controlPoint == null)
+        {
+            _logger.LogWarning("No control point found for strike endpoint {EndpointId}", strikeDriverEndpointId);
+            return;
+        }
+
+        _logger.LogInformation("Activating door strike for door unid={DoorUnid} (endpoint={EndpointId})",
+            doorUnid, strikeDriverEndpointId);
+
+        await controlPoint.SetState(true);
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        await controlPoint.SetState(false);
+
+        _logger.LogInformation("Door strike deactivated for door unid={DoorUnid}", doorUnid);
     }
 
     private void OnAccessDecisionMade(object sender, AccessDecisionEventArgs e)

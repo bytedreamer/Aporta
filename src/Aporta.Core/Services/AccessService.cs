@@ -405,13 +405,12 @@ public class AccessService
             await controlPoint.SetState(false);
         } 
 
-        var openDoorTasks = new[]
-        {
-            Task.Run(ControlStrike),
-            Task.Run(access.AccessGrantedNotification)
-        };
+        // Fire strike asynchronously - don't block access processing
+        // (blocking would keep the task in WaitingForActivation state,
+        // causing the deduplication check to drop subsequent card reads)
+        _ = Task.Run(ControlStrike);
 
-        await Task.WhenAll(openDoorTasks);
+        await access.AccessGrantedNotification();
     }
 
     /// <summary>

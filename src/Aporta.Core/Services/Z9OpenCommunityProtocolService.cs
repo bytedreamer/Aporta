@@ -43,6 +43,10 @@ public class Z9OpenCommunityProtocolService : IDisposable
     // Key format: "{host}:{port}:{osdpAddress}" (e.g., "localhost:9843:0")
     private readonly Dictionary<string, OsdpReaderConfig> _endpointToConfig = new();
 
+    // Pending door strike actuators (received before their door's reader)
+    // Key: logicalParentUnid (door unid), Value: output number
+    private readonly Dictionary<int, int> _pendingStrikeActuators = new();
+
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
     /// </summary>
@@ -55,6 +59,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public int OsdpAddress { get; set; }
         public int BaudRate { get; set; } = 9600;
         public int? DoorUnid { get; set; }
+        public int? StrikeOutputNumber { get; set; }
     }
     private Thread _thread;
     private volatile bool _stopping;
@@ -205,8 +210,9 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 {
                     ReceivedDevActions.Add(message.DevActionReq);
                 }
-                _logger.LogInformation("Received DevActionReq (requestId={RequestId})", message.DevActionReq.RequestId);
-                SendDevActionResp(message.DevActionReq.RequestId);
+                _logger.LogInformation("Received DevActionReq (requestId={RequestId}, type={Type}, devUnid={DevUnid})",
+                    message.DevActionReq.RequestId, message.DevActionReq.DevActionType, message.DevActionReq.DevUnid);
+                HandleDevActionReq(message.DevActionReq);
                 break;
 
             case SpCoreMessage.Types.Type.EvtControl:
@@ -467,6 +473,12 @@ public class Z9OpenCommunityProtocolService : IDisposable
     {
         SpCoreProtoUtil.InitRequired(dev);
 
+        if (dev.DevType == DevType.Actuator)
+        {
+            ProcessActuatorDev(dev);
+            return;
+        }
+
         // Check if this is an OSDP credential reader
         if (dev.DevType != DevType.CredReader)
             return;
@@ -518,6 +530,21 @@ public class Z9OpenCommunityProtocolService : IDisposable
             "Received OSDP CredReader config: Name={Name}, Host={Host}:{TcpPort}, OsdpAddress={OsdpAddress}",
             osdpConfig.Name, osdpConfig.Host, osdpConfig.TcpPort, osdpConfig.OsdpAddress);
 
+        // Check for pending strike actuator for this door
+        if (osdpConfig.DoorUnid != null)
+        {
+            lock (_pendingStrikeActuators)
+            {
+                if (_pendingStrikeActuators.TryGetValue(osdpConfig.DoorUnid.Value, out var outputNumber))
+                {
+                    osdpConfig.StrikeOutputNumber = outputNumber;
+                    _pendingStrikeActuators.Remove(osdpConfig.DoorUnid.Value);
+                    _logger.LogInformation("Applied pending door strike actuator: output {OutputNumber} on reader {Name}",
+                        outputNumber, osdpConfig.Name);
+                }
+            }
+        }
+
         lock (_osdpReaderConfigs)
         {
             // Remove existing config with same unid
@@ -534,6 +561,52 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
         // Notify that OSDP configuration is available
         OsdpConfigurationReceived?.Invoke(this, osdpConfig);
+    }
+
+    private void ProcessActuatorDev(Dev dev)
+    {
+        if (dev.DevUse != DevUse.ActuatorDoorStrike)
+            return;
+
+        if (dev.LogicalParentUnidCase != Dev.LogicalParentUnidOneofCase.LogicalParentUnid)
+        {
+            _logger.LogWarning("Door strike actuator {Name} (unid={Unid}) has no logicalParentUnid (door), skipping",
+                dev.Name, dev.Unid);
+            return;
+        }
+
+        var doorUnid = dev.LogicalParentUnid;
+        var outputNumber = 0;
+        if (!string.IsNullOrWhiteSpace(dev.Address))
+        {
+            int.TryParse(dev.Address, out outputNumber);
+        }
+
+        _logger.LogInformation("Received door strike actuator: output {OutputNumber}, door unid={DoorUnid}",
+            outputNumber, doorUnid);
+
+        // Try to find matching reader config by door unid
+        OsdpReaderConfig matchingConfig = null;
+        lock (_osdpReaderConfigs)
+        {
+            matchingConfig = _osdpReaderConfigs.Find(c => c.DoorUnid == doorUnid);
+        }
+
+        if (matchingConfig != null)
+        {
+            matchingConfig.StrikeOutputNumber = outputNumber;
+            _logger.LogInformation("Assigned door strike output {OutputNumber} to reader {Name} (door unid={DoorUnid})",
+                outputNumber, matchingConfig.Name, doorUnid);
+        }
+        else
+        {
+            // Reader for this door hasn't arrived yet - store for later
+            lock (_pendingStrikeActuators)
+            {
+                _pendingStrikeActuators[doorUnid] = outputNumber;
+            }
+            _logger.LogInformation("Reader for door unid={DoorUnid} not yet received, storing pending strike actuator", doorUnid);
+        }
     }
 
     /// <summary>
@@ -824,15 +897,41 @@ public class Z9OpenCommunityProtocolService : IDisposable
         WriteMessage(message);
     }
 
-    private void SendDevActionResp(long requestId)
+    /// <summary>
+    /// Event raised when a DevActionReq is received from the host.
+    /// </summary>
+    public event EventHandler<DevActionReq> DevActionRequested;
+
+    private void HandleDevActionReq(DevActionReq req)
     {
+        try
+        {
+            DevActionRequested?.Invoke(this, req);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling DevActionReq (requestId={RequestId})", req.RequestId);
+            SendDevActionResp(req.RequestId, ex.Message);
+            return;
+        }
+        SendDevActionResp(req.RequestId);
+    }
+
+    private void SendDevActionResp(long requestId, string exception = null)
+    {
+        var resp = new DevActionResp
+        {
+            RequestId = requestId
+        };
+        if (exception != null)
+        {
+            resp.Exception = exception;
+        }
+
         var message = new SpCoreMessage
         {
             Type = SpCoreMessage.Types.Type.DevActionResp,
-            DevActionResp = new DevActionResp
-            {
-                RequestId = requestId
-            }
+            DevActionResp = resp
         };
 
         WriteMessage(message);
