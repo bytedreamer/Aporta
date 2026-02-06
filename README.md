@@ -96,6 +96,20 @@ _appsettings.Production.json_ - Location for Aporta settings
 }
 ```
 
+## Z9 Open Community Integration Roadmap
+
+Aporta integrates with the Z9 Open Community protocol for centralized management. Current status and upcoming work:
+
+- Connection & identification with host
+- Configuration download (credentials, privileges, schedules, devices)
+- Device mapping (doors, OSDP readers over IP)
+- OSDP reader online/offline reporting
+- Access control decisions (grant, deny, schedule enforcement)
+- Access event reporting to host
+- **TODO**: Device actions (door momentary unlock, door mode change)
+- **TODO**: Door contact sensor monitoring and reporting
+- **TODO**: Additional device state reporting
+
 ## Aporta Housekeeping
 
 General information about configuring and setting up the Aporta project for development and running locally.
