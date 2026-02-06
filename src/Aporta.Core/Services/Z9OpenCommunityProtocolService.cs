@@ -932,7 +932,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
         var evt = new Evt
         {
             EvtCode = evtCode,
-            EvtSubCode = subCode,
             HwTime = new DateTimeData { Millis = nowMillis },
             DbTime = new DateTimeData { Millis = nowMillis },
             Consumed = false,
@@ -944,6 +943,12 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 DevType = DevType.CredReader
             }
         };
+
+        // Only set EvtSubCode for denied events (access granted events don't have a sub-code)
+        if (!isGranted)
+        {
+            evt.EvtSubCode = subCode;
+        }
 
         // Add decoded credential number to EvtCredRef if available
         if (credNum.HasValue)

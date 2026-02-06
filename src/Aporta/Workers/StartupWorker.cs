@@ -5,9 +5,11 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
+using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Services;
 using Aporta.Drivers.OSDP.Shared;
 using Aporta.Extensions.Hardware;
+using Aporta.Shared.Models;
 using Z9.Spcore.Proto;
 using Aporta.Drivers.OSDP.Shared.Actions;
 using Dapper;
@@ -30,6 +32,8 @@ public class StartupWorker : BackgroundService
     private readonly ExtensionService _extensionService;
     private readonly AccessService _accessService;
     private readonly Z9OpenCommunityProtocolService _z9OpenCommunityProtocolService;
+    private readonly DoorRepository _doorRepository;
+    private readonly EndpointRepository _endpointRepository;
     private readonly HashSet<string> _configuredOsdpBuses = new();
 
     public StartupWorker(IDataAccess dataAccess,
@@ -46,6 +50,8 @@ public class StartupWorker : BackgroundService
         _configuration = configuration;
         _logger = logger;
         _applicationLifetime = applicationLifetime;
+        _doorRepository = new DoorRepository(dataAccess);
+        _endpointRepository = new EndpointRepository(dataAccess);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -84,11 +90,11 @@ public class StartupWorker : BackgroundService
                 // Subscribe to OSDP configuration events before starting the service
                 _z9OpenCommunityProtocolService.OsdpConfigurationReceived += OnOsdpConfigurationReceived;
 
-                // Subscribe to device online status changes to send events back to Z9
+                // Subscribe to device online status changes to forward via community protocol
                 _extensionService.OnlineStatusChanged += OnOnlineStatusChanged;
 
-                // Subscribe to card reads to send access events to Z9
-                _extensionService.AccessCredentialReceived += OnAccessCredentialReceived;
+                // Subscribe to access decisions to forward via community protocol
+                _accessService.AccessDecisionMade += OnAccessDecisionMade;
 
                 _z9OpenCommunityProtocolService.Start(z9OpenCommunityHost, z9OpenCommunityPort, z9OpenCommunityId);
             }
@@ -110,7 +116,7 @@ public class StartupWorker : BackgroundService
         stoppingToken.Register(() =>
         {
             _logger.LogWarning("Application is shutting down");
-            _extensionService.AccessCredentialReceived -= OnAccessCredentialReceived;
+            _accessService.AccessDecisionMade -= OnAccessDecisionMade;
             _extensionService.OnlineStatusChanged -= OnOnlineStatusChanged;
             _z9OpenCommunityProtocolService.OsdpConfigurationReceived -= OnOsdpConfigurationReceived;
             _z9OpenCommunityProtocolService.Stop();
@@ -275,23 +281,86 @@ public class StartupWorker : BackgroundService
         _logger.LogInformation("OSDP reader {Name} is now {Status}",
             config.Name, e.IsOnline ? "online" : "offline");
 
+        // When reader comes online, ensure a Door exists for access control decisions
+        if (e.IsOnline && e.Endpoint != null)
+        {
+            var driverEndpointId = e.Endpoint.Id;  // This is the DriverEndpointId (string)
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await EnsureDoorExistsForReader(driverEndpointId, config.Name);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create door for reader {Name}", config.Name);
+                }
+            });
+        }
+
         _z9OpenCommunityProtocolService.SendCredReaderOnlineEvent(config, e.IsOnline);
     }
 
-    private void OnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs e)
+    private async Task EnsureDoorExistsForReader(string driverEndpointId, string readerName)
     {
-        // Get the Z9 config for this endpoint to send event with correct device unid
-        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(e.Access?.Id);
-        if (config == null)
+        // Look up the endpoint by DriverEndpointId to get its database ID
+        // The endpoint may not be persisted immediately, so retry a few times
+        Aporta.Shared.Models.Endpoint readerEndpoint = null;
+        for (int retry = 0; retry < 10; retry++)
         {
-            _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping access event",
-                e.Access?.Id);
+            var endpoints = await _endpointRepository.GetAll();
+            readerEndpoint = endpoints.FirstOrDefault(ep => ep.DriverEndpointId == driverEndpointId);
+            if (readerEndpoint != null)
+                break;
+            await Task.Delay(500);  // Wait for endpoint to be persisted
+        }
+
+        if (readerEndpoint == null)
+        {
+            _logger.LogWarning("Cannot create door: endpoint not found for DriverEndpointId {Id} after retries", driverEndpointId);
             return;
         }
 
-        var rawBits = e.Handler?.MatchingCardData;
-        _logger.LogInformation("Card read on reader {Name}: rawBits={RawBits}",
-            config.Name, rawBits ?? "(unknown)");
+        var doors = await _doorRepository.GetAll();
+
+        // Check if any door already uses this reader as InAccess or OutAccess
+        var existingDoor = doors.FirstOrDefault(d =>
+            d.InAccessEndpointId == readerEndpoint.Id ||
+            d.OutAccessEndpointId == readerEndpoint.Id);
+
+        if (existingDoor != null)
+        {
+            _logger.LogDebug("Door '{DoorName}' already exists for reader endpoint {EndpointId}",
+                existingDoor.Name, readerEndpoint.Id);
+            return;
+        }
+
+        // Create a new door with this reader as the in-access point
+        var door = new Aporta.Shared.Models.Door
+        {
+            Name = $"Door - {readerName}",
+            InAccessEndpointId = readerEndpoint.Id,
+            // Note: DoorStrikeEndpointId is left null - access decisions will still be made
+            // but the strike won't be activated (appropriate for simple test scenario)
+        };
+
+        await _doorRepository.Insert(door);
+        _logger.LogInformation("Created door '{DoorName}' for reader endpoint {EndpointId}",
+            door.Name, readerEndpoint.Id);
+    }
+
+    private void OnAccessDecisionMade(object sender, AccessDecisionEventArgs e)
+    {
+        // Get the Z9 config for this endpoint to send event with correct device unid
+        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(e.EndpointId);
+        if (config == null)
+        {
+            _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping access event",
+                e.EndpointId);
+            return;
+        }
+
+        var rawBits = e.CardNumber;
 
         // Try to decode the raw bits using known card formats
         System.Numerics.BigInteger? credNum = null;
@@ -303,24 +372,28 @@ public class StartupWorker : BackgroundService
             {
                 credNum = decoded.Value.credNum;
                 facilityCode = decoded.Value.facilityCode;
-                _logger.LogInformation("Decoded card read: credNum={CredNum}, fc={FacilityCode}, format={Format}",
+                _logger.LogDebug("Decoded card: credNum={CredNum}, fc={FacilityCode}, format={Format}",
                     credNum, facilityCode, decoded.Value.formatName);
-            }
-            else
-            {
-                _logger.LogDebug("Unable to decode card read with any known format");
             }
         }
 
-        // For now, send all card reads as access denied with unknown credential
-        // In a more complete implementation, this would check if the credential is known
-        // and send the appropriate event (granted or denied with specific reason)
+        // Map EventReason to EvtSubCode (for granted, subCode is ignored so use default 0 value)
+        var subCode = e.Reason switch
+        {
+            EventReason.CredentialNotEnrolled => EvtSubCode.AccessDeniedUnknownCredNum,
+            EventReason.AccessNotAssigned => EvtSubCode.AccessDeniedNoPriv,
+            _ => EvtSubCode.AccessDeniedInactive  // Default value (0); unused for granted events
+        };
+
+        _logger.LogInformation("Access {Decision} for reader {Name}: person={Person}, reason={Reason}",
+            e.IsGranted ? "GRANTED" : "DENIED", config.Name, e.PersonName ?? "(unknown)", e.Reason);
+
         _z9OpenCommunityProtocolService.SendAccessEvent(
             config,
-            isGranted: false,
+            isGranted: e.IsGranted,
             credNum: credNum,
             facilityCode: facilityCode,
             rawBits: rawBits,
-            subCode: EvtSubCode.AccessDeniedUnknownCredNum);
+            subCode: subCode);
     }
 }

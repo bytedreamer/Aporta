@@ -16,6 +16,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Aporta.Core.Services;
 
+/// <summary>
+/// Event args for access decision events, used to notify external systems.
+/// </summary>
+public class AccessDecisionEventArgs : EventArgs
+{
+    public string EndpointId { get; set; }
+    public bool IsGranted { get; set; }
+    public string CardNumber { get; set; }
+    public string PersonName { get; set; }
+    public EventReason Reason { get; set; }
+}
+
 public class AccessService
 {
     private readonly ExtensionService _extensionService;
@@ -26,6 +38,12 @@ public class AccessService
     private readonly EventRepository _eventRepository;
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
+
+    /// <summary>
+    /// Event raised when an access decision is made (granted or denied).
+    /// External systems can subscribe to forward the decision.
+    /// </summary>
+    public event EventHandler<AccessDecisionEventArgs> AccessDecisionMade;
 
     /// <summary>
     /// Represents a service for accessing and managing system access.
@@ -86,12 +104,6 @@ public class AccessService
 
             var matchingDoorStrike = MatchingDoorStrike(matchingDoor.DoorStrikeEndpointId, endpoints);
 
-            if (matchingDoorStrike == null)
-            {
-                _logger.LogInformation("Door '{Name}' didn't have a strike assigned", matchingDoor.Name);
-                return;
-            }
-
             if (!eventArgs.Handler.IsValid())
             {
                 return;
@@ -99,7 +111,16 @@ public class AccessService
 
             if (await IsAccessGranted(eventArgs.Handler.MatchingCardData, matchingDoor, accessPoint))
             {
-                await OpenDoor(eventArgs.Access, matchingDoorStrike, 3);
+                // Only open door if strike is assigned - community controllers may not have one
+                if (matchingDoorStrike != null)
+                {
+                    await OpenDoor(eventArgs.Access, matchingDoorStrike, 3);
+                }
+                else
+                {
+                    _logger.LogInformation("Door '{Name}' access granted but no strike assigned to operate", matchingDoor.Name);
+                    await eventArgs.Access.AccessGrantedNotification();
+                }
             }
             else
             {
@@ -114,7 +135,26 @@ public class AccessService
 
     private async Task<bool> IsAccessGranted(string matchingCardData, Door matchingDoor, Endpoint accessPoint)
     {
+        // First try matching by raw bit string
         var assignedCredential = await _credentialRepository.AssignedCredential(matchingCardData);
+
+        // If not found and the card data looks like a bit string, try matching by decoded credential number
+        if (assignedCredential == null && !string.IsNullOrEmpty(matchingCardData) &&
+            matchingCardData.All(c => c == '0' || c == '1'))
+        {
+            // Try to decode as credential number - simple extraction for 35-bit format
+            // Format: bits 0-1 = unused, bits 2-33 = 32-bit cred num, bit 34 = parity
+            if (matchingCardData.Length == 35)
+            {
+                var credNumBits = matchingCardData.Substring(2, 32);
+                var credNum = Convert.ToInt64(credNumBits, 2);
+                assignedCredential = await _credentialRepository.AssignedCredential(credNum.ToString());
+                if (assignedCredential != null)
+                {
+                    _logger.LogDebug("Matched credential by decoded 35-bit credNum: {CredNum}", credNum);
+                }
+            }
+        }
         int eventId;
         if (assignedCredential?.Person == null)
         {
@@ -141,8 +181,18 @@ public class AccessService
             {
                 await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
             }
-            
+
             await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
+
+            // Notify external systems of access decision
+            AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+            {
+                EndpointId = accessPoint.DriverEndpointId,
+                IsGranted = false,
+                CardNumber = matchingCardData,
+                PersonName = null,
+                Reason = EventReason.CredentialNotEnrolled
+            });
 
             return false;
         }
@@ -150,7 +200,7 @@ public class AccessService
         if (!AccessGranted())
         {
             _logger.LogInformation("Door '{Name}' denied access", matchingDoor.Name);
-                
+
             eventId = await _eventRepository.Insert(new Event
             {
                 EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
@@ -164,14 +214,24 @@ public class AccessService
                 })
             });
             await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
-            
+
             await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
-                
+
+            // Notify external systems of access decision
+            AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+            {
+                EndpointId = accessPoint.DriverEndpointId,
+                IsGranted = false,
+                CardNumber = matchingCardData,
+                PersonName = assignedCredential.Person.FirstName,
+                Reason = EventReason.AccessNotAssigned
+            });
+
             return false;
         }
 
         _logger.LogInformation("Door '{Name}' granted access", matchingDoor.Name);
-            
+
         eventId = await _eventRepository.Insert(new Event
         {
             EndpointId = accessPoint.Id, Type = EventType.AccessGranted,
@@ -185,9 +245,19 @@ public class AccessService
             })
         });
         await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
-        
+
         await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
-            
+
+        // Notify external systems of access decision
+        AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+        {
+            EndpointId = accessPoint.DriverEndpointId,
+            IsGranted = true,
+            CardNumber = matchingCardData,
+            PersonName = assignedCredential.Person.FirstName,
+            Reason = EventReason.None
+        });
+
         return true;
     }
 
