@@ -470,14 +470,13 @@ public class AccessService
             }
 
             // Check for privilege reference (DoorAccessPriv)
-            // Note: Community proto uses "Unid" field (not "PrivUnid")
-            if (binding.UnidCase == CredPrivBinding.UnidOneofCase.Unid)
+            if (binding.PrivUnidCase == CredPrivBinding.PrivUnidOneofCase.PrivUnid)
             {
-                var priv = await _privRepository.Get(binding.Unid);
+                var priv = await _privRepository.Get(binding.PrivUnid);
                 if (priv == null)
                 {
                     _logger.LogDebug("Privilege {Unid} not found for credential {CredUnid}",
-                        binding.Unid, credentialUnid);
+                        binding.PrivUnid, credentialUnid);
                     continue;
                 }
 

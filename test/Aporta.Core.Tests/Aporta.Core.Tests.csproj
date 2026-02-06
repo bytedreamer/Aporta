@@ -12,7 +12,7 @@
         <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
         <PackageReference Include="SignalR.UnitTestingSupport.NUnit" Version="8.0.0" />
-        <PackageReference Include="Z9.Protobuf.Community" Version="1.0.6" />
+        <PackageReference Include="Z9.Protobuf.Community" Version="1.0.7" />
     </ItemGroup>
 
     <ItemGroup>
