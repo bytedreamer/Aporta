@@ -34,6 +34,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private readonly HolRepository _holRepository;
     private readonly HolCalRepository _holCalRepository;
     private readonly HolTypeRepository _holTypeRepository;
+    private readonly Z9CredRepository _z9CredRepository;
 
     // Received OSDP CredReader configurations from Z9
     private readonly List<OsdpReaderConfig> _osdpReaderConfigs = new();
@@ -84,6 +85,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         _holRepository = new HolRepository(dataAccess);
         _holCalRepository = new HolCalRepository(dataAccess);
         _holTypeRepository = new HolTypeRepository(dataAccess);
+        _z9CredRepository = new Z9CredRepository(dataAccess);
     }
 
     public void Start(string host, int port, string id = null)
@@ -568,8 +570,11 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
         var personName = !string.IsNullOrWhiteSpace(cred.Name) ? cred.Name : bitString;
 
-        _logger.LogInformation("Processing credential Unid={Unid} Number={Number} Name={Name}",
-            cred.Unid, bitString, personName);
+        _logger.LogInformation("Processing credential Unid={Unid} Number={Number} Name={Name} PrivBindings={BindingCount}",
+            cred.Unid, bitString, personName, cred.PrivBindings.Count);
+
+        // Store the full Z9 Cred proto (for privilege checking)
+        _z9CredRepository.Upsert(cred).GetAwaiter().GetResult();
 
         if (AutoCreatePersonForCredential)
         {

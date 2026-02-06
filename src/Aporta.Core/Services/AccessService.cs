@@ -13,6 +13,7 @@ using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Services;
 
@@ -36,6 +37,8 @@ public class AccessService
     private readonly EndpointRepository _endpointRepository;
     private readonly CredentialRepository _credentialRepository;
     private readonly EventRepository _eventRepository;
+    private readonly Z9CredRepository _z9CredRepository;
+    private readonly PrivRepository _privRepository;
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
@@ -55,6 +58,8 @@ public class AccessService
         _credentialRepository = new CredentialRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
         _eventRepository = new EventRepository(dataAccess);
+        _z9CredRepository = new Z9CredRepository(dataAccess);
+        _privRepository = new PrivRepository(dataAccess);
         _extensionService = extensionService;
         _hubContext = hubContext;
         _logger = logger;
@@ -133,7 +138,7 @@ public class AccessService
         }
     }
 
-    private async Task<bool> IsAccessGranted(string matchingCardData, Door matchingDoor, Endpoint accessPoint)
+    private async Task<bool> IsAccessGranted(string matchingCardData, Aporta.Shared.Models.Door matchingDoor, Endpoint accessPoint)
     {
         // First try matching by raw bit string
         var assignedCredential = await _credentialRepository.AssignedCredential(matchingCardData);
@@ -197,9 +202,9 @@ public class AccessService
             return false;
         }
 
-        if (!AccessGranted())
+        if (!await HasAccessPrivilege(assignedCredential.Id, matchingDoor))
         {
-            _logger.LogInformation("Door '{Name}' denied access", matchingDoor.Name);
+            _logger.LogInformation("Door '{Name}' denied access - no privilege", matchingDoor.Name);
 
             eventId = await _eventRepository.Insert(new Event
             {
@@ -282,12 +287,68 @@ public class AccessService
         await Task.WhenAll(openDoorTasks);
     }
 
-    private static bool AccessGranted()
+    /// <summary>
+    /// Checks if the credential has privilege to access the door.
+    /// For now, checks if the credential has any valid privilege binding.
+    /// TODO: Add door-specific privilege checking once Z9 Door-to-Aporta Door mapping is established.
+    /// </summary>
+    private async Task<bool> HasAccessPrivilege(int credentialUnid, Aporta.Shared.Models.Door door)
     {
-        return true;
+        // Look up the full Z9 Cred proto to check privilege bindings
+        var z9Cred = await _z9CredRepository.Get(credentialUnid);
+        if (z9Cred == null)
+        {
+            _logger.LogDebug("Z9 Cred not found for unid {Unid}, denying access", credentialUnid);
+            return false;
+        }
+
+        if (z9Cred.PrivBindings == null || z9Cred.PrivBindings.Count == 0)
+        {
+            _logger.LogDebug("Credential {Unid} has no privilege bindings, denying access", credentialUnid);
+            return false;
+        }
+
+        // Check each privilege binding
+        foreach (var binding in z9Cred.PrivBindings)
+        {
+            // Check for precision access (direct door reference)
+            if (binding.DevAsDoorAccessPrivUnidCase == CredPrivBinding.DevAsDoorAccessPrivUnidOneofCase.DevAsDoorAccessPrivUnid)
+            {
+                // TODO: Map Z9 door unid to Aporta door ID and verify match
+                _logger.LogDebug("Credential {Unid} has precision access binding to door unid {DoorUnid}",
+                    credentialUnid, binding.DevAsDoorAccessPrivUnid);
+                return true;  // For now, grant access if any precision binding exists
+            }
+
+            // Check for privilege reference
+            if (binding.PrivUnidCase == CredPrivBinding.PrivUnidOneofCase.PrivUnid)
+            {
+                var priv = await _privRepository.Get(binding.PrivUnid);
+                if (priv == null)
+                {
+                    _logger.LogDebug("Privilege {Unid} not found for credential {CredUnid}",
+                        binding.PrivUnid, credentialUnid);
+                    continue;
+                }
+
+                // Check if this is a door access privilege
+                if (priv.PrivType == PrivType.Door && priv.Enabled)
+                {
+                    // TODO: Verify the door access privilege applies to this specific door
+                    // For now, grant access if the credential has any enabled door access privilege
+                    _logger.LogDebug("Credential {Unid} has door access privilege {PrivUnid} ({PrivName})",
+                        credentialUnid, priv.Unid, priv.Name);
+                    return true;
+                }
+            }
+        }
+
+        _logger.LogDebug("Credential {Unid} has no matching privilege for door {DoorName}",
+            credentialUnid, door.Name);
+        return false;
     }
 
-    private async Task<Door> MatchingDoor(string accessPointId, Endpoint[] endpoints)
+    private async Task<Aporta.Shared.Models.Door> MatchingDoor(string accessPointId, Endpoint[] endpoints)
     {
         var doors = await _doorRepository.GetAll();
 
