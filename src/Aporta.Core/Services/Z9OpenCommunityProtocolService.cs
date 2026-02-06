@@ -243,12 +243,26 @@ public class Z9OpenCommunityProtocolService : IDisposable
             return;
         }
 
+        // Parse host and port from serialPortAddress (e.g., "localhost:9843" or just "localhost")
+        string host;
+        int tcpPort;
+        var colonIndex = serialPortAddress.LastIndexOf(':');
+        if (colonIndex > 0 && int.TryParse(serialPortAddress.Substring(colonIndex + 1), out tcpPort))
+        {
+            host = serialPortAddress.Substring(0, colonIndex);
+        }
+        else
+        {
+            host = serialPortAddress;
+            tcpPort = DefaultOsdpTcpPort;
+        }
+
         var osdpConfig = new OsdpReaderConfig
         {
             Unid = dev.Unid,
             Name = dev.Name ?? $"OSDP Reader {dev.Unid}",
-            Host = serialPortAddress,
-            TcpPort = DefaultOsdpTcpPort,  // Z9 doesn't send TCP port, use default
+            Host = host,
+            TcpPort = tcpPort,
             OsdpAddress = dev.Port,  // OSDP polling address (0-126)
             BaudRate = dev.Speed > 0 ? dev.Speed : 9600
         };

@@ -3,10 +3,15 @@ using Aporta.Extensions.Endpoint;
 
 namespace Aporta.Extensions.Hardware;
 
-// ReSharper disable once ClassNeverInstantiated.Global
 public class OnlineStatusChangedEventArgs
 {
     public IEndpoint Endpoint { get; }
-        
+
     public bool IsOnline { get; }
+
+    public OnlineStatusChangedEventArgs(IEndpoint endpoint, bool isOnline)
+    {
+        Endpoint = endpoint;
+        IsOnline = isOnline;
+    }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
@@ -8,6 +9,7 @@ using Aporta.Core.Services;
 using Aporta.Drivers.OSDP.Shared;
 using Aporta.Extensions.Hardware;
 using Aporta.Drivers.OSDP.Shared.Actions;
+using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -50,21 +52,33 @@ public class StartupWorker : BackgroundService
         _logger.LogInformation("Application is starting up services");
         try
         {
+            // Check for --cleanDatabase argument to delete existing database
+            var cleanDatabase = _configuration.GetValue<bool>("cleanDatabase");
+            if (cleanDatabase)
+            {
+                DeleteDatabaseFile();
+            }
+
             await _dataAccess.UpdateSchema();
+
+            // Check if we're in Z9 Open Community mode BEFORE starting extensions
+            // This prevents OSDP from auto-connecting using stale saved configuration
+            var z9OpenCommunityHost = _configuration["z9OpenCommunityHost"];
+            var isZ9OpenCommunityMode = !string.IsNullOrWhiteSpace(z9OpenCommunityHost);
+            if (isZ9OpenCommunityMode)
+            {
+                await DisableOsdpExtensionForZ9OpenCommunityMode();
+            }
+
             await _extensionService.Startup();
             _accessService.Startup();
 
-            var z9OpenCommunityHost = _configuration["z9OpenCommunityHost"];
-            if (!string.IsNullOrWhiteSpace(z9OpenCommunityHost))
+            if (isZ9OpenCommunityMode)
             {
                 var z9OpenCommunityPort = int.TryParse(_configuration["z9OpenCommunityPort"], out var port)
                     ? port
                     : DefaultZ9OpenCommunityPort;
                 var z9OpenCommunityId = _configuration["z9OpenCommunityId"];
-
-                // In Z9 Open Community mode, disable OSDP extension until we receive config from Z9
-                // This prevents the driver from auto-connecting using stale saved configuration
-                await DisableOsdpExtensionForZ9OpenCommunityMode();
 
                 // Subscribe to OSDP configuration events before starting the service
                 _z9OpenCommunityProtocolService.OsdpConfigurationReceived += OnOsdpConfigurationReceived;
@@ -100,17 +114,67 @@ public class StartupWorker : BackgroundService
         });
     }
 
+    private void DeleteDatabaseFile()
+    {
+        // Database file is stored in Data/Aporta.sqlite relative to the assembly location
+        var assemblyPath = System.Reflection.Assembly.GetEntryAssembly()?.Location;
+        var dataDir = System.IO.Path.GetDirectoryName(assemblyPath) ?? Environment.CurrentDirectory;
+        var dbPath = System.IO.Path.Combine(dataDir, "Data", "Aporta.sqlite");
+
+        if (System.IO.File.Exists(dbPath))
+        {
+            _logger.LogInformation("Deleting existing database file: {DbPath}", dbPath);
+            System.IO.File.Delete(dbPath);
+        }
+        else
+        {
+            _logger.LogDebug("No database file to delete at: {DbPath}", dbPath);
+        }
+    }
+
     private async Task DisableOsdpExtensionForZ9OpenCommunityMode()
     {
-        var extensions = _extensionService.GetExtensions().ToList();
-        var osdpExtension = extensions.FirstOrDefault(e => e.Id == OsdpDriverId);
+        // Use direct database access because ExtensionService hasn't been started yet
+        // This ensures OSDP extension won't be loaded at startup with stale config
+        using var connection = _dataAccess.CreateDbConnection();
+        connection.Open();
 
-        if (osdpExtension is { Enabled: true })
+        var data = await connection.QueryFirstOrDefaultAsync<string>(
+            "SELECT data FROM extension WHERE id = @id",
+            new { id = OsdpDriverId.ToString() });
+
+        if (data == null)
         {
-            _logger.LogInformation(
-                "Z9 Open Community mode: Disabling OSDP extension until configuration is received from the host");
-            await _extensionService.EnableExtension(OsdpDriverId, false);
+            _logger.LogDebug("OSDP extension not found in database, nothing to disable");
+            return;
         }
+
+        _logger.LogInformation(
+            "Z9 Open Community mode: Disabling OSDP extension and clearing saved configuration");
+
+        // Set enabled=false AND clear the configuration to prevent stale buses/devices
+        // from being loaded when the extension is re-enabled
+        using var stream = new System.IO.MemoryStream();
+        using var writer = new Utf8JsonWriter(stream);
+        writer.WriteStartObject();
+
+        using var doc = JsonDocument.Parse(data);
+        foreach (var prop in doc.RootElement.EnumerateObject())
+        {
+            if (prop.Name == "enabled")
+                writer.WriteBoolean("enabled", false);
+            else if (prop.Name == "configuration")
+                writer.WriteNull("configuration");  // Clear stale config
+            else
+                prop.WriteTo(writer);
+        }
+        writer.WriteEndObject();
+        writer.Flush();
+        var newData = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+
+        await connection.ExecuteAsync(
+            "UPDATE extension SET data = @data WHERE id = @id",
+            new { id = OsdpDriverId.ToString(), data = newData });
     }
 
     private void OnOsdpConfigurationReceived(object sender, Z9OpenCommunityProtocolService.OsdpReaderConfig config)

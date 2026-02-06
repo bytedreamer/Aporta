@@ -129,7 +129,7 @@ public class OSDPDriver : IHardwareDriver
                     return;
                 case true:
                 {
-                    _logger.LogInformation("Device \'{MatchingDeviceName}\' is online", matchingDevice.Name);
+                    _logger.LogInformation("Device \'{MatchingDeviceName}\' is online, SecureMode={SecureMode}", matchingDevice.Name, matchingDevice.SecureMode);
 
                     if (matchingDevice.SecureMode == SecureMode.Install)
                     {
@@ -143,19 +143,25 @@ public class OSDPDriver : IHardwareDriver
                         return;
                     }
 
+                    _logger.LogInformation("Calling ProcessDeviceIdentification...");
                     if (!await ProcessDeviceIdentification(eventArgs, matchingDevice).ConfigureAwait(false))
                     {
+                        _logger.LogWarning("ProcessDeviceIdentification returned false");
                         matchingDevice.IsConnected = false;
                         OnUpdatedEndpoints();
                         return;
                     }
+                    _logger.LogInformation("ProcessDeviceIdentification succeeded");
 
+                    _logger.LogInformation("Calling ProcessDeviceCapabilities...");
                     if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice).ConfigureAwait(false))
                     {
+                        _logger.LogWarning("ProcessDeviceCapabilities returned false");
                         matchingDevice.IsConnected = false;
                         OnUpdatedEndpoints();
                         return;
                     }
+                    _logger.LogInformation("ProcessDeviceCapabilities succeeded");
 
                     matchingDevice.IsConnected = true;
 
@@ -193,10 +199,13 @@ public class OSDPDriver : IHardwareDriver
 
     private async Task<bool> ProcessDeviceCapabilities(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
     {
+        _logger.LogInformation("ProcessDeviceCapabilities starting for '{MatchingDeviceName}'", matchingDevice.Name);
         DeviceCapabilities capabilities;
         try
         {
+            _logger.LogDebug("Requesting device capabilities from OSDP panel...");
             capabilities = await _panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address).ConfigureAwait(false);
+            _logger.LogDebug("Device capabilities received: {Count} capabilities", capabilities?.Capabilities?.Count() ?? 0);
         }
         catch (Exception exception)
         {
@@ -263,10 +272,14 @@ public class OSDPDriver : IHardwareDriver
 
     private async Task<bool> ProcessDeviceIdentification(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
     {
+        _logger.LogInformation("ProcessDeviceIdentification starting for '{MatchingDeviceName}'", matchingDevice.Name);
         DeviceIdentification identification;
         try
         {
+            _logger.LogDebug("Requesting device identification from OSDP panel...");
             identification = await _panel.IdReport(eventArgs.ConnectionId, eventArgs.Address).ConfigureAwait(false);
+            _logger.LogDebug("Device identification received: VendorCode={VendorCode}",
+                identification?.VendorCode != null ? BitConverter.ToString(identification.VendorCode.ToArray()) : "null");
         }
         catch (Exception exception)
         {
@@ -790,8 +803,14 @@ public class OSDPDriver : IHardwareDriver
         // Find all endpoints that match the given bus port name and device address
         // Endpoint ID format: "{portName}:{address}:..." (e.g., "localhost:9843:0:R0")
         var endpointPrefix = $"{portName}:{address}:";
+        _logger.LogInformation("NotifyEndpointOnlineStatus: portName={PortName}, address={Address}, prefix={Prefix}, total endpoints={Count}",
+            portName, address, endpointPrefix, _endpoints.Count);
 
-        foreach (var endpoint in _endpoints.Where(e => e.Id.StartsWith(endpointPrefix)))
+        var matchingEndpoints = _endpoints.Where(e => e.Id.StartsWith(endpointPrefix)).ToList();
+        _logger.LogInformation("Found {MatchCount} matching endpoints for prefix '{Prefix}'",
+            matchingEndpoints.Count, endpointPrefix);
+
+        foreach (var endpoint in matchingEndpoints)
         {
             _logger.LogInformation("Endpoint {EndpointId} is now {Status}", endpoint.Id, isOnline ? "online" : "offline");
             OnOnlineStatusChanged(new OnlineStatusChangedEventArgs(endpoint, isOnline));
