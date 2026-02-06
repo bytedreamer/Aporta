@@ -472,6 +472,67 @@ public class Z9OpenCommunityProtocolService : IDisposable
         WriteMessage(message);
     }
 
+    /// <summary>
+    /// Sends an access event (granted or denied) to Z9.
+    /// </summary>
+    /// <param name="config">The OSDP reader configuration (to determine the device).</param>
+    /// <param name="isGranted">True if access was granted, false if denied.</param>
+    /// <param name="cardNumber">The card number that was presented (for logging/display).</param>
+    /// <param name="subCode">Optional sub-code providing the reason for denial.</param>
+    public void SendAccessEvent(OsdpReaderConfig config, bool isGranted, string cardNumber, EvtSubCode subCode = EvtSubCode.AccessDeniedUnknownCredNum)
+    {
+        if (config == null)
+        {
+            _logger.LogWarning("Cannot send access event: config is null");
+            return;
+        }
+
+        if (!IsConnected)
+        {
+            _logger.LogWarning("Cannot send access event: not connected");
+            return;
+        }
+
+        var evtCode = isGranted ? EvtCode.DoorAccessGranted : EvtCode.DoorAccessDenied;
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var evt = new Evt
+        {
+            EvtCode = evtCode,
+            EvtSubCode = subCode,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            EvtDevRef = new EvtDevRef
+            {
+                Unid = config.Unid,
+                Name = config.Name,
+                DevType = DevType.CredReader
+            }
+        };
+
+        // Add card number to event via EvtCredRef if available
+        if (!string.IsNullOrEmpty(cardNumber) && BigInteger.TryParse(cardNumber, out var credNumValue))
+        {
+            evt.EvtCredRef = new EvtCredRef
+            {
+                CredNum = SpCoreProtoUtil.ToBigIntegerData(credNumValue)
+            };
+        }
+
+        var message = new SpCoreMessage
+        {
+            Type = SpCoreMessage.Types.Type.Evt
+        };
+        message.Evt.Add(evt);
+
+        _logger.LogInformation("Sending {EvtCode} event for reader {Name} (unid={Unid}), cardNumber={CardNumber}, subCode={SubCode}",
+            evtCode, config.Name, config.Unid, cardNumber ?? "(none)", subCode);
+
+        WriteMessage(message);
+    }
+
     private void WriteMessage(SpCoreMessage message)
     {
         lock (_writeLock)

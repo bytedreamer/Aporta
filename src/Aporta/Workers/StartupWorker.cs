@@ -8,6 +8,7 @@ using Aporta.Core.DataAccess;
 using Aporta.Core.Services;
 using Aporta.Drivers.OSDP.Shared;
 using Aporta.Extensions.Hardware;
+using Z9.Spcore.Proto;
 using Aporta.Drivers.OSDP.Shared.Actions;
 using Dapper;
 using Microsoft.Extensions.Configuration;
@@ -86,6 +87,9 @@ public class StartupWorker : BackgroundService
                 // Subscribe to device online status changes to send events back to Z9
                 _extensionService.OnlineStatusChanged += OnOnlineStatusChanged;
 
+                // Subscribe to card reads to send access events to Z9
+                _extensionService.AccessCredentialReceived += OnAccessCredentialReceived;
+
                 _z9OpenCommunityProtocolService.Start(z9OpenCommunityHost, z9OpenCommunityPort, z9OpenCommunityId);
             }
             else
@@ -106,6 +110,7 @@ public class StartupWorker : BackgroundService
         stoppingToken.Register(() =>
         {
             _logger.LogWarning("Application is shutting down");
+            _extensionService.AccessCredentialReceived -= OnAccessCredentialReceived;
             _extensionService.OnlineStatusChanged -= OnOnlineStatusChanged;
             _z9OpenCommunityProtocolService.OsdpConfigurationReceived -= OnOsdpConfigurationReceived;
             _z9OpenCommunityProtocolService.Stop();
@@ -271,5 +276,30 @@ public class StartupWorker : BackgroundService
             config.Name, e.IsOnline ? "online" : "offline");
 
         _z9OpenCommunityProtocolService.SendCredReaderOnlineEvent(config, e.IsOnline);
+    }
+
+    private void OnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs e)
+    {
+        // Get the Z9 config for this endpoint to send event with correct device unid
+        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(e.Access?.Id);
+        if (config == null)
+        {
+            _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping access event",
+                e.Access?.Id);
+            return;
+        }
+
+        var cardNumber = e.Handler?.MatchingCardData ?? "(unknown)";
+        _logger.LogInformation("Card read on reader {Name}: {CardNumber}",
+            config.Name, cardNumber);
+
+        // For now, send all card reads as access denied with unknown credential
+        // In a more complete implementation, this would check if the credential is known
+        // and send the appropriate event (granted or denied with specific reason)
+        _z9OpenCommunityProtocolService.SendAccessEvent(
+            config,
+            isGranted: false,
+            cardNumber: cardNumber,
+            subCode: Z9.Spcore.Proto.EvtSubCode.AccessDeniedUnknownCredNum);
     }
 }

@@ -322,10 +322,15 @@ public class OSDPDriver : IHardwareDriver
         {
             var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
                 .SingleOrDefault(accessPoint =>
-                    eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
-                    accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+                {
+                    var (portName, address) = ParseEndpointId(accessPoint.Id);
+                    return _portMapping.TryGetValue(portName, out var connId) &&
+                           eventArgs.ConnectionId == connId &&
+                           address == eventArgs.Address.ToString();
+                });
             if (accessPoint != null)
             {
+                _logger.LogInformation("Card read received on {AccessPointName}", accessPoint.Name);
                 AccessCredentialReceived?.Invoke(this,
                     new AccessCredentialReceivedEventArgs(
                         accessPoint,
@@ -340,6 +345,25 @@ public class OSDPDriver : IHardwareDriver
         });
     }
 
+    /// <summary>
+    /// Parses an endpoint ID to extract port name and address.
+    /// ID format: "{portName}:{address}:{type}{number}" where portName can contain colons (e.g., "localhost:9843").
+    /// </summary>
+    private static (string portName, string address) ParseEndpointId(string endpointId)
+    {
+        // Find the last two colons to extract address and type suffix
+        // ID examples: "COM3:0:R0" or "localhost:9843:0:R0"
+        var lastColon = endpointId.LastIndexOf(':');
+        if (lastColon <= 0) return (endpointId, "0");
+
+        var secondLastColon = endpointId.LastIndexOf(':', lastColon - 1);
+        if (secondLastColon <= 0) return (endpointId.Substring(0, lastColon), endpointId.Substring(lastColon + 1));
+
+        var portName = endpointId.Substring(0, secondLastColon);
+        var address = endpointId.Substring(secondLastColon + 1, lastColon - secondLastColon - 1);
+        return (portName, address);
+    }
+
     private void PkocPanelOnCardPresented(object sender, CardPresentedEventArgs eventArgs)
     {
         Task.Run(async () =>
@@ -347,8 +371,12 @@ public class OSDPDriver : IHardwareDriver
             _logger.LogInformation("A PKOC card has been presented to the reader");
             var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
                 .SingleOrDefault(accessPoint =>
-                    eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
-                    accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+                {
+                    var (portName, address) = ParseEndpointId(accessPoint.Id);
+                    return _portMapping.TryGetValue(portName, out var connId) &&
+                           eventArgs.ConnectionId == connId &&
+                           address == eventArgs.Address.ToString();
+                });
             if (accessPoint != null)
             {
                 var hashLookup = new PKOCDevice(eventArgs.ConnectionId, eventArgs.Address).GetHashCode();
@@ -372,11 +400,15 @@ public class OSDPDriver : IHardwareDriver
         ControlPanel.InputStatusReportReplyEventArgs eventArgs)
     {
         Task.Run(() =>
-        {        
+        {
             var monitorPoints = _endpoints.Where(endpoint => endpoint is IInput).Cast<IInput>()
                 .Where(monitorPoint =>
-                    eventArgs.ConnectionId == _portMapping[monitorPoint.Id.Split(":")[0]] &&
-                    monitorPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+                {
+                    var (portName, address) = ParseEndpointId(monitorPoint.Id);
+                    return _portMapping.TryGetValue(portName, out var connId) &&
+                           eventArgs.ConnectionId == connId &&
+                           address == eventArgs.Address.ToString();
+                });
 
             foreach (var monitorPoint in monitorPoints)
             {
@@ -394,8 +426,12 @@ public class OSDPDriver : IHardwareDriver
         {
             var controlPoints = _endpoints.Where(endpoint => endpoint is IOutput).Cast<IOutput>()
                 .Where(controlPoint =>
-                    eventArgs.ConnectionId == _portMapping[controlPoint.Id.Split(":")[0]] &&
-                    controlPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+                {
+                    var (portName, address) = ParseEndpointId(controlPoint.Id);
+                    return _portMapping.TryGetValue(portName, out var connId) &&
+                           eventArgs.ConnectionId == connId &&
+                           address == eventArgs.Address.ToString();
+                });
 
             foreach (var controlPoint in controlPoints)
             {
