@@ -33,7 +33,7 @@
 
     <!-- Use NuGet package for standalone builds -->
     <ItemGroup Condition="'$(UseLocalZ9Protobuf)' != 'true'">
-      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.3" />
+      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.5" />
     </ItemGroup>
 
     <ItemGroup>
