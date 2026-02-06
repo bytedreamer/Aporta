@@ -13,6 +13,7 @@ using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Z9.Protobuf;
 using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Services;
@@ -39,8 +40,10 @@ public class AccessService
     private readonly EventRepository _eventRepository;
     private readonly Z9CredRepository _z9CredRepository;
     private readonly PrivRepository _privRepository;
+    private readonly SchedRepository _schedRepository;
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
+    private Func<string, int?> _getDoorUnidForEndpoint;
 
     /// <summary>
     /// Event raised when an access decision is made (granted or denied).
@@ -60,9 +63,19 @@ public class AccessService
         _eventRepository = new EventRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
         _privRepository = new PrivRepository(dataAccess);
+        _schedRepository = new SchedRepository(dataAccess);
         _extensionService = extensionService;
         _hubContext = hubContext;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Sets a function to look up the Z9 Door unid for an endpoint.
+    /// Called by StartupWorker after Z9OpenCommunityProtocolService is available.
+    /// </summary>
+    public void SetDoorUnidLookup(Func<string, int?> getDoorUnidForEndpoint)
+    {
+        _getDoorUnidForEndpoint = getDoorUnidForEndpoint;
     }
 
     public void Startup()
@@ -313,9 +326,12 @@ public class AccessService
             }
         }
 
-        if (!await HasAccessPrivilege(assignedCredential.Id, matchingDoor))
+        var privilegeDenialReason = await CheckAccessPrivilege(assignedCredential.Id, matchingDoor, accessPoint.DriverEndpointId);
+        if (privilegeDenialReason != null)
         {
-            _logger.LogInformation("Door '{Name}' denied access - no privilege", matchingDoor.Name);
+            var reason = privilegeDenialReason.Value;
+            var reasonText = reason == EventReason.OutsideSchedule ? "outside schedule" : "no privilege";
+            _logger.LogInformation("Door '{Name}' denied access - {Reason}", matchingDoor.Name, reasonText);
 
             eventId = await _eventRepository.Insert(new Event
             {
@@ -325,7 +341,7 @@ public class AccessService
                     Door = matchingDoor,
                     Endpoint = accessPoint,
                     Person = assignedCredential.Person,
-                    EventReason = EventReason.NoPrivilege,
+                    EventReason = reason,
                     CardNumber = matchingCardData
                 })
             });
@@ -340,7 +356,7 @@ public class AccessService
                 IsGranted = false,
                 CardNumber = matchingCardData,
                 PersonName = assignedCredential.Person.FirstName,
-                Reason = EventReason.NoPrivilege
+                Reason = reason
             });
 
             return false;
@@ -400,63 +416,189 @@ public class AccessService
 
     /// <summary>
     /// Checks if the credential has privilege to access the door.
-    /// For now, checks if the credential has any valid privilege binding.
-    /// TODO: Add door-specific privilege checking once Z9 Door-to-Aporta Door mapping is established.
+    /// Returns null if access is granted, or the EventReason for denial.
     /// </summary>
-    private async Task<bool> HasAccessPrivilege(int credentialUnid, Aporta.Shared.Models.Door door)
+    private async Task<EventReason?> CheckAccessPrivilege(int credentialUnid, Aporta.Shared.Models.Door door, string endpointId)
     {
+        // Look up the Z9 Door unid for this endpoint
+        int? z9DoorUnid = _getDoorUnidForEndpoint?.Invoke(endpointId);
+
         // Look up the full Z9 Cred proto to check privilege bindings
         var z9Cred = await _z9CredRepository.Get(credentialUnid);
         if (z9Cred == null)
         {
             _logger.LogDebug("Z9 Cred not found for unid {Unid}, denying access", credentialUnid);
-            return false;
+            return EventReason.NoPrivilege;
         }
 
         if (z9Cred.PrivBindings == null || z9Cred.PrivBindings.Count == 0)
         {
             _logger.LogDebug("Credential {Unid} has no privilege bindings, denying access", credentialUnid);
-            return false;
+            return EventReason.NoPrivilege;
         }
+
+        // Track if we found any valid privilege (to distinguish NO_PRIV from OUTSIDE_SCHED)
+        bool foundValidPrivilege = false;
 
         // Check each privilege binding
         foreach (var binding in z9Cred.PrivBindings)
         {
-            // Check for precision access (direct door reference)
+            // Check for precision access (direct door reference via devAsDoorAccessPrivUnid)
             if (binding.DevAsDoorAccessPrivUnidCase == CredPrivBinding.DevAsDoorAccessPrivUnidOneofCase.DevAsDoorAccessPrivUnid)
             {
-                // TODO: Map Z9 door unid to Aporta door ID and verify match
+                // Check if this precision access applies to our door
+                if (z9DoorUnid.HasValue && binding.DevAsDoorAccessPrivUnid != z9DoorUnid.Value)
+                {
+                    _logger.LogDebug("Credential {Unid} has precision access to door {PrivDoor} but not to {ActualDoor}",
+                        credentialUnid, binding.DevAsDoorAccessPrivUnid, z9DoorUnid.Value);
+                    continue; // This binding doesn't apply to our door
+                }
+
+                foundValidPrivilege = true;
+
+                // Check schedule restriction on the binding
+                if (!await IsInSchedule(binding.SchedRestriction))
+                {
+                    _logger.LogDebug("Credential {Unid} has precision access but outside schedule",
+                        credentialUnid);
+                    continue; // Try other bindings
+                }
+
                 _logger.LogDebug("Credential {Unid} has precision access binding to door unid {DoorUnid}",
                     credentialUnid, binding.DevAsDoorAccessPrivUnid);
-                return true;  // For now, grant access if any precision binding exists
+                return null;  // Access granted
             }
 
-            // Check for privilege reference
-            if (binding.PrivUnidCase == CredPrivBinding.PrivUnidOneofCase.PrivUnid)
+            // Check for privilege reference (DoorAccessPriv)
+            // Note: Community proto uses "Unid" field (not "PrivUnid")
+            if (binding.UnidCase == CredPrivBinding.UnidOneofCase.Unid)
             {
-                var priv = await _privRepository.Get(binding.PrivUnid);
+                var priv = await _privRepository.Get(binding.Unid);
                 if (priv == null)
                 {
                     _logger.LogDebug("Privilege {Unid} not found for credential {CredUnid}",
-                        binding.PrivUnid, credentialUnid);
+                        binding.Unid, credentialUnid);
                     continue;
                 }
 
                 // Check if this is a door access privilege
                 if (priv.PrivType == PrivType.Door && priv.Enabled)
                 {
-                    // TODO: Verify the door access privilege applies to this specific door
-                    // For now, grant access if the credential has any enabled door access privilege
+                    // Check if any DoorAccessPrivElement matches our door
+                    bool doorMatches = await CheckDoorAccessPrivElements(priv, z9DoorUnid);
+                    if (!doorMatches)
+                    {
+                        _logger.LogDebug("Credential {Unid} has privilege {PrivName} but it doesn't include door {DoorUnid}",
+                            credentialUnid, priv.Name, z9DoorUnid);
+                        continue; // This privilege doesn't cover our door
+                    }
+
+                    foundValidPrivilege = true;
+
+                    // Check schedule restriction on the binding
+                    if (!await IsInSchedule(binding.SchedRestriction))
+                    {
+                        _logger.LogDebug("Credential {Unid} has privilege {PrivName} but outside schedule",
+                            credentialUnid, priv.Name);
+                        continue; // Try other bindings
+                    }
+
+                    // TODO: Also check element-level schedule restrictions
+
                     _logger.LogDebug("Credential {Unid} has door access privilege {PrivUnid} ({PrivName})",
                         credentialUnid, priv.Unid, priv.Name);
-                    return true;
+                    return null;  // Access granted
                 }
             }
         }
 
+        // If we found valid privileges but all were outside schedule, return OutsideSchedule
+        if (foundValidPrivilege)
+        {
+            _logger.LogDebug("Credential {Unid} has valid privileges but all are outside schedule for door {DoorName}",
+                credentialUnid, door.Name);
+            return EventReason.OutsideSchedule;
+        }
+
         _logger.LogDebug("Credential {Unid} has no matching privilege for door {DoorName}",
             credentialUnid, door.Name);
-        return false;
+        return EventReason.NoPrivilege;
+    }
+
+    /// <summary>
+    /// Checks if a DoorAccessPriv includes the specified door.
+    /// </summary>
+    private Task<bool> CheckDoorAccessPrivElements(Priv priv, int? z9DoorUnid)
+    {
+        var doorAccessPriv = priv.ExtDoorAccessPriv;
+        if (doorAccessPriv == null || doorAccessPriv.Elements == null || doorAccessPriv.Elements.Count == 0)
+        {
+            // No elements means no doors covered
+            _logger.LogDebug("DoorAccessPriv {PrivUnid} has no elements", priv.Unid);
+            return Task.FromResult(false);
+        }
+
+        // If we don't know the Z9 door unid, we can't do door-specific checking
+        // Fall back to allowing access if there are any elements
+        if (!z9DoorUnid.HasValue)
+        {
+            _logger.LogDebug("No Z9 door unid available, allowing any DoorAccessPriv element");
+            return Task.FromResult(true);
+        }
+
+        foreach (var element in doorAccessPriv.Elements)
+        {
+            // Check if element specifies a door
+            if (element.DoorUnidCase == DoorAccessPrivElement.DoorUnidOneofCase.DoorUnid)
+            {
+                if (element.DoorUnid == z9DoorUnid.Value)
+                {
+                    _logger.LogDebug("DoorAccessPrivElement matches door {DoorUnid}", z9DoorUnid.Value);
+                    return Task.FromResult(true);
+                }
+            }
+            else
+            {
+                // Element has no specific door - means "all doors"
+                // (community profile doesn't support devGroup or controlledArea)
+                _logger.LogDebug("DoorAccessPrivElement has no specific door, treating as 'all doors'");
+                return Task.FromResult(true);
+            }
+        }
+
+        _logger.LogDebug("No DoorAccessPrivElement matches door {DoorUnid}", z9DoorUnid.Value);
+        return Task.FromResult(false);
+    }
+
+    /// <summary>
+    /// Checks if the current time is within the schedule restriction.
+    /// Returns true if in schedule or no schedule restriction (null = always).
+    /// </summary>
+    private async Task<bool> IsInSchedule(SchedRestriction schedRestriction)
+    {
+        // No schedule restriction means "always" (24/7)
+        if (schedRestriction == null)
+            return true;
+
+        // No schedule unid means "always"
+        if (schedRestriction.SchedUnidCase != SchedRestriction.SchedUnidOneofCase.SchedUnid)
+            return true;
+
+        var sched = await _schedRepository.Get(schedRestriction.SchedUnid);
+        if (sched == null)
+        {
+            _logger.LogWarning("Schedule {Unid} not found, treating as always active", schedRestriction.SchedUnid);
+            return true;
+        }
+
+        // TODO: Pass holidays when we have HolRepository
+        bool inSched = SchedEvaluator.InSched(DateTime.Now, sched, null);
+
+        // Apply invert flag
+        if (schedRestriction.Invert)
+            inSched = !inSched;
+
+        return inSched;
     }
 
     private async Task<Aporta.Shared.Models.Door> MatchingDoor(string accessPointId, Endpoint[] endpoints)

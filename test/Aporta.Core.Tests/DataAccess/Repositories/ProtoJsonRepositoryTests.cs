@@ -303,15 +303,14 @@ public class PrivRepositoryTests
     public async Task Priv_WithDoorAccessPriv_PreservesExtension()
     {
         var repository = new PrivRepository(_dataAccess);
+        var doorAccessPriv = new DoorAccessPriv();
+        doorAccessPriv.Elements.Add(new DoorAccessPrivElement { DoorUnid = 10 });
         var priv = new Priv
         {
             Unid = 1,
             Name = "Door Access",
             PrivType = PrivType.Door,
-            ExtDoorAccessPriv = new DoorAccessPriv
-            {
-                DoorUnid = 10
-            }
+            ExtDoorAccessPriv = doorAccessPriv
         };
 
         await repository.Upsert(priv);
@@ -319,7 +318,7 @@ public class PrivRepositoryTests
 
         Assert.That(retrieved.PrivType, Is.EqualTo(PrivType.Door));
         Assert.That(retrieved.ExtDoorAccessPriv, Is.Not.Null);
-        Assert.That(retrieved.ExtDoorAccessPriv.DoorUnid, Is.EqualTo(10));
+        Assert.That(retrieved.ExtDoorAccessPriv.Elements[0].DoorUnid, Is.EqualTo(10));
     }
 }
 
@@ -371,19 +370,24 @@ public class SchedRepositoryTests
             Unid = 1,
             Name = "Work Week"
         };
-        sched.Elements.Add(new SchedElement
+        var element = new SchedElement
         {
-            DayMask = 0x1F, // Mon-Fri
-            StartMinuteOfDay = 480, // 8:00 AM
-            EndMinuteOfDay = 1020 // 5:00 PM
-        });
+            Start = new SqlTimeData { Hour = 8, Minute = 0, Second = 0 },
+            Stop = new SqlTimeData { Hour = 17, Minute = 0, Second = 0 }
+        };
+        element.SchedDays.Add(SchedDay.Mon);
+        element.SchedDays.Add(SchedDay.Tues);
+        element.SchedDays.Add(SchedDay.Wed);
+        element.SchedDays.Add(SchedDay.Thur);
+        element.SchedDays.Add(SchedDay.Fri);
+        sched.Elements.Add(element);
 
         await repository.Upsert(sched);
         var retrieved = await repository.Get(1);
 
         Assert.That(retrieved.Elements.Count, Is.EqualTo(1));
-        Assert.That(retrieved.Elements[0].DayMask, Is.EqualTo(0x1F));
-        Assert.That(retrieved.Elements[0].StartMinuteOfDay, Is.EqualTo(480));
+        Assert.That(retrieved.Elements[0].SchedDays, Has.Count.EqualTo(5));
+        Assert.That(retrieved.Elements[0].Start.Hour, Is.EqualTo(8));
     }
 }
 

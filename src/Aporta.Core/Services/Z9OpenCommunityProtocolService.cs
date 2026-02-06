@@ -54,6 +54,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public int TcpPort { get; set; } = DefaultOsdpTcpPort;
         public int OsdpAddress { get; set; }
         public int BaudRate { get; set; } = 9600;
+        public int? DoorUnid { get; set; }
     }
     private Thread _thread;
     private volatile bool _stopping;
@@ -507,7 +508,10 @@ public class Z9OpenCommunityProtocolService : IDisposable
             Host = host,
             TcpPort = tcpPort,
             OsdpAddress = dev.Port,  // OSDP polling address (0-126)
-            BaudRate = dev.Speed > 0 ? dev.Speed : 9600
+            BaudRate = dev.Speed > 0 ? dev.Speed : 9600,
+            DoorUnid = dev.LogicalParentUnidCase == Dev.LogicalParentUnidOneofCase.LogicalParentUnid
+                ? dev.LogicalParentUnid
+                : null
         };
 
         _logger.LogInformation(

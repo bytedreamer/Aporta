@@ -87,6 +87,10 @@ public class StartupWorker : BackgroundService
                     : DefaultZ9OpenCommunityPort;
                 var z9OpenCommunityId = _configuration["z9OpenCommunityId"];
 
+                // Wire up door unid lookup for access privilege checking
+                _accessService.SetDoorUnidLookup(endpointId =>
+                    _z9OpenCommunityProtocolService.GetConfigForEndpoint(endpointId)?.DoorUnid);
+
                 // Subscribe to OSDP configuration events before starting the service
                 _z9OpenCommunityProtocolService.OsdpConfigurationReceived += OnOsdpConfigurationReceived;
 
@@ -386,6 +390,7 @@ public class StartupWorker : BackgroundService
             EventReason.CredentialDisabled => EvtSubCode.AccessDeniedInactive,
             EventReason.CredentialNotYetEffective => EvtSubCode.AccessDeniedNotEffective,
             EventReason.CredentialExpired => EvtSubCode.AccessDeniedExpired,
+            EventReason.OutsideSchedule => EvtSubCode.AccessDeniedOutsideSched,
             _ => EvtSubCode.AccessDeniedInactive  // Default value (0); unused for granted events
         };
 

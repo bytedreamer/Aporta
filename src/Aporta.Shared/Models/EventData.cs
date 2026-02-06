@@ -33,5 +33,7 @@ public enum EventReason
     [Description("Credential Expired")]
     CredentialExpired,
     [Description("No Privilege")]
-    NoPrivilege
+    NoPrivilege,
+    [Description("Outside Schedule")]
+    OutsideSchedule
 }
