@@ -1,7 +1,8 @@
 using System;
 using System.Data;
 using System.IO;
-using System.Reflection; 
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess.Migrations;
 using Dapper;
@@ -17,7 +18,8 @@ public class SqLiteDataAccess : IDataAccess
 
     private readonly IMigration[] _migrations =
     {
-        new _0000_InitialCreate()
+        new _0000_InitialCreate(),
+        new _0001_AddZ9OpenTables()
     };
 
     /// <summary>
@@ -99,16 +101,16 @@ public class SqLiteDataAccess : IDataAccess
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
-        for (int migrationIndex = currentVersion + 1; migrationIndex < _migrations.Length; migrationIndex++)
+        foreach (var migration in _migrations.Where(m => m.Version > currentVersion).OrderBy(m => m.Version))
         {
-            await _migrations[migrationIndex].PerformUpdate(connection, transaction);
+            await migration.PerformUpdate(connection, transaction);
 
             await connection.ExecuteAsync(
                 @"insert into schema_info (id, name, timestamp)
                         values (@id, @name, @timestamp)",
                 new
                 {
-                    id = _migrations[migrationIndex].Version, name = _migrations[migrationIndex].Name,
+                    id = migration.Version, name = migration.Name,
                     timestamp = DateTime.UtcNow
                 }, transaction);
         }

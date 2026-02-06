@@ -25,17 +25,22 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private readonly CredentialRepository _credentialRepository;
     private readonly PersonRepository _personRepository;
 
+    // Z9 Open protobuf repositories
+    private readonly DataFormatRepository _dataFormatRepository;
+    private readonly DataLayoutRepository _dataLayoutRepository;
+    private readonly CredTemplateRepository _credTemplateRepository;
+    private readonly PrivRepository _privRepository;
+    private readonly SchedRepository _schedRepository;
+    private readonly HolRepository _holRepository;
+    private readonly HolCalRepository _holCalRepository;
+    private readonly HolTypeRepository _holTypeRepository;
+
     // Received OSDP CredReader configurations from Z9
     private readonly List<OsdpReaderConfig> _osdpReaderConfigs = new();
 
     // Mapping from OSDP endpoint ID prefix to Z9 device unid
     // Key format: "{host}:{port}:{osdpAddress}" (e.g., "localhost:9843:0")
     private readonly Dictionary<string, OsdpReaderConfig> _endpointToConfig = new();
-
-    // Data formats/layouts/templates received from Z9 (keyed by unid)
-    private readonly Dictionary<int, DataFormat> _dataFormats = new();
-    private readonly Dictionary<int, DataLayout> _dataLayouts = new();
-    private readonly Dictionary<int, CredTemplate> _credTemplates = new();
 
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
@@ -71,6 +76,14 @@ public class Z9OpenCommunityProtocolService : IDisposable
         _logger = logger;
         _credentialRepository = new CredentialRepository(dataAccess);
         _personRepository = new PersonRepository(dataAccess);
+        _dataFormatRepository = new DataFormatRepository(dataAccess);
+        _dataLayoutRepository = new DataLayoutRepository(dataAccess);
+        _credTemplateRepository = new CredTemplateRepository(dataAccess);
+        _privRepository = new PrivRepository(dataAccess);
+        _schedRepository = new SchedRepository(dataAccess);
+        _holRepository = new HolRepository(dataAccess);
+        _holCalRepository = new HolCalRepository(dataAccess);
+        _holTypeRepository = new HolTypeRepository(dataAccess);
     }
 
     public void Start(string host, int port, string id = null)
@@ -206,37 +219,177 @@ public class Z9OpenCommunityProtocolService : IDisposable
     {
         _logger.LogInformation("Processing DbChange (requestId={RequestId})", dbChange.RequestId);
 
-        // Process DataFormat first (needed by DataLayout)
+        // Process deletes first (order: most dependent -> least dependent)
+        // Cred deletes
+        if (dbChange.CredDeleteAllCase == DbChange.CredDeleteAllOneofCase.CredDeleteAll && dbChange.CredDeleteAll)
+        {
+            _logger.LogInformation("Deleting all credentials");
+            // Note: We don't have a DeleteAll that also cleans up persons/assignments
+            // For now, just delete credentials
+        }
+        foreach (var credDelete in dbChange.CredDelete)
+        {
+            _logger.LogInformation("Deleting credential {Unid}", credDelete);
+            _credentialRepository.RevokePerson(credDelete, credDelete).GetAwaiter().GetResult();
+            _credentialRepository.Delete(credDelete).GetAwaiter().GetResult();
+            if (AutoCreatePersonForCredential)
+            {
+                _personRepository.Delete(credDelete).GetAwaiter().GetResult();
+            }
+        }
+
+        // Priv deletes
+        if (dbChange.PrivDeleteAllCase == DbChange.PrivDeleteAllOneofCase.PrivDeleteAll && dbChange.PrivDeleteAll)
+        {
+            _logger.LogInformation("Deleting all privileges");
+            _privRepository.DeleteAll().GetAwaiter().GetResult();
+        }
+        foreach (var privDelete in dbChange.PrivDelete)
+        {
+            _logger.LogInformation("Deleting privilege {Unid}", privDelete);
+            _privRepository.Delete(privDelete).GetAwaiter().GetResult();
+        }
+
+        // CredTemplate deletes
+        if (dbChange.CredTemplateDeleteAllCase == DbChange.CredTemplateDeleteAllOneofCase.CredTemplateDeleteAll && dbChange.CredTemplateDeleteAll)
+        {
+            _logger.LogInformation("Deleting all credential templates");
+            _credTemplateRepository.DeleteAll().GetAwaiter().GetResult();
+        }
+        foreach (var credTemplateDelete in dbChange.CredTemplateDelete)
+        {
+            _logger.LogInformation("Deleting credential template {Unid}", credTemplateDelete);
+            _credTemplateRepository.Delete(credTemplateDelete).GetAwaiter().GetResult();
+        }
+
+        // DataLayout deletes
+        if (dbChange.DataLayoutDeleteAllCase == DbChange.DataLayoutDeleteAllOneofCase.DataLayoutDeleteAll && dbChange.DataLayoutDeleteAll)
+        {
+            _logger.LogInformation("Deleting all data layouts");
+            _dataLayoutRepository.DeleteAll().GetAwaiter().GetResult();
+        }
+        foreach (var dataLayoutDelete in dbChange.DataLayoutDelete)
+        {
+            _logger.LogInformation("Deleting data layout {Unid}", dataLayoutDelete);
+            _dataLayoutRepository.Delete(dataLayoutDelete).GetAwaiter().GetResult();
+        }
+
+        // DataFormat deletes
+        if (dbChange.DataFormatDeleteAllCase == DbChange.DataFormatDeleteAllOneofCase.DataFormatDeleteAll && dbChange.DataFormatDeleteAll)
+        {
+            _logger.LogInformation("Deleting all data formats");
+            _dataFormatRepository.DeleteAll().GetAwaiter().GetResult();
+        }
+        foreach (var dataFormatDelete in dbChange.DataFormatDelete)
+        {
+            _logger.LogInformation("Deleting data format {Unid}", dataFormatDelete);
+            _dataFormatRepository.Delete(dataFormatDelete).GetAwaiter().GetResult();
+        }
+
+        // Sched deletes
+        if (dbChange.SchedDeleteAllCase == DbChange.SchedDeleteAllOneofCase.SchedDeleteAll && dbChange.SchedDeleteAll)
+        {
+            _logger.LogInformation("Deleting all schedules");
+            _schedRepository.DeleteAll().GetAwaiter().GetResult();
+        }
+        foreach (var schedDelete in dbChange.SchedDelete)
+        {
+            _logger.LogInformation("Deleting schedule {Unid}", schedDelete);
+            _schedRepository.Delete(schedDelete).GetAwaiter().GetResult();
+        }
+
+        // Hol deletes
+        if (dbChange.HolDeleteAllCase == DbChange.HolDeleteAllOneofCase.HolDeleteAll && dbChange.HolDeleteAll)
+        {
+            _logger.LogInformation("Deleting all holidays");
+            _holRepository.DeleteAll().GetAwaiter().GetResult();
+        }
+        foreach (var holDelete in dbChange.HolDelete)
+        {
+            _logger.LogInformation("Deleting holiday {Unid}", holDelete);
+            _holRepository.Delete(holDelete).GetAwaiter().GetResult();
+        }
+
+        // HolCal deletes
+        if (dbChange.HolCalDeleteAllCase == DbChange.HolCalDeleteAllOneofCase.HolCalDeleteAll && dbChange.HolCalDeleteAll)
+        {
+            _logger.LogInformation("Deleting all holiday calendars");
+            _holCalRepository.DeleteAll().GetAwaiter().GetResult();
+        }
+        foreach (var holCalDelete in dbChange.HolCalDelete)
+        {
+            _logger.LogInformation("Deleting holiday calendar {Unid}", holCalDelete);
+            _holCalRepository.Delete(holCalDelete).GetAwaiter().GetResult();
+        }
+
+        // HolType deletes
+        if (dbChange.HolTypeDeleteAllCase == DbChange.HolTypeDeleteAllOneofCase.HolTypeDeleteAll && dbChange.HolTypeDeleteAll)
+        {
+            _logger.LogInformation("Deleting all holiday types");
+            _holTypeRepository.DeleteAll().GetAwaiter().GetResult();
+        }
+        foreach (var holTypeDelete in dbChange.HolTypeDelete)
+        {
+            _logger.LogInformation("Deleting holiday type {Unid}", holTypeDelete);
+            _holTypeRepository.Delete(holTypeDelete).GetAwaiter().GetResult();
+        }
+
+        // Process inserts/updates (order: least dependent -> most dependent)
+        // HolType (no dependencies)
+        foreach (var holType in dbChange.HolType)
+        {
+            ProcessHolType(holType);
+        }
+
+        // HolCal (no dependencies)
+        foreach (var holCal in dbChange.HolCal)
+        {
+            ProcessHolCal(holCal);
+        }
+
+        // Hol (depends on HolCal)
+        foreach (var hol in dbChange.Hol)
+        {
+            ProcessHol(hol);
+        }
+
+        // Sched (may reference HolCal)
+        foreach (var sched in dbChange.Sched)
+        {
+            ProcessSched(sched);
+        }
+
+        // DataFormat (no dependencies)
         foreach (var dataFormat in dbChange.DataFormat)
         {
             ProcessDataFormat(dataFormat);
         }
 
-        // Process DataLayout (needed by CredTemplate)
+        // DataLayout (depends on DataFormat)
         foreach (var dataLayout in dbChange.DataLayout)
         {
             ProcessDataLayout(dataLayout);
         }
 
-        // Process CredTemplate (needed by Cred)
+        // CredTemplate (depends on DataLayout)
         foreach (var credTemplate in dbChange.CredTemplate)
         {
             ProcessCredTemplate(credTemplate);
         }
 
-        // Process credentials
+        // Priv (may reference Sched)
+        foreach (var priv in dbChange.Priv)
+        {
+            ProcessPriv(priv);
+        }
+
+        // Cred (depends on CredTemplate, may reference Priv)
         foreach (var cred in dbChange.Cred)
         {
             ProcessCredential(cred);
         }
 
-        foreach (var credDelete in dbChange.CredDelete)
-        {
-            _logger.LogInformation("Deleting credential {Unid}", credDelete);
-            _credentialRepository.Delete(credDelete).GetAwaiter().GetResult();
-        }
-
-        // Process Dev messages - extract OSDP reader configurations
+        // Dev (extract OSDP reader configurations - stored in memory for now)
         foreach (var dev in dbChange.Dev)
         {
             ProcessDev(dev);
@@ -248,10 +401,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         SpCoreProtoUtil.InitRequired(dataFormat);
         _logger.LogDebug("Storing DataFormat: unid={Unid}, name={Name}, type={Type}",
             dataFormat.Unid, dataFormat.Name, dataFormat.DataFormatType);
-        lock (_dataFormats)
-        {
-            _dataFormats[dataFormat.Unid] = dataFormat;
-        }
+        _dataFormatRepository.Upsert(dataFormat).GetAwaiter().GetResult();
     }
 
     private void ProcessDataLayout(DataLayout dataLayout)
@@ -259,10 +409,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         SpCoreProtoUtil.InitRequired(dataLayout);
         _logger.LogDebug("Storing DataLayout: unid={Unid}, name={Name}, type={Type}",
             dataLayout.Unid, dataLayout.Name, dataLayout.LayoutType);
-        lock (_dataLayouts)
-        {
-            _dataLayouts[dataLayout.Unid] = dataLayout;
-        }
+        _dataLayoutRepository.Upsert(dataLayout).GetAwaiter().GetResult();
     }
 
     private void ProcessCredTemplate(CredTemplate credTemplate)
@@ -270,10 +417,47 @@ public class Z9OpenCommunityProtocolService : IDisposable
         SpCoreProtoUtil.InitRequired(credTemplate);
         _logger.LogDebug("Storing CredTemplate: unid={Unid}, name={Name}",
             credTemplate.Unid, credTemplate.Name);
-        lock (_credTemplates)
-        {
-            _credTemplates[credTemplate.Unid] = credTemplate;
-        }
+        _credTemplateRepository.Upsert(credTemplate).GetAwaiter().GetResult();
+    }
+
+    private void ProcessPriv(Priv priv)
+    {
+        SpCoreProtoUtil.InitRequired(priv);
+        _logger.LogDebug("Storing Priv: unid={Unid}, name={Name}, type={Type}",
+            priv.Unid, priv.Name, priv.PrivType);
+        _privRepository.Upsert(priv).GetAwaiter().GetResult();
+    }
+
+    private void ProcessSched(Sched sched)
+    {
+        SpCoreProtoUtil.InitRequired(sched);
+        _logger.LogDebug("Storing Sched: unid={Unid}, name={Name}",
+            sched.Unid, sched.Name);
+        _schedRepository.Upsert(sched).GetAwaiter().GetResult();
+    }
+
+    private void ProcessHol(Hol hol)
+    {
+        SpCoreProtoUtil.InitRequired(hol);
+        _logger.LogDebug("Storing Hol: unid={Unid}, name={Name}",
+            hol.Unid, hol.Name);
+        _holRepository.Upsert(hol).GetAwaiter().GetResult();
+    }
+
+    private void ProcessHolCal(HolCal holCal)
+    {
+        SpCoreProtoUtil.InitRequired(holCal);
+        _logger.LogDebug("Storing HolCal: unid={Unid}, name={Name}",
+            holCal.Unid, holCal.Name);
+        _holCalRepository.Upsert(holCal).GetAwaiter().GetResult();
+    }
+
+    private void ProcessHolType(HolType holType)
+    {
+        SpCoreProtoUtil.InitRequired(holType);
+        _logger.LogDebug("Storing HolType: unid={Unid}, name={Name}",
+            holType.Unid, holType.Name);
+        _holTypeRepository.Upsert(holType).GetAwaiter().GetResult();
     }
 
     private void ProcessDev(Dev dev)
@@ -424,14 +608,11 @@ public class Z9OpenCommunityProtocolService : IDisposable
             return null;
         }
 
-        CredTemplate credTemplate;
-        lock (_credTemplates)
+        var credTemplate = _credTemplateRepository.Get(cred.CredTemplateUnid).GetAwaiter().GetResult();
+        if (credTemplate == null)
         {
-            if (!_credTemplates.TryGetValue(cred.CredTemplateUnid, out credTemplate))
-            {
-                _logger.LogDebug("CredTemplate {Unid} not found", cred.CredTemplateUnid);
-                return null;
-            }
+            _logger.LogDebug("CredTemplate {Unid} not found", cred.CredTemplateUnid);
+            return null;
         }
 
         // Get the data layout from the template
@@ -447,18 +628,16 @@ public class Z9OpenCommunityProtocolService : IDisposable
             && cardPinTemplate.AnyDataLayout)
         {
             // Use the first available binary format
-            lock (_dataFormats)
+            var dataFormats = _dataFormatRepository.GetAll().GetAwaiter().GetResult();
+            foreach (var df in dataFormats)
             {
-                foreach (var df in _dataFormats.Values)
+                if (df.DataFormatType == DataFormatType.Binary && df.ExtBinaryFormat != null)
                 {
-                    if (df.DataFormatType == DataFormatType.Binary && df.ExtBinaryFormat != null)
+                    var bits = EncodeWithBinaryFormatter(df, credNum, facilityCode);
+                    if (bits != null)
                     {
-                        var bits = EncodeWithBinaryFormatter(df, credNum, facilityCode);
-                        if (bits != null)
-                        {
-                            _logger.LogDebug("Encoded credential using format {Name}", df.Name);
-                            return bits;
-                        }
+                        _logger.LogDebug("Encoded credential using format {Name}", df.Name);
+                        return bits;
                     }
                 }
             }
@@ -472,14 +651,11 @@ public class Z9OpenCommunityProtocolService : IDisposable
             return null;
         }
 
-        DataLayout dataLayout;
-        lock (_dataLayouts)
+        var dataLayout = _dataLayoutRepository.Get(cardPinTemplate.DataLayoutUnid).GetAwaiter().GetResult();
+        if (dataLayout == null)
         {
-            if (!_dataLayouts.TryGetValue(cardPinTemplate.DataLayoutUnid, out dataLayout))
-            {
-                _logger.LogDebug("DataLayout {Unid} not found", cardPinTemplate.DataLayoutUnid);
-                return null;
-            }
+            _logger.LogDebug("DataLayout {Unid} not found", cardPinTemplate.DataLayoutUnid);
+            return null;
         }
 
         // Get the data format from BasicDataLayout
@@ -490,14 +666,11 @@ public class Z9OpenCommunityProtocolService : IDisposable
             return null;
         }
 
-        DataFormat dataFormat;
-        lock (_dataFormats)
+        var dataFormat = _dataFormatRepository.Get(dataLayout.ExtBasicDataLayout.DataFormatUnid).GetAwaiter().GetResult();
+        if (dataFormat == null)
         {
-            if (!_dataFormats.TryGetValue(dataLayout.ExtBasicDataLayout.DataFormatUnid, out dataFormat))
-            {
-                _logger.LogDebug("DataFormat {Unid} not found", dataLayout.ExtBasicDataLayout.DataFormatUnid);
-                return null;
-            }
+            _logger.LogDebug("DataFormat {Unid} not found", dataLayout.ExtBasicDataLayout.DataFormatUnid);
+            return null;
         }
 
         if (dataFormat.DataFormatType != DataFormatType.Binary || dataFormat.ExtBinaryFormat == null)
@@ -564,42 +737,40 @@ public class Z9OpenCommunityProtocolService : IDisposable
             return null;
         }
 
-        lock (_dataFormats)
+        var dataFormats = _dataFormatRepository.GetAll().GetAwaiter().GetResult();
+        foreach (var dataFormat in dataFormats)
         {
-            foreach (var dataFormat in _dataFormats.Values)
+            if (dataFormat.DataFormatType != DataFormatType.Binary || dataFormat.ExtBinaryFormat == null)
+                continue;
+
+            try
             {
-                if (dataFormat.DataFormatType != DataFormatType.Binary || dataFormat.ExtBinaryFormat == null)
+                var formatter = new BinaryFormatter(dataFormat);
+                var decodedRead = formatter.Decode(bb);
+
+                // Extract credential number
+                var credNumElements = decodedRead.GetElementsMatchingField(DataFormatField.CredNum);
+                if (credNumElements.Count == 0)
                     continue;
 
-                try
+                var credNum = credNumElements[0].GetValue();
+
+                // Extract facility code if present
+                int? facilityCode = null;
+                var fcElements = decodedRead.GetElementsMatchingField(DataFormatField.FacilityCode);
+                if (fcElements.Count > 0)
                 {
-                    var formatter = new BinaryFormatter(dataFormat);
-                    var decodedRead = formatter.Decode(bb);
-
-                    // Extract credential number
-                    var credNumElements = decodedRead.GetElementsMatchingField(DataFormatField.CredNum);
-                    if (credNumElements.Count == 0)
-                        continue;
-
-                    var credNum = credNumElements[0].GetValue();
-
-                    // Extract facility code if present
-                    int? facilityCode = null;
-                    var fcElements = decodedRead.GetElementsMatchingField(DataFormatField.FacilityCode);
-                    if (fcElements.Count > 0)
-                    {
-                        facilityCode = (int)fcElements[0].GetValue();
-                    }
-
-                    _logger.LogDebug("Decoded card read using format {Name}: credNum={CredNum}, fc={FacilityCode}",
-                        dataFormat.Name, credNum, facilityCode);
-
-                    return (credNum, facilityCode, dataFormat.Name);
+                    facilityCode = (int)fcElements[0].GetValue();
                 }
-                catch (BinaryFormatterException)
-                {
-                    // This format didn't match, try next
-                }
+
+                _logger.LogDebug("Decoded card read using format {Name}: credNum={CredNum}, fc={FacilityCode}",
+                    dataFormat.Name, credNum, facilityCode);
+
+                return (credNum, facilityCode, dataFormat.Name);
+            }
+            catch (BinaryFormatterException)
+            {
+                // This format didn't match, try next
             }
         }
 
