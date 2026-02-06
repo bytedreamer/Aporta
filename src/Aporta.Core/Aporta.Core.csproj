@@ -4,6 +4,9 @@
         <AssemblyName>Aporta.Core</AssemblyName>
         <RootNamespace>Aporta.Core</RootNamespace>
         <LangVersion>default</LangVersion>
+        <!-- Development: use local Z9.Protobuf from sibling z9main repo -->
+        <Z9ProtobufPath>$(MSBuildThisFileDirectory)../../../z9main/z9.net/Z9/Z9.Protobuf/Z9.Protobuf.csproj</Z9ProtobufPath>
+        <UseLocalZ9Protobuf Condition="Exists('$(Z9ProtobufPath)')">true</UseLocalZ9Protobuf>
     </PropertyGroup>
 
     <ItemGroup>
@@ -11,6 +14,15 @@
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.1.0" />
       <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    </ItemGroup>
+
+    <!-- Use local Z9.Protobuf library for development with z9main -->
+    <ItemGroup Condition="'$(UseLocalZ9Protobuf)' == 'true'">
+      <ProjectReference Include="$(Z9ProtobufPath)" />
+    </ItemGroup>
+
+    <!-- Use NuGet package for standalone builds -->
+    <ItemGroup Condition="'$(UseLocalZ9Protobuf)' != 'true'">
       <PackageReference Include="Z9.Protobuf.Community" Version="1.0.3" />
     </ItemGroup>
 

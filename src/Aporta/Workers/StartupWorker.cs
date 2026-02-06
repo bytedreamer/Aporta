@@ -289,9 +289,28 @@ public class StartupWorker : BackgroundService
             return;
         }
 
-        var cardNumber = e.Handler?.MatchingCardData ?? "(unknown)";
-        _logger.LogInformation("Card read on reader {Name}: {CardNumber}",
-            config.Name, cardNumber);
+        var rawBits = e.Handler?.MatchingCardData;
+        _logger.LogInformation("Card read on reader {Name}: rawBits={RawBits}",
+            config.Name, rawBits ?? "(unknown)");
+
+        // Try to decode the raw bits using known card formats
+        System.Numerics.BigInteger? credNum = null;
+        int? facilityCode = null;
+        if (!string.IsNullOrEmpty(rawBits))
+        {
+            var decoded = _z9OpenCommunityProtocolService.DecodeCardRead(rawBits);
+            if (decoded.HasValue)
+            {
+                credNum = decoded.Value.credNum;
+                facilityCode = decoded.Value.facilityCode;
+                _logger.LogInformation("Decoded card read: credNum={CredNum}, fc={FacilityCode}, format={Format}",
+                    credNum, facilityCode, decoded.Value.formatName);
+            }
+            else
+            {
+                _logger.LogDebug("Unable to decode card read with any known format");
+            }
+        }
 
         // For now, send all card reads as access denied with unknown credential
         // In a more complete implementation, this would check if the credential is known
@@ -299,7 +318,9 @@ public class StartupWorker : BackgroundService
         _z9OpenCommunityProtocolService.SendAccessEvent(
             config,
             isGranted: false,
-            cardNumber: cardNumber,
-            subCode: Z9.Spcore.Proto.EvtSubCode.AccessDeniedUnknownCredNum);
+            credNum: credNum,
+            facilityCode: facilityCode,
+            rawBits: rawBits,
+            subCode: EvtSubCode.AccessDeniedUnknownCredNum);
     }
 }
