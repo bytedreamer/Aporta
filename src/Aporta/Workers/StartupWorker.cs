@@ -531,11 +531,14 @@ public class StartupWorker : BackgroundService
         _logger.LogInformation("Activating door strike for door unid={DoorUnid} (endpoint={EndpointId})",
             doorUnid, strikeDriverEndpointId);
 
+        var strikeTimeMs = config.StrikeTimeMs ?? 3000;
+
         await controlPoint.SetState(true);
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Task.Delay(TimeSpan.FromMilliseconds(strikeTimeMs));
         await controlPoint.SetState(false);
 
-        _logger.LogInformation("Door strike deactivated for door unid={DoorUnid}", doorUnid);
+        _logger.LogInformation("Door strike deactivated for door unid={DoorUnid} (strikeTime={StrikeTimeMs}ms)",
+            doorUnid, strikeTimeMs);
     }
 
     private void OnStateChanged(object sender, StateChangedEventArgs e)

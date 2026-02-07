@@ -58,8 +58,9 @@ public class Z9OpenCommunityProtocolService : IDisposable
     // Door info received from Z9 (unid -> name mapping)
     private readonly Dictionary<int, string> _doorInfo = new();
 
-    // Door activateStrikeOnRex config (unid -> bool)
+    // Door config values (unid -> value)
     private readonly Dictionary<int, bool> _doorActivateStrikeOnRex = new();
+    private readonly Dictionary<int, int?> _doorStrikeTimeMs = new();
 
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
@@ -77,6 +78,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public int? DoorContactInputNumber { get; set; }
         public int? RexInputNumber { get; set; }
         public bool ActivateStrikeOnRex { get; set; }
+        public int? StrikeTimeMs { get; set; }
     }
     private Thread _thread;
     private volatile bool _stopping;
@@ -597,12 +599,19 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 }
             }
 
-            // Check for door config (activateStrikeOnRex)
+            // Check for door config values
             lock (_doorActivateStrikeOnRex)
             {
                 if (_doorActivateStrikeOnRex.TryGetValue(osdpConfig.DoorUnid.Value, out var activateStrike))
                 {
                     osdpConfig.ActivateStrikeOnRex = activateStrike;
+                }
+            }
+            lock (_doorStrikeTimeMs)
+            {
+                if (_doorStrikeTimeMs.TryGetValue(osdpConfig.DoorUnid.Value, out var strikeTimeMs))
+                {
+                    osdpConfig.StrikeTimeMs = strikeTimeMs;
                 }
             }
         }
@@ -739,13 +748,21 @@ public class Z9OpenCommunityProtocolService : IDisposable
             _doorInfo[dev.Unid] = doorName;
         }
 
-        // Extract activateStrikeOnRex from door config
+        // Extract door config values
         if (dev.ExtDoor?.DoorConfig != null)
         {
-            var activateStrikeOnRex = dev.ExtDoor.DoorConfig.ActivateStrikeOnRex;
+            var doorConfig = dev.ExtDoor.DoorConfig;
+            var activateStrikeOnRex = doorConfig.ActivateStrikeOnRex;
+            int? strikeTimeMs = doorConfig.StrikeTimeCase == DoorConfig.StrikeTimeOneofCase.StrikeTime
+                ? doorConfig.StrikeTime : null;
+
             lock (_doorActivateStrikeOnRex)
             {
                 _doorActivateStrikeOnRex[dev.Unid] = activateStrikeOnRex;
+            }
+            lock (_doorStrikeTimeMs)
+            {
+                _doorStrikeTimeMs[dev.Unid] = strikeTimeMs;
             }
 
             // Apply to existing reader config if already loaded
@@ -753,11 +770,14 @@ public class Z9OpenCommunityProtocolService : IDisposable
             {
                 var config = _osdpReaderConfigs.Find(c => c.DoorUnid == dev.Unid);
                 if (config != null)
+                {
                     config.ActivateStrikeOnRex = activateStrikeOnRex;
+                    config.StrikeTimeMs = strikeTimeMs;
+                }
             }
 
-            _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}, activateStrikeOnRex={ActivateStrikeOnRex}",
-                dev.Unid, doorName, activateStrikeOnRex);
+            _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}, activateStrikeOnRex={ActivateStrikeOnRex}, strikeTimeMs={StrikeTimeMs}",
+                dev.Unid, doorName, activateStrikeOnRex, strikeTimeMs);
         }
         else
         {
