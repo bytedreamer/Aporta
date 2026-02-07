@@ -35,6 +35,8 @@ public class StartupWorker : BackgroundService
     private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
     private readonly HashSet<string> _configuredOsdpBuses = new();
+    private readonly Dictionary<int, bool> _doorStrikeActive = new();
+    private readonly Dictionary<int, bool> _doorForced = new();
 
     public StartupWorker(IDataAccess dataAccess,
         ExtensionService extensionService,
@@ -588,33 +590,51 @@ public class StartupWorker : BackgroundService
             return;
         }
 
-        // Check strike and contact endpoints for door state events
-        EvtCode? evtCode = null;
-
+        // Check strike endpoint — track state for forced-open detection
         var strikeDoor = doors.FirstOrDefault(d => d.DoorStrikeEndpointId == endpoint.Id);
         if (strikeDoor != null)
         {
-            evtCode = state ? EvtCode.DoorUnlocked : EvtCode.DoorLocked;
+            _doorStrikeActive[strikeDoor.Id] = state;
+            var evtCode = state ? EvtCode.DoorUnlocked : EvtCode.DoorLocked;
+            var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
+            if (config2 != null)
+                _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, evtCode);
+            return;
         }
 
+        // Check contact endpoint — detect forced open
         var contactDoor = doors.FirstOrDefault(d => d.DoorContactEndpointId == endpoint.Id);
         if (contactDoor != null)
         {
-            evtCode = state ? EvtCode.DoorClosed : EvtCode.DoorOpened;
-        }
+            var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
+            if (config2 == null)
+                return;
 
-        if (evtCode == null)
+            if (!state) // Door opened
+            {
+                _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorOpened);
+
+                _doorStrikeActive.TryGetValue(contactDoor.Id, out var strikeActive);
+                if (!strikeActive)
+                {
+                    _logger.LogWarning("Door forced open: '{DoorName}'", contactDoor.Name);
+                    _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorForced);
+                    _doorForced[contactDoor.Id] = true;
+                }
+            }
+            else // Door closed
+            {
+                _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorClosed);
+
+                if (_doorForced.TryGetValue(contactDoor.Id, out var wasForced) && wasForced)
+                {
+                    _logger.LogInformation("Door forced cleared: '{DoorName}'", contactDoor.Name);
+                    _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorNotForced);
+                    _doorForced[contactDoor.Id] = false;
+                }
+            }
             return;
-
-        var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
-        if (config2 == null)
-        {
-            _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping door state event",
-                driverEndpointId);
-            return;
         }
-
-        _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, evtCode.Value);
     }
 
     private void OnAccessDecisionMade(object sender, AccessDecisionEventArgs e)
