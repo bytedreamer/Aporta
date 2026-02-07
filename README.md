@@ -96,22 +96,44 @@ _appsettings.Production.json_ - Location for Aporta settings
 }
 ```
 
-## Z9 Open Community Integration Roadmap
+## Z9/Open Community Profile Integration
 
-Aporta integrates with the Z9 Open Community protocol for centralized management. Current status and upcoming work:
+This fork adds support for the [Z9/Open Community Profile](https://z9security.com), allowing Aporta to operate as a managed community controller under a host. Aporta connects outbound to the host over TCP using protobuf messaging, receives its full configuration (credentials, privileges, schedules, devices), and reports events back.
 
-- Connection & identification with host
-- Configuration download (credentials, privileges, schedules, devices)
-- Device mapping (doors, OSDP readers over IP)
-- OSDP reader online/offline reporting
-- Access control decisions (grant, deny, schedule enforcement)
-- Access event reporting to host
-- Door strike wiring and actuation
-- Door state event reporting (unlocked/locked/opened/closed)
-- Device actions (door momentary unlock)
-- **TODO**: Device actions (door mode change)
-- **TODO**: Door forced open alarm
-- **TODO**: Door held open alarm
+### Connection & Protocol
+- Outbound TCP connection from panel to host (panel-initiates model)
+- Protobuf-based Z9/Open Community protocol with identification handshake
+- Automatic configuration download on connect (DbChange messages)
+
+### Device Management
+- OSDP credential readers over TCP/IP, configured from Z9/Open Community Profile Dev messages
+- Door model with strike actuator, door contact sensor, and REX sensor — all wired automatically from the device hierarchy
+- Credential reader online/offline status reporting
+
+### Credential & Data Format Support
+- Credential mapping from Z9/Open Community Profile Cred objects (card number, facility code, enabled/disabled, effective/expiry dates)
+- BinaryFormatter-based encoding and decoding of card data using Z9/Open Community Profile DataFormat definitions
+- Credential templates, data layouts, and data formats persisted to local SQLite database
+
+### Access Control Decisions
+- Privilege-based access control using DoorAccessPriv and CredPrivBinding
+- Door-specific privilege checking (precision access and privilege group elements)
+- Schedule enforcement with SchedRestriction (time-of-day, day-of-week)
+- Holiday calendar support in schedule evaluation
+- Credential status checks: disabled, not yet effective, expired
+- Access granted and denied events reported to host with appropriate EvtSubCode (NO_PRIV, INACTIVE, NOT_EFFECTIVE, EXPIRED, OUTSIDE_SCHED, UNKNOWN_CRED_NUM)
+
+### Door Control
+- Door strike actuation on access grant with configurable strike time from DoorConfig
+- Extended strike time support via credential DoorAccessModifiers (extDoorTime flag)
+- Request to Exit (REX) with configurable activateStrikeOnRex
+- Door momentary unlock via DevActionReq from host
+
+### Door Alarm Monitoring
+- Door state reporting: unlocked, locked, opened, closed
+- Door forced open detection (door opens without strike active) with DoorForced/DoorNotForced events
+- Door held open detection (door stays open past configured heldTime) with DoorHeld/DoorNotHeld events
+- Extended held time support via credential extDoorTime flag
 
 ## Aporta Housekeeping
 
