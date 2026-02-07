@@ -37,5 +37,7 @@ public enum EventReason
     [Description("Outside Schedule")]
     OutsideSchedule,
     [Description("Door Locked")]
-    DoorLocked
+    DoorLocked,
+    [Description("No Credential Template")]
+    NoCredentialTemplate
 }

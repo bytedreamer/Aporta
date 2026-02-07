@@ -112,7 +112,7 @@ This fork adds support for the [Z9/Open Community Profile](https://z9security.co
 
 ### Credential & Data Format Support
 - Credential mapping from Z9/Open Community Profile Cred objects (card number, facility code, enabled/disabled, effective/expiry dates)
-- BinaryFormatter-based encoding and decoding of card data using Z9/Open Community Profile DataFormat definitions
+- Credentials stored by card number; card reads decoded using Z9/Open Community Profile DataFormat definitions to extract and match by card number
 - Credential templates, data layouts, and data formats persisted to local SQLite database
 
 ### Access Control Decisions

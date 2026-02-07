@@ -868,6 +868,7 @@ public class StartupWorker : BackgroundService
             EventReason.CredentialExpired => EvtSubCode.AccessDeniedExpired,
             EventReason.OutsideSchedule => EvtSubCode.AccessDeniedOutsideSched,
             EventReason.DoorLocked => EvtSubCode.AccessDeniedNoPriv,
+            EventReason.NoCredentialTemplate => EvtSubCode.AccessDeniedInactive,
             _ => EvtSubCode.AccessDeniedInactive  // Default value (0); unused for granted events
         };
 

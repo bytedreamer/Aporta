@@ -40,6 +40,7 @@ public class AccessService
     private readonly CredentialRepository _credentialRepository;
     private readonly EventRepository _eventRepository;
     private readonly Z9CredRepository _z9CredRepository;
+    private readonly CredTemplateRepository _credTemplateRepository;
     private readonly PrivRepository _privRepository;
     private readonly SchedRepository _schedRepository;
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
@@ -66,6 +67,7 @@ public class AccessService
         _endpointRepository = new EndpointRepository(dataAccess);
         _eventRepository = new EventRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
+        _credTemplateRepository = new CredTemplateRepository(dataAccess);
         _privRepository = new PrivRepository(dataAccess);
         _schedRepository = new SchedRepository(dataAccess);
         _extensionService = extensionService;
@@ -275,10 +277,43 @@ public class AccessService
             return (false, false);
         }
 
-        // Check Z9 Cred status (enabled, effective date)
+        // Check Z9 Cred status (enabled, effective date, credTemplate)
         var z9Cred = await _z9CredRepository.Get(assignedCredential.Id);
         if (z9Cred != null)
         {
+            // Check credential template requirement
+            if (z9Cred.CredTemplateUnidCase != Cred.CredTemplateUnidOneofCase.CredTemplateUnid
+                || await _credTemplateRepository.Get(z9Cred.CredTemplateUnid) == null)
+            {
+                _logger.LogInformation("Door '{Name}' denied access - no credential template", matchingDoor.Name);
+
+                eventId = await _eventRepository.Insert(new Event
+                {
+                    EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
+                    Data = JsonSerializer.Serialize(new EventData
+                    {
+                        Door = matchingDoor,
+                        Endpoint = accessPoint,
+                        Person = assignedCredential.Person,
+                        EventReason = EventReason.NoCredentialTemplate,
+                        CardNumber = matchingCardData
+                    })
+                });
+                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+                await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
+
+                AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                {
+                    EndpointId = accessPoint.DriverEndpointId,
+                    IsGranted = false,
+                    CardNumber = matchingCardData,
+                    PersonName = assignedCredential.Person.FirstName,
+                    Reason = EventReason.NoCredentialTemplate
+                });
+
+                return (false, false);
+            }
+
             // Check if credential is disabled
             if (z9Cred.EnabledCase == Cred.EnabledOneofCase.Enabled && !z9Cred.Enabled)
             {
