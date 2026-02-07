@@ -51,8 +51,15 @@ public class Z9OpenCommunityProtocolService : IDisposable
     // Key: logicalParentUnid (door unid), Value: input number
     private readonly Dictionary<int, int> _pendingDoorContactSensors = new();
 
+    // Pending REX sensors (received before their door's reader)
+    // Key: logicalParentUnid (door unid), Value: input number
+    private readonly Dictionary<int, int> _pendingRexSensors = new();
+
     // Door info received from Z9 (unid -> name mapping)
     private readonly Dictionary<int, string> _doorInfo = new();
+
+    // Door activateStrikeOnRex config (unid -> bool)
+    private readonly Dictionary<int, bool> _doorActivateStrikeOnRex = new();
 
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
@@ -68,6 +75,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public int? DoorUnid { get; set; }
         public int? StrikeOutputNumber { get; set; }
         public int? DoorContactInputNumber { get; set; }
+        public int? RexInputNumber { get; set; }
+        public bool ActivateStrikeOnRex { get; set; }
     }
     private Thread _thread;
     private volatile bool _stopping;
@@ -575,6 +584,27 @@ public class Z9OpenCommunityProtocolService : IDisposable
                         inputNumber, osdpConfig.Name);
                 }
             }
+
+            // Check for pending REX sensor for this door
+            lock (_pendingRexSensors)
+            {
+                if (_pendingRexSensors.TryGetValue(osdpConfig.DoorUnid.Value, out var rexInputNumber))
+                {
+                    osdpConfig.RexInputNumber = rexInputNumber;
+                    _pendingRexSensors.Remove(osdpConfig.DoorUnid.Value);
+                    _logger.LogInformation("Applied pending REX sensor: input {InputNumber} on reader {Name}",
+                        rexInputNumber, osdpConfig.Name);
+                }
+            }
+
+            // Check for door config (activateStrikeOnRex)
+            lock (_doorActivateStrikeOnRex)
+            {
+                if (_doorActivateStrikeOnRex.TryGetValue(osdpConfig.DoorUnid.Value, out var activateStrike))
+                {
+                    osdpConfig.ActivateStrikeOnRex = activateStrike;
+                }
+            }
         }
 
         lock (_osdpReaderConfigs)
@@ -643,13 +673,28 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
     private void ProcessSensorDev(Dev dev)
     {
-        if (dev.DevUse != DevUse.SensorDoorContact)
-            return;
+        if (dev.DevUse == DevUse.SensorDoorContact)
+        {
+            ProcessSensorWithPending(dev, "door contact",
+                (config, inputNum) => config.DoorContactInputNumber = inputNum,
+                _pendingDoorContactSensors);
+        }
+        else if (dev.DevUse == DevUse.SensorRex)
+        {
+            ProcessSensorWithPending(dev, "REX",
+                (config, inputNum) => config.RexInputNumber = inputNum,
+                _pendingRexSensors);
+        }
+    }
 
+    private void ProcessSensorWithPending(Dev dev, string sensorLabel,
+        Action<OsdpReaderConfig, int> assignInputNumber,
+        Dictionary<int, int> pendingDictionary)
+    {
         if (dev.LogicalParentUnidCase != Dev.LogicalParentUnidOneofCase.LogicalParentUnid)
         {
-            _logger.LogWarning("Door contact sensor {Name} (unid={Unid}) has no logicalParentUnid (door), skipping",
-                dev.Name, dev.Unid);
+            _logger.LogWarning("{SensorLabel} sensor {Name} (unid={Unid}) has no logicalParentUnid (door), skipping",
+                sensorLabel, dev.Name, dev.Unid);
             return;
         }
 
@@ -660,8 +705,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
             int.TryParse(dev.Address, out inputNumber);
         }
 
-        _logger.LogInformation("Received door contact sensor: input {InputNumber}, door unid={DoorUnid}",
-            inputNumber, doorUnid);
+        _logger.LogInformation("Received {SensorLabel} sensor: input {InputNumber}, door unid={DoorUnid}",
+            sensorLabel, inputNumber, doorUnid);
 
         OsdpReaderConfig matchingConfig = null;
         lock (_osdpReaderConfigs)
@@ -671,17 +716,18 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
         if (matchingConfig != null)
         {
-            matchingConfig.DoorContactInputNumber = inputNumber;
-            _logger.LogInformation("Assigned door contact input {InputNumber} to reader {Name} (door unid={DoorUnid})",
-                inputNumber, matchingConfig.Name, doorUnid);
+            assignInputNumber(matchingConfig, inputNumber);
+            _logger.LogInformation("Assigned {SensorLabel} input {InputNumber} to reader {Name} (door unid={DoorUnid})",
+                sensorLabel, inputNumber, matchingConfig.Name, doorUnid);
         }
         else
         {
-            lock (_pendingDoorContactSensors)
+            lock (pendingDictionary)
             {
-                _pendingDoorContactSensors[doorUnid] = inputNumber;
+                pendingDictionary[doorUnid] = inputNumber;
             }
-            _logger.LogInformation("Reader for door unid={DoorUnid} not yet received, storing pending door contact sensor", doorUnid);
+            _logger.LogInformation("Reader for door unid={DoorUnid} not yet received, storing pending {SensorLabel} sensor",
+                doorUnid, sensorLabel);
         }
     }
 
@@ -692,7 +738,31 @@ public class Z9OpenCommunityProtocolService : IDisposable
         {
             _doorInfo[dev.Unid] = doorName;
         }
-        _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}", dev.Unid, doorName);
+
+        // Extract activateStrikeOnRex from door config
+        if (dev.ExtDoor?.DoorConfig != null)
+        {
+            var activateStrikeOnRex = dev.ExtDoor.DoorConfig.ActivateStrikeOnRex;
+            lock (_doorActivateStrikeOnRex)
+            {
+                _doorActivateStrikeOnRex[dev.Unid] = activateStrikeOnRex;
+            }
+
+            // Apply to existing reader config if already loaded
+            lock (_osdpReaderConfigs)
+            {
+                var config = _osdpReaderConfigs.Find(c => c.DoorUnid == dev.Unid);
+                if (config != null)
+                    config.ActivateStrikeOnRex = activateStrikeOnRex;
+            }
+
+            _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}, activateStrikeOnRex={ActivateStrikeOnRex}",
+                dev.Unid, doorName, activateStrikeOnRex);
+        }
+        else
+        {
+            _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}", dev.Unid, doorName);
+        }
     }
 
     /// <summary>

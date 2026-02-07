@@ -435,6 +435,35 @@ public class StartupWorker : BackgroundService
                 _logger.LogWarning("Door contact input endpoint {ContactEndpointId} not found after retries", contactDriverEndpointId);
             }
         }
+
+        // If the reader has a REX input configured, wire it up
+        if (config?.RexInputNumber != null)
+        {
+            var rexDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:I{config.RexInputNumber}";
+            _logger.LogInformation("Looking for REX input endpoint: {RexEndpointId}", rexDriverEndpointId);
+
+            Aporta.Shared.Models.Endpoint rexEndpoint = null;
+            for (int retry = 0; retry < 20; retry++)
+            {
+                var allEndpoints = await _endpointRepository.GetAll();
+                rexEndpoint = allEndpoints.FirstOrDefault(ep => ep.DriverEndpointId == rexDriverEndpointId);
+                if (rexEndpoint != null)
+                    break;
+                await Task.Delay(500);
+            }
+
+            if (rexEndpoint != null)
+            {
+                door.RequestToExitEndpointId = rexEndpoint.Id;
+                await _doorRepository.Update(door);
+                _logger.LogInformation("Assigned REX endpoint {RexEndpointId} to door '{DoorName}'",
+                    rexEndpoint.Id, door.Name);
+            }
+            else
+            {
+                _logger.LogWarning("REX input endpoint {RexEndpointId} not found after retries", rexDriverEndpointId);
+            }
+        }
     }
 
     private void OnDevActionRequested(object sender, DevActionReq req)
@@ -536,8 +565,27 @@ public class StartupWorker : BackgroundService
         if (endpoint == null)
             return;
 
-        // Find which door has this endpoint as strike or contact
         var doors = await _doorRepository.GetAll();
+
+        // Check if this is a REX input
+        var rexDoor = doors.FirstOrDefault(d => d.RequestToExitEndpointId == endpoint.Id);
+        if (rexDoor != null && state)
+        {
+            var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
+            if (config != null)
+            {
+                _logger.LogInformation("REX activated for door '{DoorName}'", rexDoor.Name);
+                _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.ExitRequested);
+
+                if (config.ActivateStrikeOnRex && config.DoorUnid.HasValue)
+                {
+                    await HandleDoorMomentaryUnlock(config.DoorUnid.Value);
+                }
+            }
+            return;
+        }
+
+        // Check strike and contact endpoints for door state events
         EvtCode? evtCode = null;
 
         var strikeDoor = doors.FirstOrDefault(d => d.DoorStrikeEndpointId == endpoint.Id);
@@ -555,15 +603,15 @@ public class StartupWorker : BackgroundService
         if (evtCode == null)
             return;
 
-        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
-        if (config == null)
+        var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
+        if (config2 == null)
         {
             _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping door state event",
                 driverEndpointId);
             return;
         }
 
-        _z9OpenCommunityProtocolService.SendDoorStateEvent(config, evtCode.Value);
+        _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, evtCode.Value);
     }
 
     private void OnAccessDecisionMade(object sender, AccessDecisionEventArgs e)

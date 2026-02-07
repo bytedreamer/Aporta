@@ -108,7 +108,8 @@ Aporta integrates with the Z9 Open Community protocol for centralized management
 - Access event reporting to host
 - Door strike wiring and actuation
 - Door state event reporting (unlocked/locked/opened/closed)
-- **TODO**: Device actions (door momentary unlock, door mode change)
+- Device actions (door momentary unlock)
+- **TODO**: Device actions (door mode change)
 - **TODO**: Door forced open alarm
 - **TODO**: Door held open alarm
 
