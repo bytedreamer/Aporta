@@ -650,11 +650,6 @@ public class OSDPDriver : IHardwareDriver
 
         var bus = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName);
 
-        if (!_connections[bus.PortName]?.IsOpen ?? true)
-        {
-            throw new Exception($"{bus.PortName} is not open");
-        }
-
         bus.Devices.Add(deviceAction.Device);
 
         AddDeviceToPanel(deviceAction.Device);

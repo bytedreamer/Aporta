@@ -44,6 +44,7 @@ public class AccessService
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private Func<string, int?> _getDoorUnidForEndpoint;
+    private Func<string, (int?, int?)> _getStrikeTimesForEndpoint;
 
     /// <summary>
     /// Event raised when an access decision is made (granted or denied).
@@ -76,6 +77,14 @@ public class AccessService
     public void SetDoorUnidLookup(Func<string, int?> getDoorUnidForEndpoint)
     {
         _getDoorUnidForEndpoint = getDoorUnidForEndpoint;
+    }
+
+    /// <summary>
+    /// Sets a function to look up the strike times (strikeTimeMs, extendedStrikeTimeMs) for an endpoint.
+    /// </summary>
+    public void SetStrikeTimeLookup(Func<string, (int?, int?)> getStrikeTimesForEndpoint)
+    {
+        _getStrikeTimesForEndpoint = getStrikeTimesForEndpoint;
     }
 
     public void Startup()
@@ -127,12 +136,14 @@ public class AccessService
                 return;
             }
 
-            if (await IsAccessGranted(eventArgs.Handler.MatchingCardData, matchingDoor, accessPoint))
+            var (granted, useExtendedTime) = await IsAccessGranted(eventArgs.Handler.MatchingCardData, matchingDoor, accessPoint);
+            if (granted)
             {
                 // Only open door if strike is assigned - community controllers may not have one
                 if (matchingDoorStrike != null)
                 {
-                    await OpenDoor(eventArgs.Access, matchingDoorStrike, 3);
+                    var strikeTimeMs = GetStrikeTimeMs(accessPoint.DriverEndpointId, useExtendedTime);
+                    await OpenDoor(eventArgs.Access, matchingDoorStrike, strikeTimeMs);
                 }
                 else
                 {
@@ -151,7 +162,7 @@ public class AccessService
         }
     }
 
-    private async Task<bool> IsAccessGranted(string matchingCardData, Aporta.Shared.Models.Door matchingDoor, Endpoint accessPoint)
+    private async Task<(bool granted, bool useExtendedTime)> IsAccessGranted(string matchingCardData, Aporta.Shared.Models.Door matchingDoor, Endpoint accessPoint)
     {
         // First try matching by raw bit string
         var assignedCredential = await _credentialRepository.AssignedCredential(matchingCardData);
@@ -212,7 +223,7 @@ public class AccessService
                 Reason = EventReason.CredentialNotEnrolled
             });
 
-            return false;
+            return (false, false);
         }
 
         // Check Z9 Cred status (enabled, effective date)
@@ -248,7 +259,7 @@ public class AccessService
                     Reason = EventReason.CredentialDisabled
                 });
 
-                return false;
+                return (false, false);
             }
 
             // Check if credential is not yet effective
@@ -284,7 +295,7 @@ public class AccessService
                         Reason = EventReason.CredentialNotYetEffective
                     });
 
-                    return false;
+                    return (false, false);
                 }
             }
 
@@ -321,7 +332,7 @@ public class AccessService
                         Reason = EventReason.CredentialExpired
                     });
 
-                    return false;
+                    return (false, false);
                 }
             }
         }
@@ -359,10 +370,15 @@ public class AccessService
                 Reason = reason
             });
 
-            return false;
+            return (false, false);
         }
 
-        _logger.LogInformation("Door '{Name}' granted access", matchingDoor.Name);
+        // Check if credential has extended door time modifier
+        var useExtendedTime = z9Cred?.DoorAccessModifiers?.ExtDoorTimeCase ==
+            DoorAccessModifiers.ExtDoorTimeOneofCase.ExtDoorTime && z9Cred.DoorAccessModifiers.ExtDoorTime;
+
+        _logger.LogInformation("Door '{Name}' granted access{ExtTime}", matchingDoor.Name,
+            useExtendedTime ? " (extended time)" : "");
 
         eventId = await _eventRepository.Insert(new Event
         {
@@ -390,10 +406,18 @@ public class AccessService
             Reason = EventReason.None
         });
 
-        return true;
+        return (true, useExtendedTime);
     }
 
-    private async Task OpenDoor(IAccess access, Endpoint matchingDoorStrike, int strikeTimer)
+    private int GetStrikeTimeMs(string endpointId, bool useExtendedTime)
+    {
+        var (strikeTimeMs, extendedStrikeTimeMs) = _getStrikeTimesForEndpoint?.Invoke(endpointId) ?? (null, null);
+        if (useExtendedTime && extendedStrikeTimeMs.HasValue)
+            return extendedStrikeTimeMs.Value;
+        return strikeTimeMs ?? 3000;
+    }
+
+    private async Task OpenDoor(IAccess access, Endpoint matchingDoorStrike, int strikeTimeMs)
     {
         var controlPoint =
             _extensionService.GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId); 
@@ -401,7 +425,7 @@ public class AccessService
         async Task ControlStrike()
         {
             await controlPoint.SetState(true);
-            await Task.Delay(TimeSpan.FromSeconds(strikeTimer));
+            await Task.Delay(TimeSpan.FromMilliseconds(strikeTimeMs));
             await controlPoint.SetState(false);
         } 
 

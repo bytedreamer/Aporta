@@ -61,6 +61,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     // Door config values (unid -> value)
     private readonly Dictionary<int, bool> _doorActivateStrikeOnRex = new();
     private readonly Dictionary<int, int?> _doorStrikeTimeMs = new();
+    private readonly Dictionary<int, int?> _doorExtendedStrikeTimeMs = new();
 
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
@@ -79,6 +80,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public int? RexInputNumber { get; set; }
         public bool ActivateStrikeOnRex { get; set; }
         public int? StrikeTimeMs { get; set; }
+        public int? ExtendedStrikeTimeMs { get; set; }
     }
     private Thread _thread;
     private volatile bool _stopping;
@@ -614,6 +616,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
                     osdpConfig.StrikeTimeMs = strikeTimeMs;
                 }
             }
+            lock (_doorExtendedStrikeTimeMs)
+            {
+                if (_doorExtendedStrikeTimeMs.TryGetValue(osdpConfig.DoorUnid.Value, out var extStrikeTimeMs))
+                {
+                    osdpConfig.ExtendedStrikeTimeMs = extStrikeTimeMs;
+                }
+            }
         }
 
         lock (_osdpReaderConfigs)
@@ -755,6 +764,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
             var activateStrikeOnRex = doorConfig.ActivateStrikeOnRex;
             int? strikeTimeMs = doorConfig.StrikeTimeCase == DoorConfig.StrikeTimeOneofCase.StrikeTime
                 ? doorConfig.StrikeTime : null;
+            int? extendedStrikeTimeMs = doorConfig.ExtendedStrikeTimeCase == DoorConfig.ExtendedStrikeTimeOneofCase.ExtendedStrikeTime
+                ? doorConfig.ExtendedStrikeTime : null;
 
             lock (_doorActivateStrikeOnRex)
             {
@@ -763,6 +774,10 @@ public class Z9OpenCommunityProtocolService : IDisposable
             lock (_doorStrikeTimeMs)
             {
                 _doorStrikeTimeMs[dev.Unid] = strikeTimeMs;
+            }
+            lock (_doorExtendedStrikeTimeMs)
+            {
+                _doorExtendedStrikeTimeMs[dev.Unid] = extendedStrikeTimeMs;
             }
 
             // Apply to existing reader config if already loaded
@@ -773,11 +788,12 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 {
                     config.ActivateStrikeOnRex = activateStrikeOnRex;
                     config.StrikeTimeMs = strikeTimeMs;
+                    config.ExtendedStrikeTimeMs = extendedStrikeTimeMs;
                 }
             }
 
-            _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}, activateStrikeOnRex={ActivateStrikeOnRex}, strikeTimeMs={StrikeTimeMs}",
-                dev.Unid, doorName, activateStrikeOnRex, strikeTimeMs);
+            _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}, activateStrikeOnRex={ActivateStrikeOnRex}, strikeTimeMs={StrikeTimeMs}, extendedStrikeTimeMs={ExtendedStrikeTimeMs}",
+                dev.Unid, doorName, activateStrikeOnRex, strikeTimeMs, extendedStrikeTimeMs);
         }
         else
         {

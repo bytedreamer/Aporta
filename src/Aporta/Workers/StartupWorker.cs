@@ -93,6 +93,13 @@ public class StartupWorker : BackgroundService
                 _accessService.SetDoorUnidLookup(endpointId =>
                     _z9OpenCommunityProtocolService.GetConfigForEndpoint(endpointId)?.DoorUnid);
 
+                // Wire up strike time lookup for access grant strike duration
+                _accessService.SetStrikeTimeLookup(endpointId =>
+                {
+                    var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(endpointId);
+                    return (config?.StrikeTimeMs, config?.ExtendedStrikeTimeMs);
+                });
+
                 // Subscribe to OSDP configuration events before starting the service
                 _z9OpenCommunityProtocolService.OsdpConfigurationReceived += OnOsdpConfigurationReceived;
 
