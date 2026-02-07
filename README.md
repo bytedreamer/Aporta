@@ -128,6 +128,11 @@ This fork adds support for the [Z9/Open Community Profile](https://z9security.co
 - Extended strike time support via credential DoorAccessModifiers (extDoorTime flag)
 - Request to Exit (REX) with configurable activateStrikeOnRex
 - Door momentary unlock via DevActionReq from host
+- Door mode support: unlocked (strike permanently on, bypasses access control), locked (denies all access), card-only (normal access control)
+- Default door mode applied from DoorConfig on door creation
+- Runtime door mode change via DevActionReq (DoorModeChange) from host, including reset-to-default
+- Pin-based modes (card+pin, pin-only, card-or-pin) mapped to card-only until pin support is implemented
+- REX behavior respects current door mode (no unlock action in unlocked or locked modes)
 
 ### Door Alarm Monitoring
 - Door state reporting: unlocked, locked, opened, closed
