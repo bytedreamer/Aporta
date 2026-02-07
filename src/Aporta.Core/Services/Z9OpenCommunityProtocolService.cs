@@ -47,6 +47,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
     // Key: logicalParentUnid (door unid), Value: output number
     private readonly Dictionary<int, int> _pendingStrikeActuators = new();
 
+    // Pending door contact sensors (received before their door's reader)
+    // Key: logicalParentUnid (door unid), Value: input number
+    private readonly Dictionary<int, int> _pendingDoorContactSensors = new();
+
+    // Door info received from Z9 (unid -> name mapping)
+    private readonly Dictionary<int, string> _doorInfo = new();
+
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
     /// </summary>
@@ -60,6 +67,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public int BaudRate { get; set; } = 9600;
         public int? DoorUnid { get; set; }
         public int? StrikeOutputNumber { get; set; }
+        public int? DoorContactInputNumber { get; set; }
     }
     private Thread _thread;
     private volatile bool _stopping;
@@ -479,6 +487,18 @@ public class Z9OpenCommunityProtocolService : IDisposable
             return;
         }
 
+        if (dev.DevType == DevType.Sensor)
+        {
+            ProcessSensorDev(dev);
+            return;
+        }
+
+        if (dev.DevType == DevType.Door)
+        {
+            ProcessDoorDev(dev);
+            return;
+        }
+
         // Check if this is an OSDP credential reader
         if (dev.DevType != DevType.CredReader)
             return;
@@ -541,6 +561,18 @@ public class Z9OpenCommunityProtocolService : IDisposable
                     _pendingStrikeActuators.Remove(osdpConfig.DoorUnid.Value);
                     _logger.LogInformation("Applied pending door strike actuator: output {OutputNumber} on reader {Name}",
                         outputNumber, osdpConfig.Name);
+                }
+            }
+
+            // Check for pending door contact sensor for this door
+            lock (_pendingDoorContactSensors)
+            {
+                if (_pendingDoorContactSensors.TryGetValue(osdpConfig.DoorUnid.Value, out var inputNumber))
+                {
+                    osdpConfig.DoorContactInputNumber = inputNumber;
+                    _pendingDoorContactSensors.Remove(osdpConfig.DoorUnid.Value);
+                    _logger.LogInformation("Applied pending door contact sensor: input {InputNumber} on reader {Name}",
+                        inputNumber, osdpConfig.Name);
                 }
             }
         }
@@ -607,6 +639,60 @@ public class Z9OpenCommunityProtocolService : IDisposable
             }
             _logger.LogInformation("Reader for door unid={DoorUnid} not yet received, storing pending strike actuator", doorUnid);
         }
+    }
+
+    private void ProcessSensorDev(Dev dev)
+    {
+        if (dev.DevUse != DevUse.SensorDoorContact)
+            return;
+
+        if (dev.LogicalParentUnidCase != Dev.LogicalParentUnidOneofCase.LogicalParentUnid)
+        {
+            _logger.LogWarning("Door contact sensor {Name} (unid={Unid}) has no logicalParentUnid (door), skipping",
+                dev.Name, dev.Unid);
+            return;
+        }
+
+        var doorUnid = dev.LogicalParentUnid;
+        var inputNumber = 0;
+        if (!string.IsNullOrWhiteSpace(dev.Address))
+        {
+            int.TryParse(dev.Address, out inputNumber);
+        }
+
+        _logger.LogInformation("Received door contact sensor: input {InputNumber}, door unid={DoorUnid}",
+            inputNumber, doorUnid);
+
+        OsdpReaderConfig matchingConfig = null;
+        lock (_osdpReaderConfigs)
+        {
+            matchingConfig = _osdpReaderConfigs.Find(c => c.DoorUnid == doorUnid);
+        }
+
+        if (matchingConfig != null)
+        {
+            matchingConfig.DoorContactInputNumber = inputNumber;
+            _logger.LogInformation("Assigned door contact input {InputNumber} to reader {Name} (door unid={DoorUnid})",
+                inputNumber, matchingConfig.Name, doorUnid);
+        }
+        else
+        {
+            lock (_pendingDoorContactSensors)
+            {
+                _pendingDoorContactSensors[doorUnid] = inputNumber;
+            }
+            _logger.LogInformation("Reader for door unid={DoorUnid} not yet received, storing pending door contact sensor", doorUnid);
+        }
+    }
+
+    private void ProcessDoorDev(Dev dev)
+    {
+        var doorName = dev.Name ?? $"Door {dev.Unid}";
+        lock (_doorInfo)
+        {
+            _doorInfo[dev.Unid] = doorName;
+        }
+        _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}", dev.Unid, doorName);
     }
 
     /// <summary>
@@ -1084,6 +1170,70 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
         _logger.LogInformation("Sending {EvtCode} event for reader {Name} (unid={Unid}), credNum={CredNum}, fc={FacilityCode}, rawBits={RawBits}, subCode={SubCode}",
             evtCode, config.Name, config.Unid, credNum?.ToString() ?? "(none)", facilityCode?.ToString() ?? "(none)", rawBits ?? "(none)", subCode);
+
+        WriteMessage(message);
+    }
+
+    /// <summary>
+    /// Sends a door state event (unlocked/locked/opened/closed) to Z9.
+    /// </summary>
+    /// <param name="config">The OSDP reader configuration (to look up door info).</param>
+    /// <param name="evtCode">The event code (DoorUnlocked, DoorLocked, DoorOpened, DoorClosed).</param>
+    public void SendDoorStateEvent(OsdpReaderConfig config, EvtCode evtCode)
+    {
+        if (config == null)
+        {
+            _logger.LogWarning("Cannot send door state event: config is null");
+            return;
+        }
+
+        if (!IsConnected)
+        {
+            _logger.LogWarning("Cannot send door state event: not connected");
+            return;
+        }
+
+        if (!config.DoorUnid.HasValue)
+        {
+            _logger.LogWarning("Cannot send door state event: reader {Name} has no DoorUnid", config.Name);
+            return;
+        }
+
+        var doorUnid = config.DoorUnid.Value;
+        string doorName;
+        lock (_doorInfo)
+        {
+            if (!_doorInfo.TryGetValue(doorUnid, out doorName))
+            {
+                doorName = $"Door {doorUnid}";
+            }
+        }
+
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var evt = new Evt
+        {
+            EvtCode = evtCode,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            EvtDevRef = new EvtDevRef
+            {
+                Unid = doorUnid,
+                Name = doorName,
+                DevType = DevType.Door
+            }
+        };
+
+        var message = new SpCoreMessage
+        {
+            Type = SpCoreMessage.Types.Type.Evt
+        };
+        message.Evt.Add(evt);
+
+        _logger.LogInformation("Sending {EvtCode} event for door {DoorName} (unid={DoorUnid})",
+            evtCode, doorName, doorUnid);
 
         WriteMessage(message);
     }

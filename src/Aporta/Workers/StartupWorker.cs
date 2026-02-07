@@ -103,6 +103,9 @@ public class StartupWorker : BackgroundService
                 // Subscribe to device action requests from the host
                 _z9OpenCommunityProtocolService.DevActionRequested += OnDevActionRequested;
 
+                // Subscribe to state changes (door strike output, door contact input) for door state events
+                _extensionService.StateChanged += OnStateChanged;
+
                 _z9OpenCommunityProtocolService.Start(z9OpenCommunityHost, z9OpenCommunityPort, z9OpenCommunityId);
             }
             else
@@ -124,6 +127,7 @@ public class StartupWorker : BackgroundService
         {
             _logger.LogWarning("Application is shutting down");
             _accessService.AccessDecisionMade -= OnAccessDecisionMade;
+            _extensionService.StateChanged -= OnStateChanged;
             _z9OpenCommunityProtocolService.DevActionRequested -= OnDevActionRequested;
             _extensionService.OnlineStatusChanged -= OnOnlineStatusChanged;
             _z9OpenCommunityProtocolService.OsdpConfigurationReceived -= OnOsdpConfigurationReceived;
@@ -398,9 +402,39 @@ public class StartupWorker : BackgroundService
             }
         }
 
+        // Insert door now so access processing can proceed while we wire optional contact endpoint
         await _doorRepository.Insert(door);
         _logger.LogInformation("Created door '{DoorName}' for reader endpoint {EndpointId} (strike={StrikeId})",
             door.Name, readerEndpoint.Id, door.DoorStrikeEndpointId);
+
+        // If the reader has a door contact input configured, wire it up (may take time if endpoint hasn't appeared yet)
+        if (config?.DoorContactInputNumber != null)
+        {
+            var contactDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:I{config.DoorContactInputNumber}";
+            _logger.LogInformation("Looking for door contact input endpoint: {ContactEndpointId}", contactDriverEndpointId);
+
+            Aporta.Shared.Models.Endpoint contactEndpoint = null;
+            for (int retry = 0; retry < 20; retry++)
+            {
+                var allEndpoints = await _endpointRepository.GetAll();
+                contactEndpoint = allEndpoints.FirstOrDefault(ep => ep.DriverEndpointId == contactDriverEndpointId);
+                if (contactEndpoint != null)
+                    break;
+                await Task.Delay(500);
+            }
+
+            if (contactEndpoint != null)
+            {
+                door.DoorContactEndpointId = contactEndpoint.Id;
+                await _doorRepository.Update(door);
+                _logger.LogInformation("Assigned door contact endpoint {ContactEndpointId} to door '{DoorName}'",
+                    contactEndpoint.Id, door.Name);
+            }
+            else
+            {
+                _logger.LogWarning("Door contact input endpoint {ContactEndpointId} not found after retries", contactDriverEndpointId);
+            }
+        }
     }
 
     private void OnDevActionRequested(object sender, DevActionReq req)
@@ -473,6 +507,63 @@ public class StartupWorker : BackgroundService
         await controlPoint.SetState(false);
 
         _logger.LogInformation("Door strike deactivated for door unid={DoorUnid}", doorUnid);
+    }
+
+    private void OnStateChanged(object sender, StateChangedEventArgs e)
+    {
+        var driverEndpointId = e.Endpoint?.Id;
+        if (string.IsNullOrEmpty(driverEndpointId))
+            return;
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                await HandleStateChanged(driverEndpointId, e.State);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to handle state change for endpoint {EndpointId}", driverEndpointId);
+            }
+        });
+    }
+
+    private async Task HandleStateChanged(string driverEndpointId, bool state)
+    {
+        // Look up the Aporta endpoint by driver endpoint ID
+        var endpoints = await _endpointRepository.GetAll();
+        var endpoint = endpoints.FirstOrDefault(ep => ep.DriverEndpointId == driverEndpointId);
+        if (endpoint == null)
+            return;
+
+        // Find which door has this endpoint as strike or contact
+        var doors = await _doorRepository.GetAll();
+        EvtCode? evtCode = null;
+
+        var strikeDoor = doors.FirstOrDefault(d => d.DoorStrikeEndpointId == endpoint.Id);
+        if (strikeDoor != null)
+        {
+            evtCode = state ? EvtCode.DoorUnlocked : EvtCode.DoorLocked;
+        }
+
+        var contactDoor = doors.FirstOrDefault(d => d.DoorContactEndpointId == endpoint.Id);
+        if (contactDoor != null)
+        {
+            evtCode = state ? EvtCode.DoorClosed : EvtCode.DoorOpened;
+        }
+
+        if (evtCode == null)
+            return;
+
+        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
+        if (config == null)
+        {
+            _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping door state event",
+                driverEndpointId);
+            return;
+        }
+
+        _z9OpenCommunityProtocolService.SendDoorStateEvent(config, evtCode.Value);
     }
 
     private void OnAccessDecisionMade(object sender, AccessDecisionEventArgs e)
