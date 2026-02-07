@@ -106,9 +106,11 @@ Aporta integrates with the Z9 Open Community protocol for centralized management
 - OSDP reader online/offline reporting
 - Access control decisions (grant, deny, schedule enforcement)
 - Access event reporting to host
+- Door strike wiring and actuation
+- Door state event reporting (unlocked/locked/opened/closed)
 - **TODO**: Device actions (door momentary unlock, door mode change)
-- **TODO**: Door contact sensor monitoring and reporting
-- **TODO**: Additional device state reporting
+- **TODO**: Door forced open alarm
+- **TODO**: Door held open alarm
 
 ## Aporta Housekeeping
 
