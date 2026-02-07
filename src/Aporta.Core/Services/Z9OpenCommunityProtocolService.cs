@@ -253,7 +253,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
     private void HandleDbChange(DbChange dbChange)
     {
-        _logger.LogInformation("Processing DbChange (requestId={RequestId})", dbChange.RequestId);
+        _logger.LogDebug("Processing DbChange (requestId={RequestId})", dbChange.RequestId);
 
         // Process deletes first (order: most dependent -> least dependent)
         // Cred deletes
@@ -874,23 +874,14 @@ public class Z9OpenCommunityProtocolService : IDisposable
         }
 
         var credNum = SpCoreProtoUtil.ToBigInteger(cred.CardPin.CredNum);
-        var facilityCode = cred.CardPin.FacilityCodeCase == CardPin.FacilityCodeOneofCase.FacilityCode
-            ? (int?)cred.CardPin.FacilityCode : null;
 
-        // Find the data format to encode the credential number as bits
-        var bitString = EncodeCredentialAsBits(cred, credNum, facilityCode);
-        if (string.IsNullOrEmpty(bitString))
-        {
-            // Fallback: store as decimal string if no format available
-            bitString = credNum.ToString();
-            _logger.LogWarning("No data format found for credential {Unid}, storing as decimal: {Number}",
-                cred.Unid, bitString);
-        }
+        // Store credential number as decimal string — card reads will be decoded to match
+        var credNumString = credNum.ToString();
 
-        var personName = !string.IsNullOrWhiteSpace(cred.Name) ? cred.Name : bitString;
+        var personName = !string.IsNullOrWhiteSpace(cred.Name) ? cred.Name : credNumString;
 
         _logger.LogInformation("Processing credential Unid={Unid} Number={Number} Name={Name} PrivBindings={BindingCount}",
-            cred.Unid, bitString, personName, cred.PrivBindings.Count);
+            cred.Unid, credNumString, personName, cred.PrivBindings.Count);
 
         // Store the full Z9 Cred proto (for privilege checking)
         _z9CredRepository.Upsert(cred).GetAwaiter().GetResult();
@@ -907,7 +898,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
         var credential = new Credential
         {
-            Number = bitString,
+            Number = credNumString,
             Enabled = cred.Enabled
         };
         _credentialRepository.Upsert(credential, cred.Unid).GetAwaiter().GetResult();
@@ -917,126 +908,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
             _credentialRepository.RevokePerson(cred.Unid, cred.Unid).GetAwaiter().GetResult();
             _credentialRepository.AssignPerson(cred.Unid, cred.Unid, cred.Enabled)
                 .GetAwaiter().GetResult();
-        }
-    }
-
-    /// <summary>
-    /// Encodes a credential number as a bit string using the data format from the credential's template.
-    /// </summary>
-    private string EncodeCredentialAsBits(Cred cred, BigInteger credNum, int? facilityCode)
-    {
-        // Find the credential template
-        if (cred.CredTemplateUnid == 0)
-        {
-            _logger.LogDebug("Credential {Unid} has no CredTemplateUnid", cred.Unid);
-            return null;
-        }
-
-        var credTemplate = _credTemplateRepository.Get(cred.CredTemplateUnid).GetAwaiter().GetResult();
-        if (credTemplate == null)
-        {
-            _logger.LogDebug("CredTemplate {Unid} not found", cred.CredTemplateUnid);
-            return null;
-        }
-
-        // Get the data layout from the template
-        var cardPinTemplate = credTemplate.CardPinTemplate;
-        if (cardPinTemplate == null)
-        {
-            _logger.LogDebug("CredTemplate {Unid} has no CardPinTemplate", credTemplate.Unid);
-            return null;
-        }
-
-        // If anyDataLayout is true, try all available formats
-        if (cardPinTemplate.AnyDataLayoutCase == CardPinTemplate.AnyDataLayoutOneofCase.AnyDataLayout
-            && cardPinTemplate.AnyDataLayout)
-        {
-            // Use the first available binary format
-            var dataFormats = _dataFormatRepository.GetAll().GetAwaiter().GetResult();
-            foreach (var df in dataFormats)
-            {
-                if (df.DataFormatType == DataFormatType.Binary && df.ExtBinaryFormat != null)
-                {
-                    var bits = EncodeWithBinaryFormatter(df, credNum, facilityCode);
-                    if (bits != null)
-                    {
-                        _logger.LogDebug("Encoded credential using format {Name}", df.Name);
-                        return bits;
-                    }
-                }
-            }
-            return null;
-        }
-
-        // Get specific data layout
-        if (cardPinTemplate.DataLayoutUnidCase != CardPinTemplate.DataLayoutUnidOneofCase.DataLayoutUnid)
-        {
-            _logger.LogDebug("CardPinTemplate has no DataLayoutUnid");
-            return null;
-        }
-
-        var dataLayout = _dataLayoutRepository.Get(cardPinTemplate.DataLayoutUnid).GetAwaiter().GetResult();
-        if (dataLayout == null)
-        {
-            _logger.LogDebug("DataLayout {Unid} not found", cardPinTemplate.DataLayoutUnid);
-            return null;
-        }
-
-        // Get the data format from BasicDataLayout
-        if (dataLayout.ExtBasicDataLayout == null ||
-            dataLayout.ExtBasicDataLayout.DataFormatUnidCase != BasicDataLayout.DataFormatUnidOneofCase.DataFormatUnid)
-        {
-            _logger.LogDebug("DataLayout {Unid} has no BasicDataLayout or DataFormatUnid", dataLayout.Unid);
-            return null;
-        }
-
-        var dataFormat = _dataFormatRepository.Get(dataLayout.ExtBasicDataLayout.DataFormatUnid).GetAwaiter().GetResult();
-        if (dataFormat == null)
-        {
-            _logger.LogDebug("DataFormat {Unid} not found", dataLayout.ExtBasicDataLayout.DataFormatUnid);
-            return null;
-        }
-
-        if (dataFormat.DataFormatType != DataFormatType.Binary || dataFormat.ExtBinaryFormat == null)
-        {
-            _logger.LogDebug("DataFormat {Unid} is not binary", dataFormat.Unid);
-            return null;
-        }
-
-        return EncodeWithBinaryFormatter(dataFormat, credNum, facilityCode);
-    }
-
-    /// <summary>
-    /// Encodes a credential number into a bit string using the existing BinaryFormatter.
-    /// </summary>
-    private string EncodeWithBinaryFormatter(DataFormat dataFormat, BigInteger credNum, int? facilityCode)
-    {
-        try
-        {
-            var binaryFormat = dataFormat.ExtBinaryFormat;
-            var bitCount = binaryFormat.MaxBits;
-
-            // Create a BitBuffer with the required size
-            var bb = new BitBuffer(bitCount, bitCount);
-
-            // Create DecodedRead with the field values
-            var decodedRead = new DecodedRead();
-            decodedRead.GetElements().Add(new DecodedReadElement(DataFormatField.CredNum, credNum));
-            if (facilityCode.HasValue)
-            {
-                decodedRead.GetElements().Add(new DecodedReadElement(DataFormatField.FacilityCode, facilityCode.Value));
-            }
-
-            // Use BinaryFormatter to encode
-            var formatter = new BinaryFormatter(dataFormat);
-            formatter.Encode(bb, decodedRead);
-
-            return bb.ToBinaryString();
-        }
-        catch (BinaryFormatterException ex)
-        {
-            _logger.LogDebug(ex, "Failed to encode credential with format {Name}", dataFormat.Name);
-            return null;
         }
     }
 
@@ -1062,6 +933,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
         }
 
         var dataFormats = _dataFormatRepository.GetAll().GetAwaiter().GetResult();
+        _logger.LogDebug("DecodeCardRead: trying {Count} data formats for {BitCount}-bit card",
+            dataFormats.Count(), rawBits.Length);
         foreach (var dataFormat in dataFormats)
         {
             if (dataFormat.DataFormatType != DataFormatType.Binary || dataFormat.ExtBinaryFormat == null)

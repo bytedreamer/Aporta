@@ -113,6 +113,10 @@ public class StartupWorker : BackgroundService
                     return _doorCurrentMode.TryGetValue(config.DoorUnid.Value, out var mode) ? mode : null;
                 });
 
+                // Wire up card data decoder: decode raw bits to credNum for credential matching
+                _accessService.SetCardDataDecoder(rawBits =>
+                    _z9OpenCommunityProtocolService.DecodeCardRead(rawBits)?.credNum.ToString());
+
                 // Subscribe to OSDP configuration events before starting the service
                 _z9OpenCommunityProtocolService.OsdpConfigurationReceived += OnOsdpConfigurationReceived;
 

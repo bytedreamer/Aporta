@@ -47,6 +47,7 @@ public class AccessService
     private Func<string, int?> _getDoorUnidForEndpoint;
     private Func<string, (int?, int?)> _getStrikeTimesForEndpoint;
     private Func<string, DoorModeType?> _getDoorModeForEndpoint;
+    private Func<string, string> _decodeCardData;
 
     /// <summary>
     /// Event raised when an access decision is made (granted or denied).
@@ -95,6 +96,17 @@ public class AccessService
     public void SetDoorModeLookup(Func<string, DoorModeType?> getDoorModeForEndpoint)
     {
         _getDoorModeForEndpoint = getDoorModeForEndpoint;
+    }
+
+    /// <summary>
+    /// Sets a function to decode raw card bit data into a credential number string.
+    /// In Z9 mode, credentials are stored by decoded card number, so card reads
+    /// must be decoded before matching. In standalone mode, this is not set and
+    /// raw bit strings are matched directly.
+    /// </summary>
+    public void SetCardDataDecoder(Func<string, string> decodeCardData)
+    {
+        _decodeCardData = decodeCardData;
     }
 
     public void Startup()
@@ -203,25 +215,23 @@ public class AccessService
 
     private async Task<(bool granted, bool useExtendedTime)> IsAccessGranted(string matchingCardData, Aporta.Shared.Models.Door matchingDoor, Endpoint accessPoint)
     {
-        // First try matching by raw bit string
-        var assignedCredential = await _credentialRepository.AssignedCredential(matchingCardData);
-
-        // If not found and the card data looks like a bit string, try matching by decoded credential number
-        if (assignedCredential == null && !string.IsNullOrEmpty(matchingCardData) &&
-            matchingCardData.All(c => c == '0' || c == '1'))
+        AssignedCredential assignedCredential;
+        if (_decodeCardData != null)
         {
-            // Try to decode as credential number - simple extraction for 35-bit format
-            // Format: bits 0-1 = unused, bits 2-33 = 32-bit cred num, bit 34 = parity
-            if (matchingCardData.Length == 35)
+            // Z9 mode: decode raw bits to credential number, then look up by credNum
+            var decodedCredNum = _decodeCardData(matchingCardData);
+            assignedCredential = decodedCredNum != null
+                ? await _credentialRepository.AssignedCredential(decodedCredNum)
+                : null;
+            if (assignedCredential != null)
             {
-                var credNumBits = matchingCardData.Substring(2, 32);
-                var credNum = Convert.ToInt64(credNumBits, 2);
-                assignedCredential = await _credentialRepository.AssignedCredential(credNum.ToString());
-                if (assignedCredential != null)
-                {
-                    _logger.LogDebug("Matched credential by decoded 35-bit credNum: {CredNum}", credNum);
-                }
+                _logger.LogDebug("Matched credential by decoded credNum: {CredNum}", decodedCredNum);
             }
+        }
+        else
+        {
+            // Standalone mode: match by raw bit string directly
+            assignedCredential = await _credentialRepository.AssignedCredential(matchingCardData);
         }
         int eventId;
         if (assignedCredential?.Person == null)
