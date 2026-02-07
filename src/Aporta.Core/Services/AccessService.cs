@@ -38,6 +38,7 @@ public class AccessService
     private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
     private readonly CredentialRepository _credentialRepository;
+    private readonly PersonRepository _personRepository;
     private readonly EventRepository _eventRepository;
     private readonly Z9CredRepository _z9CredRepository;
     private readonly CredTemplateRepository _credTemplateRepository;
@@ -49,6 +50,7 @@ public class AccessService
     private Func<string, (int?, int?)> _getStrikeTimesForEndpoint;
     private Func<string, DoorModeType?> _getDoorModeForEndpoint;
     private Func<string, string> _decodeCardData;
+    private Func<string, int, int, Task<string>> _enrollCredential;
 
     /// <summary>
     /// Event raised when an access decision is made (granted or denied).
@@ -64,6 +66,7 @@ public class AccessService
     {
         _doorRepository = new DoorRepository(dataAccess);
         _credentialRepository = new CredentialRepository(dataAccess);
+        _personRepository = new PersonRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
         _eventRepository = new EventRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
@@ -109,6 +112,16 @@ public class AccessService
     public void SetCardDataDecoder(Func<string, string> decodeCardData)
     {
         _decodeCardData = decodeCardData;
+    }
+
+    /// <summary>
+    /// Sets a handler called during auto-enrollment to create Z9 data structures
+    /// (DataFormat, CredTemplate, Z9 Cred) for a newly enrolled credential.
+    /// Signature: (rawBits, credentialId, doorId) → credNum string.
+    /// </summary>
+    public void SetEnrollmentHandler(Func<string, int, int, Task<string>> enrollCredential)
+    {
+        _enrollCredential = enrollCredential;
     }
 
     public void Startup()
@@ -254,8 +267,30 @@ public class AccessService
 
             if (assignedCredential == null)
             {
-                await _credentialRepository.Insert(new Credential
-                    { Number = matchingCardData, LastEvent = eventId });
+                if (_enrollCredential != null)
+                {
+                    // Auto-enroll with full Z9 data chain
+                    var credentialId = await _credentialRepository.Insert(new Credential
+                        { Number = matchingCardData, LastEvent = eventId });
+                    var credNum = await _enrollCredential(matchingCardData, credentialId, matchingDoor.Id);
+                    // Update credential number to decoded credNum
+                    var credential = await _credentialRepository.Get(credentialId);
+                    if (credential != null)
+                    {
+                        credential.Number = credNum;
+                        credential.LastEvent = eventId;
+                        await _credentialRepository.Update(credential);
+                    }
+                    // Auto-create person and assignment so card works on next swipe
+                    var person = new Person { FirstName = credNum, Enabled = true };
+                    await _personRepository.Upsert(person, credentialId);
+                    await _credentialRepository.AssignPerson(credentialId, credentialId, true);
+                }
+                else
+                {
+                    await _credentialRepository.Insert(new Credential
+                        { Number = matchingCardData, LastEvent = eventId });
+                }
             }
             else
             {

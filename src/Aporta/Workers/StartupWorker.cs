@@ -75,11 +75,13 @@ public class StartupWorker : BackgroundService
 
             await _dataAccess.UpdateSchema();
 
-            // Check if we're in Z9 Open Community mode BEFORE starting extensions
-            // This prevents OSDP from auto-connecting using stale saved configuration
+            // Check if we're in Z9 Open Community mode or primary config mode
+            // BEFORE starting extensions — prevents OSDP from auto-connecting using stale saved configuration
             var z9OpenCommunityHost = _configuration["z9OpenCommunityHost"];
             var isZ9OpenCommunityMode = !string.IsNullOrWhiteSpace(z9OpenCommunityHost);
-            if (isZ9OpenCommunityMode)
+            var primaryConfigPath = _configuration["primaryConfig"];
+            var isPrimaryConfigMode = !string.IsNullOrWhiteSpace(primaryConfigPath);
+            if (isZ9OpenCommunityMode || isPrimaryConfigMode)
             {
                 await DisableOsdpExtensionForZ9OpenCommunityMode();
             }
@@ -139,6 +141,35 @@ public class StartupWorker : BackgroundService
                 _logger.LogInformation(
                     "Z9/Open Community protocol service not started" +
                     " (use --z9OpenCommunityHost to specify upstream host)");
+
+                // Wire card data decoder — creates raw DataFormat on first encounter
+                _accessService.SetCardDataDecoder(rawBits =>
+                {
+                    var result = _z9OpenCommunityProtocolService.DecodeCardRead(rawBits);
+                    if (result == null)
+                    {
+                        _z9OpenCommunityProtocolService.EnsureRawDataFormat(rawBits.Length);
+                        result = _z9OpenCommunityProtocolService.DecodeCardRead(rawBits);
+                    }
+                    return result?.credNum.ToString();
+                });
+
+                // Wire enrollment handler — creates Z9 data chain on first enrollment
+                _accessService.SetEnrollmentHandler((rawBits, credentialId, doorId) =>
+                {
+                    _z9OpenCommunityProtocolService.EnsureRawDataFormat(rawBits.Length);
+                    _z9OpenCommunityProtocolService.EnsureDefaultCredTemplate();
+                    var decoded = _z9OpenCommunityProtocolService.DecodeCardRead(rawBits);
+                    var credNum = decoded!.Value.credNum;
+                    _z9OpenCommunityProtocolService.CreateStandaloneCred(credentialId, credNum, doorId);
+                    return Task.FromResult(credNum.ToString());
+                });
+
+                // Primary config mode: configure OSDP from a JSON file
+                if (isPrimaryConfigMode)
+                {
+                    await ConfigurePrimaryMode(primaryConfigPath);
+                }
             }
         }
         catch (Exception exception)
@@ -225,6 +256,112 @@ public class StartupWorker : BackgroundService
         await connection.ExecuteAsync(
             "UPDATE extension SET data = @data WHERE id = @id",
             new { id = OsdpDriverId.ToString(), data = newData });
+    }
+
+    /// <summary>
+    /// Configuration model for --primaryConfig JSON file.
+    /// </summary>
+    public class PrimaryConfig
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("readers")]
+        public List<PrimaryReaderConfig> Readers { get; set; } = new();
+    }
+
+    public class PrimaryReaderConfig
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("host")]
+        public string Host { get; set; } = "localhost";
+
+        [System.Text.Json.Serialization.JsonPropertyName("tcpPort")]
+        public int TcpPort { get; set; } = 9843;
+
+        [System.Text.Json.Serialization.JsonPropertyName("osdpAddress")]
+        public int OsdpAddress { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("baudRate")]
+        public int BaudRate { get; set; } = 9600;
+
+        [System.Text.Json.Serialization.JsonPropertyName("strikeOutputNumber")]
+        public int? StrikeOutputNumber { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("doorContactInputNumber")]
+        public int? DoorContactInputNumber { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("rexInputNumber")]
+        public int? RexInputNumber { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("activateStrikeOnRex")]
+        public bool ActivateStrikeOnRex { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("strikeTimeMs")]
+        public int? StrikeTimeMs { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("extendedStrikeTimeMs")]
+        public int? ExtendedStrikeTimeMs { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("heldTimeMs")]
+        public int? HeldTimeMs { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("extendedHeldTimeMs")]
+        public int? ExtendedHeldTimeMs { get; set; }
+    }
+
+    private async Task ConfigurePrimaryMode(string configPath)
+    {
+        _logger.LogInformation("Loading primary config from {Path}", configPath);
+
+        var json = await System.IO.File.ReadAllTextAsync(configPath);
+        var primaryConfig = System.Text.Json.JsonSerializer.Deserialize<PrimaryConfig>(json);
+
+        if (primaryConfig?.Readers == null || primaryConfig.Readers.Count == 0)
+        {
+            _logger.LogWarning("Primary config has no readers defined");
+            return;
+        }
+
+        // Wire strike time lookup
+        _accessService.SetStrikeTimeLookup(endpointId =>
+        {
+            var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(endpointId);
+            return (config?.StrikeTimeMs, config?.ExtendedStrikeTimeMs);
+        });
+
+        // Subscribe to online status changes for auto Door creation
+        _extensionService.OnlineStatusChanged += OnOnlineStatusChanged;
+
+        // Subscribe to state changes for door contact/REX/strike tracking
+        _extensionService.StateChanged += OnStateChanged;
+
+        // Convert and register each reader config, then configure the OSDP driver
+        for (int i = 0; i < primaryConfig.Readers.Count; i++)
+        {
+            var reader = primaryConfig.Readers[i];
+            var osdpConfig = new Z9OpenCommunityProtocolService.OsdpReaderConfig
+            {
+                Unid = i + 1,
+                Name = reader.Name ?? $"Reader {i + 1}",
+                Host = reader.Host,
+                TcpPort = reader.TcpPort,
+                OsdpAddress = reader.OsdpAddress,
+                BaudRate = reader.BaudRate,
+                StrikeOutputNumber = reader.StrikeOutputNumber,
+                DoorContactInputNumber = reader.DoorContactInputNumber,
+                RexInputNumber = reader.RexInputNumber,
+                ActivateStrikeOnRex = reader.ActivateStrikeOnRex,
+                StrikeTimeMs = reader.StrikeTimeMs,
+                ExtendedStrikeTimeMs = reader.ExtendedStrikeTimeMs,
+                HeldTimeMs = reader.HeldTimeMs,
+                ExtendedHeldTimeMs = reader.ExtendedHeldTimeMs
+            };
+
+            _z9OpenCommunityProtocolService.RegisterOsdpReaderConfig(osdpConfig);
+            await ConfigureOsdpDriver(osdpConfig);
+        }
+
+        _logger.LogInformation("Primary config loaded: {Count} reader(s) configured", primaryConfig.Readers.Count);
     }
 
     private void OnOsdpConfigurationReceived(object sender, Z9OpenCommunityProtocolService.OsdpReaderConfig config)

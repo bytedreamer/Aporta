@@ -22,6 +22,6 @@ public class EventService
 
     public async Task<PaginatedItemsDto<Event>> GetAll(int pageNumber, int pageSize)
     {
-        return await _eventRepository.GetAll(pageNumber, pageSize, "timestamp");
+        return await _eventRepository.GetAll(pageNumber, pageSize, "id");
     }
 }

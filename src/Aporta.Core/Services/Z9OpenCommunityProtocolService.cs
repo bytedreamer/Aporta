@@ -912,6 +912,123 @@ public class Z9OpenCommunityProtocolService : IDisposable
     }
 
     /// <summary>
+    /// Creates a raw N-bit DataFormat and BasicDataLayout if one doesn't already exist for that bit count.
+    /// Used in standalone mode to enable card data decoding without Z9 host configuration.
+    /// </summary>
+    /// <param name="bitCount">The number of bits in the raw card data.</param>
+    public void EnsureRawDataFormat(int bitCount)
+    {
+        // Check if a DataFormat with this unid already exists
+        var existing = _dataFormatRepository.Get(bitCount).GetAwaiter().GetResult();
+        if (existing != null)
+            return;
+
+        _logger.LogInformation("Creating raw {BitCount}-bit DataFormat and DataLayout", bitCount);
+
+        var dataFormat = new DataFormat
+        {
+            Unid = bitCount,
+            Name = $"Raw {bitCount}-bit",
+            DataFormatType = DataFormatType.Binary,
+            ExtBinaryFormat = new BinaryFormat
+            {
+                MinBits = bitCount,
+                MaxBits = bitCount,
+                SupportReverseRead = false
+            }
+        };
+        // Single FIELD element: entire bit range is the credential number
+        dataFormat.ExtBinaryFormat.Elements.Add(new BinaryElement
+        {
+            Num = 0,
+            Type = BinaryElementType.Field,
+            Start = 0,
+            Len = bitCount,
+            ExtFieldBinaryElement = new FieldBinaryElement
+            {
+                Field = DataFormatField.CredNum
+            }
+        });
+        SpCoreProtoUtil.InitRequired(dataFormat);
+        _dataFormatRepository.Upsert(dataFormat).GetAwaiter().GetResult();
+
+        var dataLayout = new DataLayout
+        {
+            Unid = bitCount,
+            Name = $"Raw {bitCount}-bit",
+            LayoutType = DataLayoutType.Basic,
+            Enabled = true,
+            Priority = 0,
+            ExtBasicDataLayout = new BasicDataLayout
+            {
+                DataFormatUnid = bitCount
+            }
+        };
+        SpCoreProtoUtil.InitRequired(dataLayout);
+        _dataLayoutRepository.Upsert(dataLayout).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Creates the default CredTemplate (unid=1) if not already present.
+    /// Used in standalone mode so credentials have a valid credential template.
+    /// </summary>
+    public void EnsureDefaultCredTemplate()
+    {
+        var existing = _credTemplateRepository.Get(1).GetAwaiter().GetResult();
+        if (existing != null)
+            return;
+
+        _logger.LogInformation("Creating default CredTemplate (unid=1)");
+
+        var credTemplate = new CredTemplate
+        {
+            Unid = 1,
+            Name = "Card (Auto)",
+            Priority = 0,
+            CardPinTemplate = new CardPinTemplate
+            {
+                CredComponentPresence = CredComponentPresence.Required,
+                CredNumPresence = CredComponentPresence.Required,
+                PinPresence = CredComponentPresence.Absent,
+                AnyDataLayout = true
+            }
+        };
+        SpCoreProtoUtil.InitRequired(credTemplate);
+        _credTemplateRepository.Upsert(credTemplate).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Creates a Z9 Cred proto and upserts it to the z9_cred table.
+    /// Used in standalone mode during auto-enrollment to create the full Z9 data chain.
+    /// </summary>
+    /// <param name="credentialId">The Aporta credential ID (used as the Cred unid).</param>
+    /// <param name="credNum">The decoded credential number.</param>
+    /// <param name="doorId">The Aporta door ID (stored as devAsDoorAccessPrivUnid for future use).</param>
+    public void CreateStandaloneCred(int credentialId, BigInteger credNum, int doorId)
+    {
+        _logger.LogInformation("Creating standalone Z9 Cred: unid={CredentialId}, credNum={CredNum}, doorId={DoorId}",
+            credentialId, credNum, doorId);
+
+        var cred = new Cred
+        {
+            Unid = credentialId,
+            Enabled = true,
+            CredTemplateUnid = 1,
+            CardPin = new CardPin
+            {
+                CredNum = SpCoreProtoUtil.ToBigIntegerData(credNum)
+            }
+        };
+        cred.PrivBindings.Add(new CredPrivBinding
+        {
+            Unid = 1,
+            DevAsDoorAccessPrivUnid = doorId
+        });
+        SpCoreProtoUtil.InitRequired(cred);
+        _z9CredRepository.Upsert(cred).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
     /// Decodes a raw bit string from a card read into a credential number by trying all known formats.
     /// </summary>
     /// <param name="rawBits">The raw bit string from the card reader (e.g., "10110010000110000001110011")</param>
@@ -1050,6 +1167,28 @@ public class Z9OpenCommunityProtocolService : IDisposable
         };
 
         WriteMessage(message);
+    }
+
+    /// <summary>
+    /// Registers an OsdpReaderConfig directly (for standalone/primary mode where configs
+    /// come from a config file instead of Z9 Dev messages).
+    /// </summary>
+    public void RegisterOsdpReaderConfig(OsdpReaderConfig config)
+    {
+        lock (_osdpReaderConfigs)
+        {
+            _osdpReaderConfigs.RemoveAll(c => c.Unid == config.Unid);
+            _osdpReaderConfigs.Add(config);
+        }
+
+        var endpointIdPrefix = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}";
+        lock (_endpointToConfig)
+        {
+            _endpointToConfig[endpointIdPrefix] = config;
+        }
+
+        _logger.LogInformation("Registered OSDP reader config: {Name} at {Host}:{TcpPort}:{OsdpAddress}",
+            config.Name, config.Host, config.TcpPort, config.OsdpAddress);
     }
 
     /// <summary>
