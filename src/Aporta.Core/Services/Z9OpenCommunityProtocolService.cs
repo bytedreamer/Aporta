@@ -64,6 +64,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private readonly Dictionary<int, int?> _doorExtendedStrikeTimeMs = new();
     private readonly Dictionary<int, int?> _doorHeldTimeMs = new();
     private readonly Dictionary<int, int?> _doorExtendedHeldTimeMs = new();
+    private readonly Dictionary<int, DoorMode> _doorDefaultDoorMode = new();
 
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
@@ -85,6 +86,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public int? ExtendedStrikeTimeMs { get; set; }
         public int? HeldTimeMs { get; set; }
         public int? ExtendedHeldTimeMs { get; set; }
+        public DoorMode DefaultDoorMode { get; set; }
     }
     private Thread _thread;
     private volatile bool _stopping;
@@ -641,6 +643,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
                     osdpConfig.ExtendedHeldTimeMs = extHeldTimeMs;
                 }
             }
+            lock (_doorDefaultDoorMode)
+            {
+                if (_doorDefaultDoorMode.TryGetValue(osdpConfig.DoorUnid.Value, out var defaultDoorMode))
+                {
+                    osdpConfig.DefaultDoorMode = defaultDoorMode;
+                }
+            }
         }
 
         lock (_osdpReaderConfigs)
@@ -809,6 +818,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
             {
                 _doorExtendedHeldTimeMs[dev.Unid] = extendedHeldTimeMs;
             }
+            if (doorConfig.DefaultDoorMode != null)
+            {
+                lock (_doorDefaultDoorMode)
+                {
+                    _doorDefaultDoorMode[dev.Unid] = doorConfig.DefaultDoorMode;
+                }
+            }
 
             // Apply to existing reader config if already loaded
             lock (_osdpReaderConfigs)
@@ -821,6 +837,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
                     config.ExtendedStrikeTimeMs = extendedStrikeTimeMs;
                     config.HeldTimeMs = heldTimeMs;
                     config.ExtendedHeldTimeMs = extendedHeldTimeMs;
+                    if (doorConfig.DefaultDoorMode != null)
+                        config.DefaultDoorMode = doorConfig.DefaultDoorMode;
                 }
             }
 

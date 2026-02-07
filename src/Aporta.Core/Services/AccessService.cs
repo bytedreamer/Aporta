@@ -46,6 +46,7 @@ public class AccessService
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private Func<string, int?> _getDoorUnidForEndpoint;
     private Func<string, (int?, int?)> _getStrikeTimesForEndpoint;
+    private Func<string, DoorModeType?> _getDoorModeForEndpoint;
 
     /// <summary>
     /// Event raised when an access decision is made (granted or denied).
@@ -86,6 +87,14 @@ public class AccessService
     public void SetStrikeTimeLookup(Func<string, (int?, int?)> getStrikeTimesForEndpoint)
     {
         _getStrikeTimesForEndpoint = getStrikeTimesForEndpoint;
+    }
+
+    /// <summary>
+    /// Sets a function to look up the current door mode for an endpoint.
+    /// </summary>
+    public void SetDoorModeLookup(Func<string, DoorModeType?> getDoorModeForEndpoint)
+    {
+        _getDoorModeForEndpoint = getDoorModeForEndpoint;
     }
 
     public void Startup()
@@ -134,6 +143,35 @@ public class AccessService
 
             if (!eventArgs.Handler.IsValid())
             {
+                return;
+            }
+
+            // Check door mode before normal access control
+            var doorMode = _getDoorModeForEndpoint?.Invoke(accessPoint.DriverEndpointId);
+            if (doorMode == DoorModeType.StaticStateUnlocked)
+            {
+                _logger.LogInformation("Door '{Name}' is unlocked - granting access without credential check", matchingDoor.Name);
+                await eventArgs.Access.AccessGrantedNotification();
+                AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                {
+                    EndpointId = accessPoint.DriverEndpointId,
+                    IsGranted = true,
+                    CardNumber = eventArgs.Handler.MatchingCardData,
+                    Reason = EventReason.None
+                });
+                return;
+            }
+            if (doorMode == DoorModeType.StaticStateLocked)
+            {
+                _logger.LogInformation("Door '{Name}' is locked - denying access", matchingDoor.Name);
+                await eventArgs.Access.AccessDeniedNotification();
+                AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                {
+                    EndpointId = accessPoint.DriverEndpointId,
+                    IsGranted = false,
+                    CardNumber = eventArgs.Handler.MatchingCardData,
+                    Reason = EventReason.DoorLocked
+                });
                 return;
             }
 

@@ -10,6 +10,7 @@ using Aporta.Core.Services;
 using Aporta.Drivers.OSDP.Shared;
 using Aporta.Extensions.Hardware;
 using Aporta.Shared.Models;
+using Z9.Protobuf;
 using Z9.Spcore.Proto;
 using Aporta.Drivers.OSDP.Shared.Actions;
 using Dapper;
@@ -40,6 +41,7 @@ public class StartupWorker : BackgroundService
     private readonly Dictionary<int, bool> _doorHeld = new();
     private readonly Dictionary<int, bool> _doorUseExtendedTime = new();
     private readonly Dictionary<int, CancellationTokenSource> _doorHeldTimers = new();
+    private readonly Dictionary<int, DoorModeType> _doorCurrentMode = new();
 
     public StartupWorker(IDataAccess dataAccess,
         ExtensionService extensionService,
@@ -101,6 +103,14 @@ public class StartupWorker : BackgroundService
                 {
                     var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(endpointId);
                     return (config?.StrikeTimeMs, config?.ExtendedStrikeTimeMs);
+                });
+
+                // Wire up door mode lookup for access decisions
+                _accessService.SetDoorModeLookup(endpointId =>
+                {
+                    var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(endpointId);
+                    if (config?.DoorUnid == null) return null;
+                    return _doorCurrentMode.TryGetValue(config.DoorUnid.Value, out var mode) ? mode : null;
                 });
 
                 // Subscribe to OSDP configuration events before starting the service
@@ -477,6 +487,12 @@ public class StartupWorker : BackgroundService
                 _logger.LogWarning("REX input endpoint {RexEndpointId} not found after retries", rexDriverEndpointId);
             }
         }
+
+        // Apply default door mode if configured
+        if (config?.DefaultDoorMode != null && config.DoorUnid.HasValue)
+        {
+            await ApplyDoorMode(config.DoorUnid.Value, config.DefaultDoorMode, config);
+        }
     }
 
     private void OnDevActionRequested(object sender, DevActionReq req)
@@ -495,6 +511,23 @@ public class StartupWorker : BackgroundService
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to handle DOOR_MOMENTARY_UNLOCK for door unid={DoorUnid}", doorUnid);
+                }
+            });
+        }
+        else if (req.DevActionType == DevActionType.DoorModeChange)
+        {
+            var doorUnid = req.DevUnid;
+            _logger.LogInformation("DevActionReq: DOOR_MODE_CHANGE for door unid={DoorUnid}", doorUnid);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await HandleDoorModeChange(doorUnid, req.DevActionParams);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to handle DOOR_MODE_CHANGE for door unid={DoorUnid}", doorUnid);
                 }
             });
         }
@@ -554,6 +587,116 @@ public class StartupWorker : BackgroundService
             doorUnid, strikeTimeMs);
     }
 
+    private async Task HandleDoorModeChange(int doorUnid, DevActionParams devActionParams)
+    {
+        var modeParams = devActionParams?.ExtDoorModeDevActionParams;
+        if (modeParams == null)
+        {
+            _logger.LogWarning("DOOR_MODE_CHANGE missing DoorModeDevActionParams for door unid={DoorUnid}", doorUnid);
+            return;
+        }
+
+        // Find the reader config for this door
+        var config = _z9OpenCommunityProtocolService.OsdpReaderConfigs
+            .FirstOrDefault(c => c.DoorUnid == doorUnid);
+        if (config == null)
+        {
+            _logger.LogWarning("No reader config found for door unid={DoorUnid}", doorUnid);
+            return;
+        }
+
+        // Determine which DoorMode to apply
+        DoorMode doorMode;
+        if (modeParams.ResetToDefaultCase == DoorModeDevActionParams.ResetToDefaultOneofCase.ResetToDefault
+            && modeParams.ResetToDefault)
+        {
+            doorMode = config.DefaultDoorMode;
+            if (doorMode == null)
+            {
+                _logger.LogWarning("ResetToDefault requested but no default door mode for door unid={DoorUnid}", doorUnid);
+                return;
+            }
+            _logger.LogInformation("Resetting door unid={DoorUnid} to default mode", doorUnid);
+        }
+        else
+        {
+            doorMode = modeParams.DoorMode;
+            if (doorMode == null)
+            {
+                _logger.LogWarning("DOOR_MODE_CHANGE has no DoorMode for door unid={DoorUnid}", doorUnid);
+                return;
+            }
+        }
+
+        await ApplyDoorMode(doorUnid, doorMode, config);
+    }
+
+    private async Task ApplyDoorMode(int doorUnid, DoorMode doorMode, Z9OpenCommunityProtocolService.OsdpReaderConfig config)
+    {
+        var doorModeType = CommonDoorModes.DoorModeToDoorModeType(doorMode);
+        if (!doorModeType.HasValue)
+        {
+            _logger.LogWarning("Could not determine DoorModeType for door unid={DoorUnid}", doorUnid);
+            return;
+        }
+
+        // Pin-based modes map to CardOnly for now (no pin support)
+        var effectiveMode = doorModeType.Value;
+        if (effectiveMode == DoorModeType.CardAndConfirmingPin ||
+            effectiveMode == DoorModeType.UniquePinOnly ||
+            effectiveMode == DoorModeType.CardOnlyOrUniquePin)
+        {
+            _logger.LogWarning("Door unid={DoorUnid}: pin-based mode {Mode} mapped to CardOnly (TODO: pin support)",
+                doorUnid, effectiveMode);
+            effectiveMode = DoorModeType.CardOnly;
+        }
+
+        var previousMode = _doorCurrentMode.TryGetValue(doorUnid, out var prev) ? prev : (DoorModeType?)null;
+        _doorCurrentMode[doorUnid] = effectiveMode;
+
+        _logger.LogInformation("Door unid={DoorUnid} mode changed to {Mode}", doorUnid, effectiveMode);
+
+        // Actuate strike based on mode
+        if (config.StrikeOutputNumber != null)
+        {
+            var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
+            var endpoints = await _endpointRepository.GetAll();
+            var strikeEndpoint = endpoints.FirstOrDefault(ep => ep.DriverEndpointId == strikeDriverEndpointId);
+
+            if (strikeEndpoint != null)
+            {
+                var controlPoint = _extensionService.GetControlPoint(strikeEndpoint.ExtensionId, strikeEndpoint.DriverEndpointId);
+                if (controlPoint != null)
+                {
+                    if (effectiveMode == DoorModeType.StaticStateUnlocked)
+                    {
+                        await controlPoint.SetState(true);
+                        _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.DoorUnlocked);
+                    }
+                    else if (previousMode == DoorModeType.StaticStateUnlocked)
+                    {
+                        // Switching away from unlocked — deactivate strike
+                        await controlPoint.SetState(false);
+                        _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.DoorLocked);
+                    }
+                }
+            }
+        }
+
+        // Send the door mode event
+        var modeEvtCode = effectiveMode switch
+        {
+            DoorModeType.StaticStateUnlocked => EvtCode.DoorModeStaticStateUnlocked,
+            DoorModeType.StaticStateLocked => EvtCode.DoorModeStaticStateLocked,
+            DoorModeType.CardOnly => EvtCode.DoorModeCardOnly,
+            DoorModeType.CardAndConfirmingPin => EvtCode.DoorModeCardAndConfirmingPin,
+            DoorModeType.UniquePinOnly => EvtCode.DoorModeUniquePinOnly,
+            DoorModeType.CardOnlyOrUniquePin => EvtCode.DoorModeCardOnlyOrUniquePin,
+            _ => EvtCode.DoorModeCardOnly
+        };
+        _z9OpenCommunityProtocolService.SendDoorStateEvent(config, modeEvtCode);
+    }
+
     private void OnStateChanged(object sender, StateChangedEventArgs e)
     {
         var driverEndpointId = e.Endpoint?.Id;
@@ -593,7 +736,20 @@ public class StartupWorker : BackgroundService
                 _logger.LogInformation("REX activated for door '{DoorName}'", rexDoor.Name);
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.ExitRequested);
 
-                if (config.ActivateStrikeOnRex && config.DoorUnid.HasValue)
+                // Determine REX behavior based on door mode
+                var currentMode = config.DoorUnid.HasValue && _doorCurrentMode.TryGetValue(config.DoorUnid.Value, out var mode)
+                    ? mode : (DoorModeType?)null;
+
+                if (currentMode == DoorModeType.StaticStateUnlocked)
+                {
+                    // Already unlocked — no need for momentary unlock
+                }
+                else if (currentMode == DoorModeType.StaticStateLocked)
+                {
+                    // Door is locked — do not unlock on REX
+                    _logger.LogInformation("REX ignored for door '{DoorName}' — door is in locked mode", rexDoor.Name);
+                }
+                else if (config.ActivateStrikeOnRex && config.DoorUnid.HasValue)
                 {
                     await HandleDoorMomentaryUnlock(config.DoorUnid.Value);
                 }
@@ -707,6 +863,7 @@ public class StartupWorker : BackgroundService
             EventReason.CredentialNotYetEffective => EvtSubCode.AccessDeniedNotEffective,
             EventReason.CredentialExpired => EvtSubCode.AccessDeniedExpired,
             EventReason.OutsideSchedule => EvtSubCode.AccessDeniedOutsideSched,
+            EventReason.DoorLocked => EvtSubCode.AccessDeniedNoPriv,
             _ => EvtSubCode.AccessDeniedInactive  // Default value (0); unused for granted events
         };
 

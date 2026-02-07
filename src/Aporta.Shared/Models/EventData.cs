@@ -35,5 +35,7 @@ public enum EventReason
     [Description("No Privilege")]
     NoPrivilege,
     [Description("Outside Schedule")]
-    OutsideSchedule
+    OutsideSchedule,
+    [Description("Door Locked")]
+    DoorLocked
 }
