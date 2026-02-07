@@ -37,6 +37,9 @@ public class StartupWorker : BackgroundService
     private readonly HashSet<string> _configuredOsdpBuses = new();
     private readonly Dictionary<int, bool> _doorStrikeActive = new();
     private readonly Dictionary<int, bool> _doorForced = new();
+    private readonly Dictionary<int, bool> _doorHeld = new();
+    private readonly Dictionary<int, bool> _doorUseExtendedTime = new();
+    private readonly Dictionary<int, CancellationTokenSource> _doorHeldTimers = new();
 
     public StartupWorker(IDataAccess dataAccess,
         ExtensionService extensionService,
@@ -135,6 +138,7 @@ public class StartupWorker : BackgroundService
         stoppingToken.Register(() =>
         {
             _logger.LogWarning("Application is shutting down");
+            CancelAllDoorHeldTimers();
             _accessService.AccessDecisionMade -= OnAccessDecisionMade;
             _extensionService.StateChanged -= OnStateChanged;
             _z9OpenCommunityProtocolService.DevActionRequested -= OnDevActionRequested;
@@ -628,9 +632,13 @@ public class StartupWorker : BackgroundService
                     _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorForced);
                     _doorForced[contactDoor.Id] = true;
                 }
+
+                StartDoorHeldTimer(contactDoor.Id, contactDoor.Name, config2);
             }
             else // Door closed
             {
+                CancelDoorHeldTimer(contactDoor.Id);
+
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorClosed);
 
                 if (_doorForced.TryGetValue(contactDoor.Id, out var wasForced) && wasForced)
@@ -639,6 +647,13 @@ public class StartupWorker : BackgroundService
                     _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorNotForced);
                     _doorForced[contactDoor.Id] = false;
                 }
+
+                if (_doorHeld.TryGetValue(contactDoor.Id, out var wasHeld) && wasHeld)
+                {
+                    _logger.LogInformation("Door held cleared: '{DoorName}'", contactDoor.Name);
+                    _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorNotHeld);
+                    _doorHeld[contactDoor.Id] = false;
+                }
             }
             return;
         }
@@ -646,6 +661,16 @@ public class StartupWorker : BackgroundService
 
     private void OnAccessDecisionMade(object sender, AccessDecisionEventArgs e)
     {
+        // Store extended time flag for door held timer (consumed when door opens)
+        if (e.IsGranted)
+        {
+            var readerConfig = _z9OpenCommunityProtocolService.GetConfigForEndpoint(e.EndpointId);
+            if (readerConfig?.DoorUnid != null)
+            {
+                _doorUseExtendedTime[readerConfig.DoorUnid.Value] = e.UseExtendedTime;
+            }
+        }
+
         // Get the Z9 config for this endpoint to send event with correct device unid
         var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(e.EndpointId);
         if (config == null)
@@ -695,5 +720,62 @@ public class StartupWorker : BackgroundService
             facilityCode: facilityCode,
             rawBits: rawBits,
             subCode: subCode);
+    }
+
+    private void StartDoorHeldTimer(int doorId, string doorName, Z9OpenCommunityProtocolService.OsdpReaderConfig config)
+    {
+        // Pick held time: use extended if last access grant had extDoorTime
+        var useExtended = _doorUseExtendedTime.TryGetValue(doorId, out var ext) && ext;
+        var heldTimeMs = useExtended && config.ExtendedHeldTimeMs.HasValue
+            ? config.ExtendedHeldTimeMs.Value
+            : config.HeldTimeMs ?? 0;
+
+        // Clear one-shot extended time flag
+        _doorUseExtendedTime.Remove(doorId);
+
+        if (heldTimeMs <= 0)
+            return;
+
+        // Cancel any existing timer for this door
+        CancelDoorHeldTimer(doorId);
+
+        var cts = new CancellationTokenSource();
+        _doorHeldTimers[doorId] = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(heldTimeMs, cts.Token);
+                _logger.LogWarning("Door held open: '{DoorName}' (heldTime={HeldTimeMs}ms, extended={UseExtended})",
+                    doorName, heldTimeMs, useExtended);
+                _doorHeld[doorId] = true;
+                _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.DoorHeld);
+            }
+            catch (TaskCanceledException)
+            {
+                // Timer cancelled — door closed in time
+            }
+        });
+    }
+
+    private void CancelDoorHeldTimer(int doorId)
+    {
+        if (_doorHeldTimers.TryGetValue(doorId, out var cts))
+        {
+            cts.Cancel();
+            cts.Dispose();
+            _doorHeldTimers.Remove(doorId);
+        }
+    }
+
+    private void CancelAllDoorHeldTimers()
+    {
+        foreach (var cts in _doorHeldTimers.Values)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+        _doorHeldTimers.Clear();
     }
 }

@@ -28,6 +28,7 @@ public class AccessDecisionEventArgs : EventArgs
     public string CardNumber { get; set; }
     public string PersonName { get; set; }
     public EventReason Reason { get; set; }
+    public bool UseExtendedTime { get; set; }
 }
 
 public class AccessService
@@ -403,7 +404,8 @@ public class AccessService
             IsGranted = true,
             CardNumber = matchingCardData,
             PersonName = assignedCredential.Person.FirstName,
-            Reason = EventReason.None
+            Reason = EventReason.None,
+            UseExtendedTime = useExtendedTime
         });
 
         return (true, useExtendedTime);

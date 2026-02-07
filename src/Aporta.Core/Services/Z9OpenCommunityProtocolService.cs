@@ -62,6 +62,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private readonly Dictionary<int, bool> _doorActivateStrikeOnRex = new();
     private readonly Dictionary<int, int?> _doorStrikeTimeMs = new();
     private readonly Dictionary<int, int?> _doorExtendedStrikeTimeMs = new();
+    private readonly Dictionary<int, int?> _doorHeldTimeMs = new();
+    private readonly Dictionary<int, int?> _doorExtendedHeldTimeMs = new();
 
     /// <summary>
     /// OSDP reader configuration extracted from Z9 Dev messages.
@@ -81,6 +83,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public bool ActivateStrikeOnRex { get; set; }
         public int? StrikeTimeMs { get; set; }
         public int? ExtendedStrikeTimeMs { get; set; }
+        public int? HeldTimeMs { get; set; }
+        public int? ExtendedHeldTimeMs { get; set; }
     }
     private Thread _thread;
     private volatile bool _stopping;
@@ -623,6 +627,20 @@ public class Z9OpenCommunityProtocolService : IDisposable
                     osdpConfig.ExtendedStrikeTimeMs = extStrikeTimeMs;
                 }
             }
+            lock (_doorHeldTimeMs)
+            {
+                if (_doorHeldTimeMs.TryGetValue(osdpConfig.DoorUnid.Value, out var heldTimeMs))
+                {
+                    osdpConfig.HeldTimeMs = heldTimeMs;
+                }
+            }
+            lock (_doorExtendedHeldTimeMs)
+            {
+                if (_doorExtendedHeldTimeMs.TryGetValue(osdpConfig.DoorUnid.Value, out var extHeldTimeMs))
+                {
+                    osdpConfig.ExtendedHeldTimeMs = extHeldTimeMs;
+                }
+            }
         }
 
         lock (_osdpReaderConfigs)
@@ -766,6 +784,10 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 ? doorConfig.StrikeTime : null;
             int? extendedStrikeTimeMs = doorConfig.ExtendedStrikeTimeCase == DoorConfig.ExtendedStrikeTimeOneofCase.ExtendedStrikeTime
                 ? doorConfig.ExtendedStrikeTime : null;
+            int? heldTimeMs = doorConfig.HeldTimeCase == DoorConfig.HeldTimeOneofCase.HeldTime
+                ? doorConfig.HeldTime : null;
+            int? extendedHeldTimeMs = doorConfig.ExtendedHeldTimeCase == DoorConfig.ExtendedHeldTimeOneofCase.ExtendedHeldTime
+                ? doorConfig.ExtendedHeldTime : null;
 
             lock (_doorActivateStrikeOnRex)
             {
@@ -779,6 +801,14 @@ public class Z9OpenCommunityProtocolService : IDisposable
             {
                 _doorExtendedStrikeTimeMs[dev.Unid] = extendedStrikeTimeMs;
             }
+            lock (_doorHeldTimeMs)
+            {
+                _doorHeldTimeMs[dev.Unid] = heldTimeMs;
+            }
+            lock (_doorExtendedHeldTimeMs)
+            {
+                _doorExtendedHeldTimeMs[dev.Unid] = extendedHeldTimeMs;
+            }
 
             // Apply to existing reader config if already loaded
             lock (_osdpReaderConfigs)
@@ -789,11 +819,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
                     config.ActivateStrikeOnRex = activateStrikeOnRex;
                     config.StrikeTimeMs = strikeTimeMs;
                     config.ExtendedStrikeTimeMs = extendedStrikeTimeMs;
+                    config.HeldTimeMs = heldTimeMs;
+                    config.ExtendedHeldTimeMs = extendedHeldTimeMs;
                 }
             }
 
-            _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}, activateStrikeOnRex={ActivateStrikeOnRex}, strikeTimeMs={StrikeTimeMs}, extendedStrikeTimeMs={ExtendedStrikeTimeMs}",
-                dev.Unid, doorName, activateStrikeOnRex, strikeTimeMs, extendedStrikeTimeMs);
+            _logger.LogInformation("Received Door Dev: unid={Unid}, name={Name}, activateStrikeOnRex={ActivateStrikeOnRex}, strikeTimeMs={StrikeTimeMs}, extendedStrikeTimeMs={ExtendedStrikeTimeMs}, heldTimeMs={HeldTimeMs}, extendedHeldTimeMs={ExtendedHeldTimeMs}",
+                dev.Unid, doorName, activateStrikeOnRex, strikeTimeMs, extendedStrikeTimeMs, heldTimeMs, extendedHeldTimeMs);
         }
         else
         {
