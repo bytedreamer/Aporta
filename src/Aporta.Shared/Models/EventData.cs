@@ -39,5 +39,11 @@ public enum EventReason
     [Description("Door Locked")]
     DoorLocked,
     [Description("No Credential Template")]
-    NoCredentialTemplate
+    NoCredentialTemplate,
+    [Description("Unknown Unique PIN")]
+    UnknownUniquePin,
+    [Description("No Confirming PIN")]
+    NoConfirmingPin,
+    [Description("Incorrect Confirming PIN")]
+    IncorrectConfirmingPin
 }

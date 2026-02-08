@@ -55,7 +55,8 @@ Aporta doesn't intend to recreate what is already available by existing physical
     - Extended strike time support via credential DoorAccessModifiers (extDoorTime flag)
     - Request to Exit (REX) with configurable activateStrikeOnRex
     - Door momentary unlock via DevActionReq from host
-    - Door mode support: unlocked, locked, card-only
+    - Door mode support: unlocked, locked, card-only, card+confirming PIN, unique PIN only, card-only or unique PIN
+    - PIN support: keypad entry buffering, confirming PIN validation, unique PIN lookup
     - Default door mode applied from DoorConfig on door creation
     - Runtime door mode change via DevActionReq (DoorModeChange) from host, including reset-to-default
     - REX behavior respects current door mode
@@ -76,7 +77,6 @@ Aporta doesn't intend to recreate what is already available by existing physical
     - Standalone UI for access level assignment (Z9/Open handles backend privilege management)
 
 ### Z9/Open Community Profile
-- PIN support
 
 ## Installation ##
 

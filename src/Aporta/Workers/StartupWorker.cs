@@ -781,16 +781,7 @@ public class StartupWorker : BackgroundService
             return;
         }
 
-        // Pin-based modes map to CardOnly for now (no pin support)
         var effectiveMode = doorModeType.Value;
-        if (effectiveMode == DoorModeType.CardAndConfirmingPin ||
-            effectiveMode == DoorModeType.UniquePinOnly ||
-            effectiveMode == DoorModeType.CardOnlyOrUniquePin)
-        {
-            _logger.LogWarning("Door unid={DoorUnid}: pin-based mode {Mode} mapped to CardOnly (TODO: pin support)",
-                doorUnid, effectiveMode);
-            effectiveMode = DoorModeType.CardOnly;
-        }
 
         var previousMode = _doorCurrentMode.TryGetValue(doorUnid, out var prev) ? prev : (DoorModeType?)null;
         _doorCurrentMode[doorUnid] = effectiveMode;

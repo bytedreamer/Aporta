@@ -31,6 +31,9 @@ public static class EventReasonMapping
             EventReason.AccessNotAssigned => EvtSubCode.AccessDeniedNoPriv,
             EventReason.OutsideSchedule => EvtSubCode.AccessDeniedOutsideSched,
             EventReason.DoorLocked => EvtSubCode.AccessDeniedDoorModeStaticLocked,
+            EventReason.UnknownUniquePin => EvtSubCode.AccessDeniedUnknownCredUniquePin,
+            EventReason.NoConfirmingPin => EvtSubCode.AccessDeniedNoConfirmingPinForCred,
+            EventReason.IncorrectConfirmingPin => EvtSubCode.AccessDeniedIncorrectConfirmingPin,
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason,
                 $"No EvtSubCode mapping for EventReason.{reason}")
         };
@@ -58,6 +61,9 @@ public static class EventReasonMapping
             EvtSubCode.AccessDeniedNoPriv => EventReason.NoPrivilege,
             EvtSubCode.AccessDeniedOutsideSched => EventReason.OutsideSchedule,
             EvtSubCode.AccessDeniedDoorModeStaticLocked => EventReason.DoorLocked,
+            EvtSubCode.AccessDeniedUnknownCredUniquePin => EventReason.UnknownUniquePin,
+            EvtSubCode.AccessDeniedNoConfirmingPinForCred => EventReason.NoConfirmingPin,
+            EvtSubCode.AccessDeniedIncorrectConfirmingPin => EventReason.IncorrectConfirmingPin,
             _ => EventReason.None
         };
 

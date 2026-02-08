@@ -18,6 +18,15 @@ public class AccessCredentialReceivedEventArgs : EventArgs
     }
 
     /// <summary>
+    /// Represents the event arguments for when an access credential is received with PIN data.
+    /// </summary>
+    public AccessCredentialReceivedEventArgs(IAccess access, ICredentialReceivedHandler handler, string pinData)
+        : this(access, handler)
+    {
+        PinData = pinData;
+    }
+
+    /// <summary>
     /// The access hardware that handled the card read.
     /// </summary>
     public IAccess Access { get; }
@@ -26,6 +35,11 @@ public class AccessCredentialReceivedEventArgs : EventArgs
     /// Implementation of an interface that determines if access should be granted.
     /// </summary>
     public ICredentialReceivedHandler Handler { get; }
+
+    /// <summary>
+    /// PIN data entered via keypad, or null if no keypad entry.
+    /// </summary>
+    public string PinData { get; }
 }
 
 /// <summary>

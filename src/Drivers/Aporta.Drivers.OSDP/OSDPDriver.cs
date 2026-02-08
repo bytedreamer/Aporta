@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -34,7 +36,9 @@ public class OSDPDriver : IHardwareDriver
     private readonly List<IEndpoint> _endpoints = new();
     private readonly ConcurrentDictionary<int, PKOCDevice> _pkocDevices = new();
     private readonly ConcurrentDictionary<string, IOsdpConnection> _connections = new();
-        
+    private readonly ConcurrentDictionary<(Guid connectionId, byte address), (string pin, CancellationTokenSource cts)> _pendingPins = new();
+    private const int PinBufferTimeoutMs = 5000;
+
     private ControlPanel _panel;
     private PKOCControlPanel _pkocPanel;
     private IDataEncryption _dataEncryption;
@@ -56,6 +60,7 @@ public class OSDPDriver : IHardwareDriver
             
         _panel.ConnectionStatusChanged += PanelOnConnectionStatusChanged;
         _panel.RawCardDataReplyReceived += PanelOnRawCardDataReplyReceived;
+        _panel.KeypadReplyReceived += PanelOnKeypadReplyReceived;
         _panel.InputStatusReportReplyReceived += PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived += PanelOnOutputStatusReportReplyReceived;
         _panel.NakReplyReceived += PanelOnNakReplyReceived;
@@ -330,12 +335,27 @@ public class OSDPDriver : IHardwareDriver
                 });
             if (accessPoint != null)
             {
-                _logger.LogInformation("Card read received on {AccessPointName}", accessPoint.Name);
+                // Try to consume a buffered PIN for this reader
+                string pin = null;
+                var key = (eventArgs.ConnectionId, eventArgs.Address);
+                if (_pendingPins.TryRemove(key, out var pending))
+                {
+                    pending.cts.Cancel();
+                    pending.cts.Dispose();
+                    pin = pending.pin;
+                    _logger.LogInformation("Card read received on {AccessPointName} with buffered PIN", accessPoint.Name);
+                }
+                else
+                {
+                    _logger.LogInformation("Card read received on {AccessPointName}", accessPoint.Name);
+                }
+
+                var handler = new WiegandCredentialHandler(eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount,
+                    accessPoint.Name, _logger);
                 AccessCredentialReceived?.Invoke(this,
-                    new AccessCredentialReceivedEventArgs(
-                        accessPoint,
-                        new WiegandCredentialHandler(eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount,
-                            accessPoint.Name, _logger)));
+                    pin != null
+                        ? new AccessCredentialReceivedEventArgs(accessPoint, handler, pin)
+                        : new AccessCredentialReceivedEventArgs(accessPoint, handler));
             }
             else
             {
@@ -343,6 +363,90 @@ public class OSDPDriver : IHardwareDriver
                     eventArgs.Address);
             }
         });
+    }
+
+    private void PanelOnKeypadReplyReceived(object sender, ControlPanel.KeypadReplyEventArgs eventArgs)
+    {
+        Task.Run(() =>
+        {
+            // Decode PIN from KeypadData.Data byte[] → ASCII string (filter to digits only)
+            var pinBuilder = new StringBuilder();
+            foreach (var b in eventArgs.KeypadData.Data)
+            {
+                if (b >= 0x30 && b <= 0x39) // ASCII digits '0'-'9'
+                    pinBuilder.Append((char)b);
+            }
+            var pin = pinBuilder.ToString();
+            if (string.IsNullOrEmpty(pin))
+            {
+                _logger.LogDebug("Keypad reply received but no digits found");
+                return;
+            }
+
+            _logger.LogInformation("Keypad entry received: {DigitCount} digits on address {Address}",
+                pin.Length, eventArgs.Address);
+
+            var key = (eventArgs.ConnectionId, eventArgs.Address);
+
+            // Cancel any previous pending PIN for this reader
+            if (_pendingPins.TryRemove(key, out var oldPending))
+            {
+                oldPending.cts.Cancel();
+                oldPending.cts.Dispose();
+            }
+
+            // Buffer the PIN with a timeout
+            var cts = new CancellationTokenSource();
+            _pendingPins[key] = (pin, cts);
+
+            // Start timeout: if no card read arrives, treat as PIN-only entry
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(PinBufferTimeoutMs, cts.Token);
+
+                    // Timeout expired — no card read arrived, treat as PIN-only
+                    if (!_pendingPins.TryRemove(key, out _))
+                        return; // Already consumed by card read
+
+                    var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
+                        .SingleOrDefault(ap =>
+                        {
+                            var (portName, address) = ParseEndpointId(ap.Id);
+                            return _portMapping.TryGetValue(portName, out var connId) &&
+                                   eventArgs.ConnectionId == connId &&
+                                   address == eventArgs.Address.ToString();
+                        });
+
+                    if (accessPoint != null)
+                    {
+                        _logger.LogInformation("PIN-only entry on {AccessPointName} (no card within timeout)", accessPoint.Name);
+                        AccessCredentialReceived?.Invoke(this,
+                            new AccessCredentialReceivedEventArgs(accessPoint, new PinOnlyCredentialHandler(), pin));
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Unable to find access point at address {Address} for PIN-only entry",
+                            eventArgs.Address);
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    // PIN was consumed by a card read — normal flow
+                }
+                finally
+                {
+                    cts.Dispose();
+                }
+            });
+        });
+    }
+
+    private class PinOnlyCredentialHandler : ICredentialReceivedHandler
+    {
+        public bool IsValid() => true;
+        public string MatchingCardData => null;
     }
 
     /// <summary>
@@ -537,6 +641,7 @@ public class OSDPDriver : IHardwareDriver
             
         _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
         _panel.RawCardDataReplyReceived -= PanelOnRawCardDataReplyReceived;
+        _panel.KeypadReplyReceived -= PanelOnKeypadReplyReceived;
         _panel.InputStatusReportReplyReceived -= PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived -= PanelOnOutputStatusReportReplyReceived;
         _panel.NakReplyReceived -= PanelOnNakReplyReceived;

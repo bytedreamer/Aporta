@@ -202,7 +202,7 @@ public class AccessService
                 return;
             }
 
-            var (granted, useExtendedTime) = await IsAccessGranted(eventArgs.Handler.MatchingCardData, matchingDoor, accessPoint);
+            var (granted, useExtendedTime) = await IsAccessGranted(eventArgs.Handler.MatchingCardData, eventArgs.PinData, doorMode, matchingDoor, accessPoint);
             if (granted)
             {
                 // Only open door if strike is assigned - community controllers may not have one
@@ -228,10 +228,48 @@ public class AccessService
         }
     }
 
-    private async Task<(bool granted, bool useExtendedTime)> IsAccessGranted(string matchingCardData, Aporta.Shared.Models.Door matchingDoor, Endpoint accessPoint)
+    private async Task<(bool granted, bool useExtendedTime)> IsAccessGranted(string matchingCardData, string pinData, DoorModeType? doorMode, Aporta.Shared.Models.Door matchingDoor, Endpoint accessPoint)
     {
+        // Guard: need at least a card or a PIN
+        if (matchingCardData == null && pinData == null)
+            return (false, false);
+
         AssignedCredential assignedCredential;
-        if (_decodeCardData != null)
+
+        if (matchingCardData == null && pinData != null)
+        {
+            // PIN-only path: look up credential by unique PIN
+            var allZ9Creds = await _z9CredRepository.GetAll();
+            var matchingCred = allZ9Creds.FirstOrDefault(c =>
+                c.CardPin?.PinUniqueCase == CardPin.PinUniqueOneofCase.PinUnique &&
+                c.CardPin.PinUnique &&
+                c.CardPin?.PinCase == CardPin.PinOneofCase.Pin &&
+                c.CardPin.Pin == pinData);
+
+            if (matchingCred == null)
+            {
+                _logger.LogInformation("Door '{Name}' denied access - unknown unique PIN", matchingDoor.Name);
+                var evtId = await InsertAccessEvt(EventType.AccessDenied, EventReason.UnknownUniquePin,
+                    new EventData
+                    {
+                        Door = matchingDoor,
+                        Endpoint = accessPoint,
+                        EventReason = EventReason.UnknownUniquePin
+                    });
+                await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, evtId);
+                AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                {
+                    EndpointId = accessPoint.DriverEndpointId,
+                    IsGranted = false,
+                    Reason = EventReason.UnknownUniquePin
+                });
+                return (false, false);
+            }
+
+            var credNum = SpCoreProtoUtil.ToBigInteger(matchingCred.CardPin.CredNum).ToString();
+            assignedCredential = await _credentialRepository.AssignedCredential(credNum);
+        }
+        else if (_decodeCardData != null)
         {
             // Z9 mode: decode raw bits to credential number, then look up by credNum
             var decodedCredNum = _decodeCardData(matchingCardData);
@@ -469,6 +507,61 @@ public class AccessService
             });
 
             return (false, false);
+        }
+
+        // PIN validation based on door mode
+        if (doorMode == DoorModeType.CardAndConfirmingPin && matchingCardData != null)
+        {
+            var z9CredForPin = await _z9CredRepository.Get(assignedCredential.Id);
+            if (pinData == null)
+            {
+                _logger.LogInformation("Door '{Name}' denied access - no confirming PIN entered", matchingDoor.Name);
+                eventId = await InsertAccessEvt(EventType.AccessDenied, EventReason.NoConfirmingPin,
+                    new EventData
+                    {
+                        Door = matchingDoor,
+                        Endpoint = accessPoint,
+                        Person = assignedCredential.Person,
+                        EventReason = EventReason.NoConfirmingPin,
+                        CardNumber = matchingCardData
+                    });
+                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+                await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
+                AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                {
+                    EndpointId = accessPoint.DriverEndpointId,
+                    IsGranted = false,
+                    CardNumber = matchingCardData,
+                    PersonName = assignedCredential.Person.FirstName,
+                    Reason = EventReason.NoConfirmingPin
+                });
+                return (false, false);
+            }
+            if (z9CredForPin?.CardPin?.PinCase == CardPin.PinOneofCase.Pin &&
+                z9CredForPin.CardPin.Pin != pinData)
+            {
+                _logger.LogInformation("Door '{Name}' denied access - incorrect confirming PIN", matchingDoor.Name);
+                eventId = await InsertAccessEvt(EventType.AccessDenied, EventReason.IncorrectConfirmingPin,
+                    new EventData
+                    {
+                        Door = matchingDoor,
+                        Endpoint = accessPoint,
+                        Person = assignedCredential.Person,
+                        EventReason = EventReason.IncorrectConfirmingPin,
+                        CardNumber = matchingCardData
+                    });
+                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+                await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
+                AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
+                {
+                    EndpointId = accessPoint.DriverEndpointId,
+                    IsGranted = false,
+                    CardNumber = matchingCardData,
+                    PersonName = assignedCredential.Person.FirstName,
+                    Reason = EventReason.IncorrectConfirmingPin
+                });
+                return (false, false);
+            }
         }
 
         // Check if credential has extended door time modifier
