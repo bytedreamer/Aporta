@@ -994,20 +994,10 @@ public class StartupWorker : BackgroundService
             }
         }
 
-        // Map EventReason to EvtSubCode (for granted, subCode is ignored so use default 0 value)
-        var subCode = e.Reason switch
-        {
-            EventReason.CredentialNotEnrolled => EvtSubCode.AccessDeniedUnknownCredNum,
-            EventReason.AccessNotAssigned => EvtSubCode.AccessDeniedNoPriv,
-            EventReason.NoPrivilege => EvtSubCode.AccessDeniedNoPriv,
-            EventReason.CredentialDisabled => EvtSubCode.AccessDeniedInactive,
-            EventReason.CredentialNotYetEffective => EvtSubCode.AccessDeniedNotEffective,
-            EventReason.CredentialExpired => EvtSubCode.AccessDeniedExpired,
-            EventReason.OutsideSchedule => EvtSubCode.AccessDeniedOutsideSched,
-            EventReason.DoorLocked => EvtSubCode.AccessDeniedNoPriv,
-            EventReason.NoCredentialTemplate => EvtSubCode.AccessDeniedUnknownCredNumFormat,
-            _ => EvtSubCode.AccessDeniedInactive  // Default value (0); unused for granted events
-        };
+        // Map EventReason to EvtSubCode via shared mapping
+        var eventType = e.IsGranted ? EventType.AccessGranted : EventType.AccessDenied;
+        var (_, evtSubCode) = EventReasonMapping.ToEvtCodes(eventType, e.Reason);
+        var subCode = evtSubCode ?? EvtSubCode.AccessDeniedInactive;
 
         _logger.LogInformation("Access {Decision} for reader {Name}: person={Person}, reason={Reason}",
             e.IsGranted ? "GRANTED" : "DENIED", config.Name, e.PersonName ?? "(unknown)", e.Reason);

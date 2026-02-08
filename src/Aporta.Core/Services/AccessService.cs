@@ -38,7 +38,7 @@ public class AccessService
     private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
     private readonly CredentialRepository _credentialRepository;
-    private readonly EventRepository _eventRepository;
+    private readonly Z9EvtRepository _z9EvtRepository;
     private readonly Z9CredRepository _z9CredRepository;
     private readonly CredTemplateRepository _credTemplateRepository;
     private readonly PrivRepository _privRepository;
@@ -66,7 +66,7 @@ public class AccessService
         _doorRepository = new DoorRepository(dataAccess);
         _credentialRepository = new CredentialRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
-        _eventRepository = new EventRepository(dataAccess);
+        _z9EvtRepository = new Z9EvtRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
         _credTemplateRepository = new CredTemplateRepository(dataAccess);
         _privRepository = new PrivRepository(dataAccess);
@@ -251,17 +251,14 @@ public class AccessService
         {
             _logger.LogInformation("Door '{Name}' badge requires enrollment", matchingDoor.Name);
 
-            eventId = await _eventRepository.Insert(new Event
-            {
-                EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
-                Data = JsonSerializer.Serialize(new EventData
+            eventId = await InsertAccessEvt(EventType.AccessDenied, EventReason.CredentialNotEnrolled,
+                new EventData
                 {
                     Door = matchingDoor,
                     Endpoint = accessPoint,
                     EventReason = EventReason.CredentialNotEnrolled,
                     CardNumber = matchingCardData
-                })
-            });
+                });
 
             if (assignedCredential == null)
             {
@@ -317,18 +314,15 @@ public class AccessService
             {
                 _logger.LogInformation("Door '{Name}' denied access - no credential template", matchingDoor.Name);
 
-                eventId = await _eventRepository.Insert(new Event
-                {
-                    EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
-                    Data = JsonSerializer.Serialize(new EventData
+                eventId = await InsertAccessEvt(EventType.AccessDenied, EventReason.NoCredentialTemplate,
+                    new EventData
                     {
                         Door = matchingDoor,
                         Endpoint = accessPoint,
                         Person = assignedCredential.Person,
                         EventReason = EventReason.NoCredentialTemplate,
                         CardNumber = matchingCardData
-                    })
-                });
+                    });
                 await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
                 await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
@@ -349,18 +343,15 @@ public class AccessService
             {
                 _logger.LogInformation("Door '{Name}' denied access - credential disabled", matchingDoor.Name);
 
-                eventId = await _eventRepository.Insert(new Event
-                {
-                    EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
-                    Data = JsonSerializer.Serialize(new EventData
+                eventId = await InsertAccessEvt(EventType.AccessDenied, EventReason.CredentialDisabled,
+                    new EventData
                     {
                         Door = matchingDoor,
                         Endpoint = accessPoint,
                         Person = assignedCredential.Person,
                         EventReason = EventReason.CredentialDisabled,
                         CardNumber = matchingCardData
-                    })
-                });
+                    });
                 await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
                 await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
@@ -385,18 +376,15 @@ public class AccessService
                     _logger.LogInformation("Door '{Name}' denied access - credential not yet effective (effective {Date})",
                         matchingDoor.Name, effectiveDate.ToShortDateString());
 
-                    eventId = await _eventRepository.Insert(new Event
-                    {
-                        EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
-                        Data = JsonSerializer.Serialize(new EventData
+                    eventId = await InsertAccessEvt(EventType.AccessDenied, EventReason.CredentialNotYetEffective,
+                        new EventData
                         {
                             Door = matchingDoor,
                             Endpoint = accessPoint,
                             Person = assignedCredential.Person,
                             EventReason = EventReason.CredentialNotYetEffective,
                             CardNumber = matchingCardData
-                        })
-                    });
+                        });
                     await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
                     await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
@@ -422,18 +410,15 @@ public class AccessService
                     _logger.LogInformation("Door '{Name}' denied access - credential expired (expired {Date})",
                         matchingDoor.Name, expiresDate.ToShortDateString());
 
-                    eventId = await _eventRepository.Insert(new Event
-                    {
-                        EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
-                        Data = JsonSerializer.Serialize(new EventData
+                    eventId = await InsertAccessEvt(EventType.AccessDenied, EventReason.CredentialExpired,
+                        new EventData
                         {
                             Door = matchingDoor,
                             Endpoint = accessPoint,
                             Person = assignedCredential.Person,
                             EventReason = EventReason.CredentialExpired,
                             CardNumber = matchingCardData
-                        })
-                    });
+                        });
                     await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
                     await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
@@ -458,18 +443,15 @@ public class AccessService
             var reasonText = reason == EventReason.OutsideSchedule ? "outside schedule" : "no privilege";
             _logger.LogInformation("Door '{Name}' denied access - {Reason}", matchingDoor.Name, reasonText);
 
-            eventId = await _eventRepository.Insert(new Event
-            {
-                EndpointId = accessPoint.Id, Type = EventType.AccessDenied,
-                Data = JsonSerializer.Serialize(new EventData
+            eventId = await InsertAccessEvt(EventType.AccessDenied, reason,
+                new EventData
                 {
                     Door = matchingDoor,
                     Endpoint = accessPoint,
                     Person = assignedCredential.Person,
                     EventReason = reason,
                     CardNumber = matchingCardData
-                })
-            });
+                });
             await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
 
             await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
@@ -494,18 +476,15 @@ public class AccessService
         _logger.LogInformation("Door '{Name}' granted access{ExtTime}", matchingDoor.Name,
             useExtendedTime ? " (extended time)" : "");
 
-        eventId = await _eventRepository.Insert(new Event
-        {
-            EndpointId = accessPoint.Id, Type = EventType.AccessGranted,
-            Data = JsonSerializer.Serialize(new EventData
+        eventId = await InsertAccessEvt(EventType.AccessGranted, EventReason.None,
+            new EventData
             {
                 Door = matchingDoor,
                 Endpoint = accessPoint,
                 Person = assignedCredential.Person,
                 EventReason = EventReason.None,
                 CardNumber = matchingCardData
-            })
-        });
+            });
         await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
 
         await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
@@ -522,6 +501,29 @@ public class AccessService
         });
 
         return (true, useExtendedTime);
+    }
+
+    private async Task<int> InsertAccessEvt(EventType eventType, EventReason reason, EventData eventData)
+    {
+        var (evtCode, evtSubCode) = EventReasonMapping.ToEvtCodes(eventType, reason);
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var evt = new Evt
+        {
+            EvtCode = evtCode,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            Data = JsonSerializer.Serialize(eventData)
+        };
+
+        if (evtSubCode.HasValue)
+        {
+            evt.EvtSubCode = evtSubCode.Value;
+        }
+
+        return await _z9EvtRepository.Insert(evt);
     }
 
     private int GetStrikeTimeMs(string endpointId, bool useExtendedTime)

@@ -1,8 +1,10 @@
 using System.Data;
 using System.Text.Json;
 using Dapper;
+using Google.Protobuf;
 using Microsoft.Data.Sqlite;
 using NUnit.Framework;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Migration.Tests;
 
@@ -47,7 +49,8 @@ public class MigrationTests
         await VerifyPersonTable();
         await VerifyCredentialTable();
         await VerifyCredentialAssignmentTable();
-        await VerifyEventTable();
+        await VerifyZ9EvtTable();
+        await VerifyEventTableDropped();
         await VerifySchemaInfo();
     }
 
@@ -68,7 +71,8 @@ public class MigrationTests
         Assert.That(tables, Does.Contain("person"));
         Assert.That(tables, Does.Contain("credential"));
         Assert.That(tables, Does.Contain("credential_assignment"));
-        Assert.That(tables, Does.Contain("event"));
+        Assert.That(tables, Does.Contain("z9_evt"));
+        Assert.That(tables, Does.Not.Contain("event"));
     }
 
     [Test]
@@ -175,7 +179,6 @@ public class MigrationTests
             CREATE TABLE person (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE credential (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE credential_assignment (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
-            CREATE TABLE event (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL);
         ");
     }
 
@@ -297,14 +300,24 @@ public class MigrationTests
         Assert.That(json.RootElement.GetProperty("enabled").GetInt32(), Is.EqualTo(1));
     }
 
-    private async Task VerifyEventTable()
+    private static readonly JsonParser ProtoParser = new(JsonParser.Settings.Default);
+
+    private async Task VerifyZ9EvtTable()
     {
         var result = await _connection.QueryFirstAsync<(int Id, string Data)>(
-            "SELECT id, data FROM event WHERE id = 1");
+            "SELECT id, data FROM z9_evt WHERE id = 1");
 
-        var json = JsonDocument.Parse(result.Data);
-        Assert.That(json.RootElement.GetProperty("endpointId").GetInt32(), Is.EqualTo(1));
-        Assert.That(json.RootElement.GetProperty("type").GetInt32(), Is.EqualTo(1));
+        var evt = ProtoParser.Parse<Evt>(result.Data);
+        Assert.That(evt.EvtCode, Is.EqualTo(EvtCode.DoorAccessDenied)); // event_type=1 is AccessDenied
+        Assert.That(evt.Data, Is.EqualTo("{\"card\":\"12345678\"}"));
+        Assert.That(evt.DbTime.Millis, Is.GreaterThan(0));
+    }
+
+    private async Task VerifyEventTableDropped()
+    {
+        var tables = await _connection.QueryAsync<string>(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='event'");
+        Assert.That(tables, Is.Empty);
     }
 
     private async Task VerifySchemaInfo()

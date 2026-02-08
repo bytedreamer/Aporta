@@ -81,12 +81,7 @@ namespace Aporta.Core.DataAccess.Migrations
                 CREATE INDEX idx_ca_credential ON credential_assignment (json_extract(data, '$.credentialId'));
                 CREATE INDEX idx_ca_person ON credential_assignment (json_extract(data, '$.personId'));
 
-                -- Event table (always local, uses AUTOINCREMENT)
-                CREATE TABLE event (
-                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                    data TEXT NOT NULL
-                );
-                ",
+",
                 transaction: transaction);
         }
     }

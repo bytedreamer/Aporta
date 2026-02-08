@@ -1,7 +1,9 @@
 using System.Data;
 using System.Text.Json;
 using Dapper;
+using Google.Protobuf;
 using Microsoft.Data.Sqlite;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Migration;
 
@@ -456,35 +458,76 @@ public class Migrator
             transaction: transaction);
     }
 
+    private static readonly JsonFormatter ProtoFormatter = new(JsonFormatter.Settings.Default);
+
     private async Task TransformEventTableAsync(IDbTransaction? transaction)
     {
-        Console.WriteLine("  Transforming event table...");
+        Console.WriteLine("  Migrating event table to z9_evt...");
         if (_dryRun) return;
 
         var oldData = await _connection.QueryAsync<(int Id, int EndpointId, DateTime Timestamp, int EventType, string Data)>(
             "SELECT id, endpoint_id, timestamp, event_type, data FROM event", transaction: transaction);
 
         await _connection.ExecuteAsync(
-            @"CREATE TABLE event_new (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL)",
+            @"CREATE TABLE z9_evt (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL)",
             transaction: transaction);
 
         foreach (var row in oldData)
         {
-            var json = JsonSerializer.Serialize(new
+            var millis = new DateTimeOffset(row.Timestamp, TimeSpan.Zero).ToUnixTimeMilliseconds();
+            var isGranted = row.EventType == 0; // EventType.AccessGranted = 0
+
+            var evt = new Evt
             {
-                endpointId = row.EndpointId,
-                timestamp = row.Timestamp,
-                type = row.EventType,
-                data = row.Data
-            });
+                EvtCode = isGranted ? EvtCode.DoorAccessGranted : EvtCode.DoorAccessDenied,
+                HwTime = new DateTimeData { Millis = millis },
+                DbTime = new DateTimeData { Millis = millis },
+                Consumed = false,
+                Priority = 0,
+                Data = row.Data
+            };
+
+            // Parse EventData to get EventReason for denied events
+            if (!isGranted && !string.IsNullOrEmpty(row.Data))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(row.Data);
+                    if (doc.RootElement.TryGetProperty("EventReason", out var reasonProp) ||
+                        doc.RootElement.TryGetProperty("eventReason", out reasonProp))
+                    {
+                        var reasonInt = reasonProp.GetInt32();
+                        var subCode = reasonInt switch
+                        {
+                            4 => EvtSubCode.AccessDeniedUnknownCredNum,     // CredentialNotEnrolled
+                            11 => EvtSubCode.AccessDeniedUnknownCredNumFormat, // NoCredentialTemplate
+                            5 => EvtSubCode.AccessDeniedInactive,            // CredentialDisabled
+                            6 => EvtSubCode.AccessDeniedNotEffective,        // CredentialNotYetEffective
+                            7 => EvtSubCode.AccessDeniedExpired,             // CredentialExpired
+                            8 => EvtSubCode.AccessDeniedNoPriv,              // NoPrivilege
+                            3 => EvtSubCode.AccessDeniedNoPriv,              // AccessNotAssigned
+                            9 => EvtSubCode.AccessDeniedOutsideSched,        // OutsideSchedule
+                            10 => EvtSubCode.AccessDeniedDoorModeStaticLocked, // DoorLocked
+                            _ => (EvtSubCode?)null
+                        };
+                        if (subCode.HasValue)
+                            evt.EvtSubCode = subCode.Value;
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Old data may not be parseable — leave without sub-code
+                }
+            }
+
+            var json = ProtoFormatter.Format(evt);
             await _connection.ExecuteAsync(
-                "INSERT INTO event_new (id, data) VALUES (@id, @data)",
+                "INSERT INTO z9_evt (id, data) VALUES (@id, @data)",
                 new { id = row.Id, data = json },
                 transaction: transaction);
         }
 
         await _connection.ExecuteAsync("DROP TABLE event", transaction: transaction);
-        await _connection.ExecuteAsync("ALTER TABLE event_new RENAME TO event", transaction: transaction);
     }
 
     private static List<(int Version, string Name, string Sql)> GetOldMigrations()

@@ -33,6 +33,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private readonly HolCalRepository _holCalRepository;
     private readonly HolTypeRepository _holTypeRepository;
     private readonly Z9CredRepository _z9CredRepository;
+    private readonly Z9EvtRepository _z9EvtRepository;
 
     // Received OSDP CredReader configurations from Z9
     private readonly List<OsdpReaderConfig> _osdpReaderConfigs = new();
@@ -116,6 +117,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         _holCalRepository = new HolCalRepository(dataAccess);
         _holTypeRepository = new HolTypeRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
+        _z9EvtRepository = new Z9EvtRepository(dataAccess);
     }
 
     public void Start(string host, int port, string id = null)
@@ -1199,12 +1201,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
             return;
         }
 
-        if (!IsConnected)
-        {
-            _logger.LogWarning("Cannot send cred reader event: not connected");
-            return;
-        }
-
         var evtCode = isOnline ? EvtCode.CredReaderOnline : EvtCode.CredReaderOffline;
         var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -1223,6 +1219,14 @@ public class Z9OpenCommunityProtocolService : IDisposable
             }
         };
 
+        _z9EvtRepository.Insert(evt).GetAwaiter().GetResult();
+
+        if (!IsConnected)
+        {
+            _logger.LogWarning("Cannot send cred reader event: not connected");
+            return;
+        }
+
         var message = new SpCoreMessage
         {
             Type = SpCoreMessage.Types.Type.Evt
@@ -1237,6 +1241,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
     /// <summary>
     /// Sends an access event (granted or denied) to Z9.
+    /// Access events are NOT persisted here — AccessService already persists them to z9_evt.
     /// </summary>
     /// <param name="config">The OSDP reader configuration (to determine the device).</param>
     /// <param name="isGranted">True if access was granted, false if denied.</param>
@@ -1325,12 +1330,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
             return;
         }
 
-        if (!IsConnected)
-        {
-            _logger.LogWarning("Cannot send door state event: not connected");
-            return;
-        }
-
         if (!config.DoorUnid.HasValue)
         {
             _logger.LogWarning("Cannot send door state event: reader {Name} has no DoorUnid", config.Name);
@@ -1363,6 +1362,14 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 DevType = DevType.Door
             }
         };
+
+        _z9EvtRepository.Insert(evt).GetAwaiter().GetResult();
+
+        if (!IsConnected)
+        {
+            _logger.LogWarning("Cannot send door state event: not connected");
+            return;
+        }
 
         var message = new SpCoreMessage
         {
