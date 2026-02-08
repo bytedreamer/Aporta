@@ -12,7 +12,7 @@ public class FlexSessionService
     public FlexAuthenticateResult Authenticate(string username, string password)
     {
         // Default credentials — configurable via global settings in the future
-        if (username == "admin" && password == "admin")
+        if (username == "admin" && password == "pass")
         {
             var token = Guid.NewGuid().ToString("N");
             _sessions[token] = new FlexSession

@@ -61,6 +61,18 @@ public class _0001_AddZ9OpenTables : IMigration
                 id INTEGER NOT NULL PRIMARY KEY,
                 data TEXT NOT NULL
             );
+
+            -- Z9 Device table (stores full Dev proto messages)
+            CREATE TABLE z9_dev (
+                id INTEGER NOT NULL PRIMARY KEY,
+                data TEXT NOT NULL
+            );
+
+            -- Encryption Key table
+            CREATE TABLE encryption_key (
+                id INTEGER NOT NULL PRIMARY KEY,
+                data TEXT NOT NULL
+            );
             ",
             transaction: transaction);
     }

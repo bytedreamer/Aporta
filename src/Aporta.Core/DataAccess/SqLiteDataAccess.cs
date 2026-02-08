@@ -21,8 +21,7 @@ public class SqLiteDataAccess : IDataAccess
         new _0000_InitialCreate(),
         new _0001_AddZ9OpenTables(),
         new _0002_AddZ9CredTable(),
-        new _0003_AddZ9EvtTable(),
-        new _0004_AddFlexTables()
+        new _0003_AddZ9EvtTable()
     };
 
     /// <summary>
