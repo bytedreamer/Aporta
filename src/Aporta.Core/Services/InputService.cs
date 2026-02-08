@@ -8,6 +8,8 @@ using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
+using Z9.Protobuf;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Services;
 
@@ -16,6 +18,7 @@ public class InputService
     private readonly InputRepository _inputRepository;
     private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
+    private readonly Z9DevRepository _z9DevRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private readonly ExtensionService _extensionService;
 
@@ -27,6 +30,7 @@ public class InputService
         _doorRepository = new DoorRepository(dataAccess);
         _inputRepository = new InputRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
+        _z9DevRepository = new Z9DevRepository(dataAccess);
 
         _extensionService.StateChanged += ExtensionServiceOnStateChanged;
     }
@@ -59,14 +63,24 @@ public class InputService
     public async Task Insert(Input input)
     {
         await _inputRepository.Insert(input);
-            
+
+        var dev = new Dev
+        {
+            Unid = input.Id,
+            Name = input.Name,
+            DevType = DevType.Sensor,
+        };
+        SpCoreProtoUtil.InitRequired(dev);
+        await _z9DevRepository.Upsert(dev);
+
         await _hubContext.Clients.All.SendAsync(Methods.InputInserted, input.Id);
     }
 
     public async Task Delete(int id)
     {
         await _inputRepository.Delete(id);
-            
+        await _z9DevRepository.Delete(id);
+
         await _hubContext.Clients.All.SendAsync(Methods.InputDeleted, id);
     }
 

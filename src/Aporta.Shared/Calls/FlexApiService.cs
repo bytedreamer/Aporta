@@ -22,6 +22,21 @@ public class FlexApiService
         return await FlexGetAsync<FlexListResponse<FlexEvt>>($"flex/evt/list?offset={offset}&max={max}");
     }
 
+    public async Task<FlexListResponse<FlexCred>> GetCredListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexCred>>($"flex/cred/list?offset={offset}&max={max}");
+    }
+
+    public async Task<FlexListResponse<FlexDev>> GetSensorListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDev>>($"flex/sensor/list?offset={offset}&max={max}");
+    }
+
+    public async Task<FlexListResponse<FlexDev>> GetActuatorListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDev>>($"flex/actuator/list?offset={offset}&max={max}");
+    }
+
     private async Task EnsureAuthenticated()
     {
         if (!string.IsNullOrEmpty(_sessionToken))

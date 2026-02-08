@@ -1,4 +1,4 @@
-@page "/configuration/inputs"
+@page "/configuration/sensors"
 
 @using System.Text
 @using System.Text.Json
@@ -6,17 +6,19 @@
 @using Microsoft.AspNetCore.SignalR.Client
 
 @using Aporta.Shared.Models
+@using Aporta.Shared.Models.Flex
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.WebClient.Messaging
 
 @inject HttpClient Http
+@inject FlexApiService FlexApi
 @inject NavigationManager NavigationManager
 
-<Heading Size="HeadingSize.Is1">Inputs</Heading>
+<Heading Size="HeadingSize.Is1">Sensors</Heading>
 <Divider />
 
-@if (_inputs == null)
+@if (_sensors == null)
 {
     <div class="spinner"></div>
 }
@@ -26,12 +28,12 @@ else
         <Column ColumnSize="ColumnSize.Is6.OnDesktop">
             @if (_availableMonitorPoints.Any())
             {
-                <Button Color="Color.Primary" Clicked="_addInputModal.Show">Add Input</Button>
+                <Button Color="Color.Primary" Clicked="_addInputModal.Show">Add Sensor</Button>
             }
             else
             {
                 <Alert Color="Color.Warning" Visible="true">
-                    <AlertMessage>Add Input</AlertMessage>
+                    <AlertMessage>Add Sensor</AlertMessage>
                     <AlertDescription>No available inputs are configured in the drivers</AlertDescription>
                 </Alert>
             }
@@ -49,14 +51,14 @@ else
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            @foreach (var input in _inputs.OrderBy(input => input.Name))
+                            @foreach (var sensor in _sensors.InstanceList.OrderBy(s => s.Name))
                             {
                                 <TableRow>
                                     <TableRowHeader>
-                                        @input.Name
+                                        @sensor.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
-                                        <Button Clicked="@(async () => await RemoveInput(input.Id, input.Name))">
+                                        <Button Clicked="@(async () => await RemoveInput(sensor))">
                                             <Icon Name="IconName.Delete" Style="color: red"/>
                                         </Button>
                                     </TableRowCell>
@@ -66,14 +68,14 @@ else
                     </Table>
                 </CardBody>
             </Card>
-        </Column> 
+        </Column>
     </Row>
-    
+
     <Modal @ref="_addInputModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
             <ModalHeader>
                 <ModalTitle>
-                    Add Input
+                    Add Sensor
                 </ModalTitle>
                 <CloseButton Clicked="@_addInputModal.Hide"/>
             </ModalHeader>
@@ -86,14 +88,14 @@ else
                                 <TextEdit @bind-Text="_addInput.Name">
                                     <Feedback>
                                         <ValidationError>
-                                            Please enter a name for the input
+                                            Please enter a name for the sensor
                                         </ValidationError>
                                     </Feedback>
                                 </TextEdit>
                             </FieldBody>
                         </Field>
                     </Validation>
-                 
+
                     <Field>
                         <FieldLabel>Device Endpoint</FieldLabel>
                         <FieldBody>
@@ -124,48 +126,41 @@ else
 <MessageProvider />
 
 @code {
-    [Inject] 
+    [Inject]
     IMessageService MessageService { get; set; }
-    
-    private List<Input> _inputs;
+
+    private FlexListResponse<FlexDev> _sensors;
     private Endpoint[] _availableMonitorPoints;
     private Input _addInput;
-    
+
     private HubConnection _hubConnection;
-    
+
     private Modal _addInputModal;
     private Validations _addInputValidations;
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
-    
+
     protected override async Task OnInitializedAsync()
     {
-        _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
+        _sensors = await FlexApi.GetSensorListAsync(0, 1000);
 
         await InitializedAvailableInputs();
-        
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect(new SignalRRetryPolicy())
             .Build();
-        _hubConnection.On<int>(Methods.InputInserted, async inputId =>
+        _hubConnection.On<int>(Methods.InputInserted, async _ =>
         {
-            _inputs.Add( await Http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
-            
+            _sensors = await FlexApi.GetSensorListAsync(0, 1000);
             await InitializedAvailableInputs();
-            
             StateHasChanged();
         });
-        _hubConnection.On<int>(Methods.InputDeleted, async inputId =>
+        _hubConnection.On<int>(Methods.InputDeleted, async _ =>
         {
-            var input = _inputs.FirstOrDefault(o => o.Id == inputId);
-            if (input == null) return;
-            
-            _inputs.Remove(input);
-            
+            _sensors = await FlexApi.GetSensorListAsync(0, 1000);
             await InitializedAvailableInputs();
-
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
@@ -195,15 +190,15 @@ else
             new StringContent(JsonSerializer.Serialize(_addInput), Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {
-            _snackbarMessage = "Unable to add input";
+            _snackbarMessage = "Unable to add sensor";
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
          }
     }
 
-    private async Task RemoveInput(int inputId, string inputName)
+    private async Task RemoveInput(FlexDev sensor)
     {
-        if (!await MessageService.Confirm($"Are you sure you want to delete input '{inputName}'?", "Delete Bus", options =>
+        if (!await MessageService.Confirm($"Are you sure you want to delete sensor '{sensor.Name}'?", "Delete Sensor", options =>
         {
             options.ShowMessageIcon = false;
             options.ConfirmButtonColor = Color.Danger;
@@ -211,12 +206,12 @@ else
         {
             return;
         }
-        
-        string url = string.Format($"{Paths.Inputs}/{inputId}");
+
+        string url = string.Format($"{Paths.Inputs}/{sensor.Unid}");
         var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
-            _snackbarMessage = "Unable to remove input";
+            _snackbarMessage = "Unable to remove sensor";
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
         }

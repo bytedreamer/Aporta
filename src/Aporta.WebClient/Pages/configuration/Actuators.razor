@@ -1,4 +1,4 @@
-@page "/configuration/outputs"
+@page "/configuration/actuators"
 
 @using System.Text
 @using System.Text.Json
@@ -6,17 +6,19 @@
 @using Microsoft.AspNetCore.SignalR.Client
 
 @using Aporta.Shared.Models
+@using Aporta.Shared.Models.Flex
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.WebClient.Messaging
 
 @inject HttpClient Http
+@inject FlexApiService FlexApi
 @inject NavigationManager NavigationManager
 
-<Heading Size="HeadingSize.Is1">Outputs</Heading>
+<Heading Size="HeadingSize.Is1">Actuators</Heading>
 <Divider />
 
-@if (_outputs == null)
+@if (_actuators == null)
 {
     <div class="spinner"></div>
 }
@@ -26,12 +28,12 @@ else
         <Column ColumnSize="ColumnSize.Is6.OnDesktop">
             @if (_availableControlPoints.Any())
             {
-                <Button Color="Color.Primary" Clicked="_addOutputModal.Show">Add Output</Button>
+                <Button Color="Color.Primary" Clicked="_addOutputModal.Show">Add Actuator</Button>
             }
             else
             {
                 <Alert Color="Color.Warning" Visible="true">
-                    <AlertMessage>Add Output</AlertMessage>
+                    <AlertMessage>Add Actuator</AlertMessage>
                     <AlertDescription>No available outputs are configured in the drivers</AlertDescription>
                 </Alert>
             }
@@ -49,14 +51,14 @@ else
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            @foreach (var output in _outputs.OrderBy(output => output.Name))
+                            @foreach (var actuator in _actuators.InstanceList.OrderBy(a => a.Name))
                             {
                                 <TableRow>
                                     <TableRowHeader>
-                                        @output.Name
+                                        @actuator.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
-                                        <Button Clicked="@(async () => await RemoveOutput(output.Id, output.Name))">
+                                        <Button Clicked="@(async () => await RemoveOutput(actuator))">
                                             <Icon Name="IconName.Delete" Style="color: red"/>
                                         </Button>
                                     </TableRowCell>
@@ -66,14 +68,14 @@ else
                     </Table>
                 </CardBody>
             </Card>
-        </Column> 
+        </Column>
     </Row>
-    
+
     <Modal @ref="_addOutputModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
             <ModalHeader>
                 <ModalTitle>
-                    Add Output
+                    Add Actuator
                 </ModalTitle>
                 <CloseButton Clicked="@_addOutputModal.Hide"/>
             </ModalHeader>
@@ -86,14 +88,14 @@ else
                                 <TextEdit @bind-Text="_addOutput.Name">
                                     <Feedback>
                                         <ValidationError>
-                                            Please enter a name for the ouptut
+                                            Please enter a name for the actuator
                                         </ValidationError>
                                     </Feedback>
                                 </TextEdit>
                             </FieldBody>
                         </Field>
                     </Validation>
-                 
+
                     <Field>
                         <FieldLabel>Device Endpoint</FieldLabel>
                         <FieldBody>
@@ -124,49 +126,42 @@ else
 <MessageProvider />
 
 @code {
-    [Inject] 
+    [Inject]
     IMessageService MessageService { get; set; }
-    
-    private List<Output> _outputs;
+
+    private FlexListResponse<FlexDev> _actuators;
     private Endpoint[] _availableControlPoints;
     private Output _addOutput;
-    
+
     private HubConnection _hubConnection;
-    
+
     private Modal _addOutputModal;
     private Validations _addOutputValidations;
-    
+
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
-    
+
     protected override async Task OnInitializedAsync()
     {
-        _outputs = await Http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
+        _actuators = await FlexApi.GetActuatorListAsync(0, 1000);
 
         await InitializedAvailableOutputs();
-        
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect(new SignalRRetryPolicy())
             .Build();
-        _hubConnection.On<int>(Methods.OutputInserted, async outputId =>
+        _hubConnection.On<int>(Methods.OutputInserted, async _ =>
         {
-            _outputs.Add( await Http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
-            
+            _actuators = await FlexApi.GetActuatorListAsync(0, 1000);
             await InitializedAvailableOutputs();
-            
             StateHasChanged();
         });
-        _hubConnection.On<int>(Methods.OutputDeleted, async outputId =>
+        _hubConnection.On<int>(Methods.OutputDeleted, async _ =>
         {
-            var output = _outputs.FirstOrDefault(o => o.Id == outputId);
-            if (output == null) return;
-            
-            _outputs.Remove(output);
-            
+            _actuators = await FlexApi.GetActuatorListAsync(0, 1000);
             await InitializedAvailableOutputs();
-
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
@@ -196,15 +191,15 @@ else
             new StringContent(JsonSerializer.Serialize(_addOutput), Encoding.UTF8, "application/json"));
         if (!response.IsSuccessStatusCode)
         {
-            _snackbarMessage = "Unable to add output";
+            _snackbarMessage = "Unable to add actuator";
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
          }
     }
 
-    private async Task RemoveOutput(int outputId, string outputName)
+    private async Task RemoveOutput(FlexDev actuator)
     {
-        if (!await MessageService.Confirm($"Are you sure you want to delete output '{outputName}'?", "Delete Bus", options =>
+        if (!await MessageService.Confirm($"Are you sure you want to delete actuator '{actuator.Name}'?", "Delete Actuator", options =>
         {
             options.ShowMessageIcon = false;
             options.ConfirmButtonColor = Color.Danger;
@@ -212,12 +207,12 @@ else
         {
             return;
         }
-        
-        string url = string.Format($"{Paths.Outputs}/{outputId}");
+
+        string url = string.Format($"{Paths.Outputs}/{actuator.Unid}");
         var response = await Http.DeleteAsync(url);
         if (!response.IsSuccessStatusCode)
         {
-            _snackbarMessage = "Unable to remove output";
+            _snackbarMessage = "Unable to remove actuator";
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
         }
