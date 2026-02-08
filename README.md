@@ -11,28 +11,73 @@ Aporta doesn't intend to recreate what is already available by existing physical
 - Open standards are embraced and built into the software.
 - Features are not to be restricted by licensing. All the software's capabilities are available without being overburden with expensive and confusing license terms.
 
-## Release Plan ##
+## Completed ##
 
-The project is early in its development. After working on access control products for many years, my inclination is that there are a large number of features required for a viable access controller. The list below is an attempt to limit the feature targeted in the first release.
-
-- Easy installation **(Done)**
-    - Windows installer **(Done)**
-    - Debian packages **(Done)**
+### Aporta
+- Easy installation
+    - Windows installer
+    - Debian packages
 - Self hosted web management
-    - SSL required by default **(Done)**
+    - SSL required by default
+- OSDP Driver
+    - Install new devices with security channel encryption
+    - Process standard Wiegand card reads
+    - Detect if device is online
+    - Control output
+- Access Control
+    - Enroll new cardholder
+    - Read entire card data for card number
+    - Log access events
+
+### Z9/Open Community Profile
+- Connection & Protocol
+    - Outbound TCP connection from panel to host (panel-initiates model)
+    - Protobuf-based Z9/Open Community protocol with identification handshake
+    - Automatic configuration download on connect (DbChange messages)
+- Device Management
+    - OSDP credential readers over TCP/IP, configured from Dev messages
+    - Door model with strike actuator, door contact sensor, and REX sensor — all wired automatically from the device hierarchy
+    - Credential reader online/offline status reporting
+- Credential & Data Format Support
+    - Credential mapping from Cred objects (card number, facility code, enabled/disabled, effective/expiry dates)
+    - Credentials stored by card number; card reads decoded using DataFormat definitions to extract and match by card number
+    - Credential templates, data layouts, and data formats persisted to local SQLite database
+- Access Control Decisions
+    - Privilege-based access control using DoorAccessPriv and CredPrivBinding
+    - Door-specific privilege checking (precision access and privilege group elements)
+    - Schedule enforcement with SchedRestriction (time-of-day, day-of-week)
+    - Credential status checks: disabled, not yet effective, expired
+    - Access granted and denied events reported to host with appropriate EvtSubCode
+- Door Control
+    - Door strike actuation on access grant with configurable strike time from DoorConfig
+    - Extended strike time support via credential DoorAccessModifiers (extDoorTime flag)
+    - Request to Exit (REX) with configurable activateStrikeOnRex
+    - Door momentary unlock via DevActionReq from host
+    - Door mode support: unlocked, locked, card-only
+    - Default door mode applied from DoorConfig on door creation
+    - Runtime door mode change via DevActionReq (DoorModeChange) from host, including reset-to-default
+    - REX behavior respects current door mode
+- Door Alarm Monitoring
+    - Door state reporting: unlocked, locked, opened, closed
+    - Door forced open detection with DoorForced/DoorNotForced events
+    - Door held open detection with DoorHeld/DoorNotHeld events
+    - Extended held time support via credential extDoorTime flag
+
+## TODO ##
+
+### Aporta
+- Self hosted web management
     - A master password to gain access
 - OSDP Driver
-    - Install new devices with security channel encryption **(Done)**
-    - Process standard Wiegand card reads **(Done)**
-    - Detect if device is online **(Done)**
-    - Control output **(Done)**
     - Notify when input is tripped
- - Access Control
-    - Enroll new cardholder **(Done)**
+- Access Control
     - Basic access level assignment
-    - Read entire card data for card number **(Done)**
-    - Card number is a non-reversible hash **(Done)**
-    - Log access events **(Done)**
+
+### Z9/Open Community Profile
+- Holiday calendar support in schedule evaluation
+- Element-level schedules
+- Holiday support
+- PIN support
 
 ## Installation ##
 
@@ -95,50 +140,6 @@ _appsettings.Production.json_ - Location for Aporta settings
     }
 }
 ```
-
-## Z9/Open Community Profile Integration
-
-This fork adds support for the [Z9/Open Community Profile](https://z9security.com), allowing Aporta to operate as a managed community controller under a host. Aporta connects outbound to the host over TCP using protobuf messaging, receives its full configuration (credentials, privileges, schedules, devices), and reports events back.
-
-### Connection & Protocol
-- Outbound TCP connection from panel to host (panel-initiates model)
-- Protobuf-based Z9/Open Community protocol with identification handshake
-- Automatic configuration download on connect (DbChange messages)
-
-### Device Management
-- OSDP credential readers over TCP/IP, configured from Z9/Open Community Profile Dev messages
-- Door model with strike actuator, door contact sensor, and REX sensor — all wired automatically from the device hierarchy
-- Credential reader online/offline status reporting
-
-### Credential & Data Format Support
-- Credential mapping from Z9/Open Community Profile Cred objects (card number, facility code, enabled/disabled, effective/expiry dates)
-- Credentials stored by card number; card reads decoded using Z9/Open Community Profile DataFormat definitions to extract and match by card number
-- Credential templates, data layouts, and data formats persisted to local SQLite database
-
-### Access Control Decisions
-- Privilege-based access control using DoorAccessPriv and CredPrivBinding
-- Door-specific privilege checking (precision access and privilege group elements)
-- Schedule enforcement with SchedRestriction (time-of-day, day-of-week)
-- Holiday calendar support in schedule evaluation
-- Credential status checks: disabled, not yet effective, expired
-- Access granted and denied events reported to host with appropriate EvtSubCode (NO_PRIV, INACTIVE, NOT_EFFECTIVE, EXPIRED, OUTSIDE_SCHED, UNKNOWN_CRED_NUM)
-
-### Door Control
-- Door strike actuation on access grant with configurable strike time from DoorConfig
-- Extended strike time support via credential DoorAccessModifiers (extDoorTime flag)
-- Request to Exit (REX) with configurable activateStrikeOnRex
-- Door momentary unlock via DevActionReq from host
-- Door mode support: unlocked (strike permanently on, bypasses access control), locked (denies all access), card-only (normal access control)
-- Default door mode applied from DoorConfig on door creation
-- Runtime door mode change via DevActionReq (DoorModeChange) from host, including reset-to-default
-- Pin-based modes (card+pin, pin-only, card-or-pin) mapped to card-only until pin support is implemented
-- REX behavior respects current door mode (no unlock action in unlocked or locked modes)
-
-### Door Alarm Monitoring
-- Door state reporting: unlocked, locked, opened, closed
-- Door forced open detection (door opens without strike active) with DoorForced/DoorNotForced events
-- Door held open detection (door stays open past configured heldTime) with DoorHeld/DoorNotHeld events
-- Extended held time support via credential extDoorTime flag
 
 ## Aporta Housekeeping
 
