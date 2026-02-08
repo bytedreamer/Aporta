@@ -34,6 +34,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private readonly HolTypeRepository _holTypeRepository;
     private readonly Z9CredRepository _z9CredRepository;
     private readonly Z9EvtRepository _z9EvtRepository;
+    private readonly Z9DevRepository _z9DevRepository;
 
     // Received OSDP CredReader configurations from Z9
     private readonly List<OsdpReaderConfig> _osdpReaderConfigs = new();
@@ -118,6 +119,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
         _holTypeRepository = new HolTypeRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
         _z9EvtRepository = new Z9EvtRepository(dataAccess);
+        _z9DevRepository = new Z9DevRepository(dataAccess);
     }
 
     public void Start(string host, int port, string id = null)
@@ -494,6 +496,9 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private void ProcessDev(Dev dev)
     {
         SpCoreProtoUtil.InitRequired(dev);
+
+        // Persist to z9_dev table for Z9/Flex REST API
+        _z9DevRepository.Upsert(dev).GetAwaiter().GetResult();
 
         if (dev.DevType == DevType.Actuator)
         {
@@ -1105,6 +1110,15 @@ public class Z9OpenCommunityProtocolService : IDisposable
     /// Event raised when a DevActionReq is received from the host.
     /// </summary>
     public event EventHandler<DevActionReq> DevActionRequested;
+
+    /// <summary>
+    /// Dispatches a DevActionReq to the same handler as protocol-originated requests.
+    /// Used by the Z9/Flex REST API to trigger door actions.
+    /// </summary>
+    public void DispatchDevAction(DevActionReq req)
+    {
+        DevActionRequested?.Invoke(this, req);
+    }
 
     private void HandleDevActionReq(DevActionReq req)
     {

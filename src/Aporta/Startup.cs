@@ -50,9 +50,13 @@ public class Startup
         services.AddSingleton<OutputService, OutputService>();
         services.AddSingleton<PeopleService, PeopleService>();
         services.AddSingleton<Z9OpenCommunityProtocolService, Z9OpenCommunityProtocolService>();
+        services.AddSingleton<FlexSessionService, FlexSessionService>();
 
         services.AddSignalR();
-        services.AddControllersWithViews();
+        services.AddControllersWithViews(options =>
+        {
+            options.Filters.Add<Aporta.Filters.FlexAuthFilter>();
+        });
         services.AddRazorPages();
         services.AddResponseCompression(opts =>
         {

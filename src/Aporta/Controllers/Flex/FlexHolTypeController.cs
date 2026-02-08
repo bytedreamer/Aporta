@@ -1,0 +1,26 @@
+using Aporta.Core.DataAccess;
+using Aporta.Core.DataAccess.Repositories;
+using Aporta.Core.Models.Flex;
+using Aporta.Core.Services;
+using Microsoft.AspNetCore.Mvc;
+using Z9.Spcore.Proto;
+
+namespace Aporta.Controllers.Flex;
+
+[ApiController]
+[Route("flex/holType")]
+public class FlexHolTypeController : FlexCrudControllerBase<HolType, FlexHolType>
+{
+    private readonly HolTypeRepository _repository;
+
+    public FlexHolTypeController(IDataAccess dataAccess)
+    {
+        _repository = new HolTypeRepository(dataAccess);
+    }
+
+    protected override ProtoJsonRepository<HolType> Repository => _repository;
+    protected override FlexHolType ToFlex(HolType proto) => FlexMapper.ToFlex(proto);
+    protected override HolType ToProto(FlexHolType flex) => FlexMapper.ToProto(flex);
+    protected override int GetUnid(FlexHolType flex) => flex.Unid ?? 0;
+    protected override string GetUuidFromProto(HolType proto) => proto.Uuid;
+}
