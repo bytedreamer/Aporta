@@ -623,8 +623,8 @@ public class AccessService
                 // Check if this is a door access privilege
                 if (priv.PrivType == PrivType.Door && priv.Enabled)
                 {
-                    // Check if any DoorAccessPrivElement matches our door
-                    bool doorMatches = await CheckDoorAccessPrivElements(priv, z9DoorUnid);
+                    // Check if any DoorAccessPrivElement matches our door and element schedule
+                    var (doorMatches, outsideElementSchedule) = await CheckDoorAccessPrivElements(priv, z9DoorUnid);
                     if (!doorMatches)
                     {
                         _logger.LogDebug("Credential {Unid} has privilege {PrivName} but it doesn't include door {DoorUnid}",
@@ -634,6 +634,13 @@ public class AccessService
 
                     foundValidPrivilege = true;
 
+                    if (outsideElementSchedule)
+                    {
+                        _logger.LogDebug("Credential {Unid} has privilege {PrivName} but outside element schedule",
+                            credentialUnid, priv.Name);
+                        continue; // Try other bindings
+                    }
+
                     // Check schedule restriction on the binding
                     if (!await IsInSchedule(binding.SchedRestriction))
                     {
@@ -641,8 +648,6 @@ public class AccessService
                             credentialUnid, priv.Name);
                         continue; // Try other bindings
                     }
-
-                    // TODO: Also check element-level schedule restrictions
 
                     _logger.LogDebug("Credential {Unid} has door access privilege {PrivUnid} ({PrivName})",
                         credentialUnid, priv.Unid, priv.Name);
@@ -665,16 +670,17 @@ public class AccessService
     }
 
     /// <summary>
-    /// Checks if a DoorAccessPriv includes the specified door.
+    /// Checks if a DoorAccessPriv includes the specified door and whether the element-level schedule allows access.
+    /// Returns (doorMatches: true if any element covers this door, outsideElementSchedule: true if door matched but all matching elements denied by schedule).
     /// </summary>
-    private Task<bool> CheckDoorAccessPrivElements(Priv priv, int? z9DoorUnid)
+    private async Task<(bool doorMatches, bool outsideElementSchedule)> CheckDoorAccessPrivElements(Priv priv, int? z9DoorUnid)
     {
         var doorAccessPriv = priv.ExtDoorAccessPriv;
         if (doorAccessPriv == null || doorAccessPriv.Elements == null || doorAccessPriv.Elements.Count == 0)
         {
             // No elements means no doors covered
             _logger.LogDebug("DoorAccessPriv {PrivUnid} has no elements", priv.Unid);
-            return Task.FromResult(false);
+            return (false, false);
         }
 
         // If we don't know the Z9 door unid, we can't do door-specific checking
@@ -682,18 +688,21 @@ public class AccessService
         if (!z9DoorUnid.HasValue)
         {
             _logger.LogDebug("No Z9 door unid available, allowing any DoorAccessPriv element");
-            return Task.FromResult(true);
+            return (true, false);
         }
+
+        bool anyDoorMatch = false;
 
         foreach (var element in doorAccessPriv.Elements)
         {
+            bool matchesDoor = false;
+
             // Check if element specifies a door
             if (element.DoorUnidCase == DoorAccessPrivElement.DoorUnidOneofCase.DoorUnid)
             {
                 if (element.DoorUnid == z9DoorUnid.Value)
                 {
-                    _logger.LogDebug("DoorAccessPrivElement matches door {DoorUnid}", z9DoorUnid.Value);
-                    return Task.FromResult(true);
+                    matchesDoor = true;
                 }
             }
             else
@@ -701,12 +710,33 @@ public class AccessService
                 // Element has no specific door - means "all doors"
                 // (community profile doesn't support devGroup or controlledArea)
                 _logger.LogDebug("DoorAccessPrivElement has no specific door, treating as 'all doors'");
-                return Task.FromResult(true);
+                matchesDoor = true;
+            }
+
+            if (matchesDoor)
+            {
+                anyDoorMatch = true;
+
+                // Check element-level schedule restriction
+                if (await IsInSchedule(element.SchedRestriction))
+                {
+                    _logger.LogDebug("DoorAccessPrivElement matches door {DoorUnid} and is in schedule", z9DoorUnid.Value);
+                    return (true, false);
+                }
+
+                _logger.LogDebug("DoorAccessPrivElement matches door {DoorUnid} but outside element schedule", z9DoorUnid.Value);
+                // Continue checking other elements — another may grant via a different schedule
             }
         }
 
+        if (anyDoorMatch)
+        {
+            _logger.LogDebug("All matching DoorAccessPrivElements for door {DoorUnid} are outside schedule", z9DoorUnid.Value);
+            return (true, true);
+        }
+
         _logger.LogDebug("No DoorAccessPrivElement matches door {DoorUnid}", z9DoorUnid.Value);
-        return Task.FromResult(false);
+        return (false, false);
     }
 
     /// <summary>
