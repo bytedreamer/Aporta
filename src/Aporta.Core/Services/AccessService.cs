@@ -43,6 +43,7 @@ public class AccessService
     private readonly CredTemplateRepository _credTemplateRepository;
     private readonly PrivRepository _privRepository;
     private readonly SchedRepository _schedRepository;
+    private readonly HolRepository _holRepository;
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private Func<string, int?> _getDoorUnidForEndpoint;
@@ -71,6 +72,7 @@ public class AccessService
         _credTemplateRepository = new CredTemplateRepository(dataAccess);
         _privRepository = new PrivRepository(dataAccess);
         _schedRepository = new SchedRepository(dataAccess);
+        _holRepository = new HolRepository(dataAccess);
         _extensionService = extensionService;
         _hubContext = hubContext;
         _logger = logger;
@@ -760,8 +762,8 @@ public class AccessService
             return true;
         }
 
-        // TODO: Pass holidays when we have HolRepository
-        bool inSched = SchedEvaluator.InSched(DateTime.Now, sched, null);
+        var holidays = await _holRepository.GetAll();
+        bool inSched = SchedEvaluator.InSched(DateTime.Now, sched, holidays);
 
         // Apply invert flag
         if (schedRestriction.Invert)

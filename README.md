@@ -45,7 +45,9 @@ Aporta doesn't intend to recreate what is already available by existing physical
 - Access Control Decisions
     - Privilege-based access control using DoorAccessPriv and CredPrivBinding
     - Door-specific privilege checking (precision access and privilege group elements)
+    - Element-level schedule restrictions on DoorAccessPrivElements
     - Schedule enforcement with SchedRestriction (time-of-day, day-of-week)
+    - Holiday-aware schedule evaluation
     - Credential status checks: disabled, not yet effective, expired
     - Access granted and denied events reported to host with appropriate EvtSubCode
 - Door Control
@@ -71,12 +73,9 @@ Aporta doesn't intend to recreate what is already available by existing physical
 - OSDP Driver
     - Notify when input is tripped
 - Access Control
-    - Basic access level assignment
+    - Standalone UI for access level assignment (Z9/Open handles backend privilege management)
 
 ### Z9/Open Community Profile
-- Holiday calendar support in schedule evaluation
-- Element-level schedules
-- Holiday support
 - PIN support
 
 ## Installation ##
