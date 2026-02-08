@@ -1,6 +1,6 @@
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
-using Aporta.Core.Models.Flex;
+using Aporta.Shared.Models.Flex;
 using Aporta.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 using Z9.Spcore.Proto;

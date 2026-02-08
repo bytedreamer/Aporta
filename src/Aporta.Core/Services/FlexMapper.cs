@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Aporta.Core.Models.Flex;
+using Aporta.Shared.Models.Flex;
 using Google.Protobuf;
 using Z9.Protobuf;
 using Z9.Spcore.Proto;

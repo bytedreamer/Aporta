@@ -1,4 +1,4 @@
-using Aporta.Core.Models.Flex;
+using Aporta.Shared.Models.Flex;
 using Aporta.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 using Z9.Protobuf;

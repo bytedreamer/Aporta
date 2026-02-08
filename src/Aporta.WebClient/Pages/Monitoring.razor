@@ -1,15 +1,17 @@
 @page "/monitoring"
 
-@using System.Text.Json
+@using System.Globalization
 
 @using Microsoft.AspNetCore.SignalR.Client
 
 @using Aporta.Shared.Models
+@using Aporta.Shared.Models.Flex
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.WebClient.Messaging
 
 @inject HttpClient Http
+@inject FlexApiService FlexApi
 @inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Monitoring</Heading>
@@ -28,35 +30,28 @@ else
                     <TableHeaderCell>Timestamp</TableHeaderCell>
                     <TableHeaderCell>Type</TableHeaderCell>
                     <TableHeaderCell>Reason</TableHeaderCell>
-                    <TableHeaderCell>Endpoint</TableHeaderCell>
-                    <TableHeaderCell>Door</TableHeaderCell>
-                    <TableHeaderCell>Person</TableHeaderCell>
+                    <TableHeaderCell>Device</TableHeaderCell>
+                    <TableHeaderCell>Credential</TableHeaderCell>
                 </TableRow>
             </TableHeader>
             <TableBody>
-                @foreach (var eventItem in _events.Items)
+                @foreach (var evt in _events.InstanceList)
                 {
-                    var eventData = JsonSerializer.Deserialize<EventData>(eventItem.Data);
                     <TableRow Color="@_eventRowColor">
                         <TableRowHeader>
-                            @eventItem.Timestamp.ToLocalTime()
+                            @(ParseFlexTime(evt.HwTime))
                         </TableRowHeader>
                         <TableRowCell>
-                            @(eventItem.Type.GetDescription())
-                        </TableRowCell>
-                        <Tooltip Text="@(eventData.CardNumber ?? string.Empty)" Inline="true">
-                            <TableRowCell>
-                                @(eventData.EventReason.GetDescription())
-                            </TableRowCell>
-                        </Tooltip>
-                        <TableRowCell>
-                            @eventData.Endpoint?.Name
+                            @(FlexEvtCodeHelper.GetEvtCodeText(evt.EvtCode))
                         </TableRowCell>
                         <TableRowCell>
-                            @eventData.Door?.Name
+                            @(FlexEvtCodeHelper.GetEvtSubCodeText(evt.EvtSubCode))
                         </TableRowCell>
                         <TableRowCell>
-                            @eventData.Person?.FirstName @eventData.Person?.LastName
+                            @evt.EvtDevRef?.Name
+                        </TableRowCell>
+                        <TableRowCell>
+                            @evt.EvtCredRef?.Name
                         </TableRowCell>
                     </TableRow>
                 }
@@ -66,7 +61,7 @@ else
     <Row>
         <Column ColumnSize="ColumnSize.IsAuto">
             <Button Color="Color.Primary" Size="Size.Small" Margin="Margin.Is4.FromBottom" Clicked="ToggleLiveEventMonitoring">@(_liveEventMonitoring ? "Disable" : "Enable") Live Monitoring</Button>
-        </Column> 
+        </Column>
         <Column ColumnSize="ColumnSize.IsAuto">
             <Pagination Display="@(_liveEventMonitoring ? Display.None : Display.Always)" Size="Size.Small" Margin="Margin.Is2.FromStart">
                     <PaginationItem Disabled="@IsPageNavigationDisabled(PreviousPageItem)" @onclick="Previous">
@@ -93,7 +88,7 @@ else
                 </Pagination>
         </Column>
     </Row>
-    
+
     <Row>
         <Column ColumnSize="ColumnSize.IsHalf">
                 <Card Margin="Margin.Is4.OnY">
@@ -131,7 +126,7 @@ else
                         </Table>
                     </CardBody>
                 </Card>
-            </Column> 
+            </Column>
         <Column ColumnSize="ColumnSize.IsHalf">
             <Card Margin="Margin.Is4.OnY">
                 <CardTitle Margin="Margin.Is4.OnX">
@@ -183,8 +178,8 @@ else
 </Snackbar>
 
 @code {
-    private PaginatedItemsDto<Event> _events;
-    
+    private FlexListResponse<FlexEvt> _events;
+
     private const string PreviousPageItem = "previous";
     private const string NextPageItem = "next";
     private const int PageSize = 5;
@@ -192,23 +187,23 @@ else
     private int _pageItems = 1;
     private Color _eventRowColor = Color.Default;
     private bool _liveEventMonitoring;
-    
+
     private List<Input> _inputs;
     private readonly Dictionary<int, bool?> _inputStates = new();
-    
+
     private List<Output> _outputs;
     private readonly Dictionary<int, bool?> _outputStates = new();
-    
+
     private HubConnection _hubConnection;
-    
+
     private Snackbar _snackbar;
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
-    
+
     protected override async Task OnInitializedAsync()
     {
         await LoadEvents();
-       
+
         _inputs = await Http.GetFromJsonAsync<List<Input>>(Paths.Inputs);
         if (_inputs != null)
         {
@@ -217,7 +212,7 @@ else
                 _inputStates[input.Id] = await GetInputState(input.Id);
             }
         }
-        
+
         _outputs = await Http.GetFromJsonAsync<List<Output>>(Paths.Outputs);
         if (_outputs != null)
         {
@@ -235,14 +230,14 @@ else
         {
             _outputs.Add( await Http.GetFromJsonAsync<Output>($"{Paths.Outputs}/{outputId}"));
             _outputStates[outputId] = await GetOutputState(outputId);
-            
+
             StateHasChanged();
         });
         _hubConnection.On<int>(Methods.OutputDeleted, outputId =>
         {
             var output = _outputs.FirstOrDefault(o => o.Id == outputId);
             if (output == null) return;
-            
+
             _outputs.Remove(output);
             _outputStates.Remove(output.Id);
 
@@ -251,14 +246,14 @@ else
         _hubConnection.On<int, bool>(Methods.OutputStateChanged, (outputId, newState) =>
         {
             _outputStates[outputId] = newState;
-            
+
             StateHasChanged();
         });
         _hubConnection.On<int>(Methods.InputInserted, async inputId =>
         {
             _inputs.Add( await Http.GetFromJsonAsync<Input>($"{Paths.Inputs}/{inputId}"));
             _inputStates[inputId] = await GetInputState(inputId);
-            
+
             StateHasChanged();
         });
         _hubConnection.On<int>(Methods.InputDeleted, inputId =>
@@ -274,14 +269,14 @@ else
         _hubConnection.On<int, bool>(Methods.InputStateChanged, (input, newState) =>
         {
             _inputStates[input] = newState;
-            
+
             StateHasChanged();
         });
         _hubConnection.On<int>(Methods.NewEventReceived, async _ =>
         {
             if (!_liveEventMonitoring) return;
-            
-            _events = await Http.GetFromJsonAsync<PaginatedItemsDto<Event>>(Paths.Events + $"?pageNumber=1&pageSize={PageSize}");
+
+            _events = await FlexApi.GetEvtListAsync(0, PageSize);
             _eventRowColor = Color.Warning;
             StateHasChanged();
 
@@ -291,7 +286,7 @@ else
         });
         await _hubConnection.StartAsync();
     }
-    
+
     private async Task<bool?> GetInputState(int inputId)
     {
         string url = $"{Paths.Inputs}/state/{inputId}";
@@ -303,7 +298,7 @@ else
 
         return bool.Parse(await response.Content.ReadAsStringAsync());
     }
-    
+
     private async Task<bool?> GetOutputState(int outputId)
     {
         string url = $"{Paths.Outputs}/set/{outputId}";
@@ -315,7 +310,7 @@ else
 
         return bool.Parse(await response.Content.ReadAsStringAsync());
     }
-    
+
     private async Task SetOutputState(int outputId, bool? checkedValue)
     {
         string url = $"{Paths.Outputs}/set/{outputId}";
@@ -328,7 +323,7 @@ else
             await _snackbar.Show();
         }
     }
-    
+
     private bool IsActive(string page) => _currentPage == page;
 
     private bool IsPageNavigationDisabled(string navigation)
@@ -348,7 +343,7 @@ else
         {
             _currentPage = (currentPageAsInt - 1).ToString();
         }
-        
+
         await LoadEvents();
     }
 
@@ -359,7 +354,7 @@ else
         {
             _currentPage = (currentPageAsInt + 1).ToString();
         }
-        
+
         await LoadEvents();
     }
 
@@ -371,8 +366,9 @@ else
 
     private async Task LoadEvents()
     {
-        _events = await Http.GetFromJsonAsync<PaginatedItemsDto<Event>>(Paths.Events + $"?pageNumber={_currentPage}&pageSize={PageSize}");
-        _pageItems = _events.TotalItems / PageSize + (_events.TotalItems % PageSize > 0 ? 1 : 0);
+        var offset = (int.Parse(_currentPage) - 1) * PageSize;
+        _events = await FlexApi.GetEvtListAsync(offset, PageSize);
+        _pageItems = _events.Count / PageSize + (_events.Count % PageSize > 0 ? 1 : 0);
     }
 
     private async Task ToggleLiveEventMonitoring()
@@ -381,7 +377,7 @@ else
 
         if (_liveEventMonitoring)
         {
-            _events = await Http.GetFromJsonAsync<PaginatedItemsDto<Event>>(Paths.Events + $"?pageNumber=1&pageSize={PageSize}");
+            _events = await FlexApi.GetEvtListAsync(0, PageSize);
             _eventRowColor = Color.Warning;
             StateHasChanged();
 
@@ -391,4 +387,14 @@ else
         }
     }
 
+    private static string ParseFlexTime(string hwTime)
+    {
+        if (string.IsNullOrEmpty(hwTime))
+            return "";
+
+        if (DateTime.TryParse(hwTime, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
+            return dt.ToLocalTime().ToString();
+
+        return hwTime;
+    }
 }

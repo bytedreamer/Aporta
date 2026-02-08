@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Aporta.Core.Models.Flex;
+namespace Aporta.Shared.Models.Flex;
 
 public class FlexEvt
 {

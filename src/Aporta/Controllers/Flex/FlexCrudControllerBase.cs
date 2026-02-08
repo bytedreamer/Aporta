@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess.Repositories;
-using Aporta.Core.Models.Flex;
+using Aporta.Shared.Models.Flex;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Mvc;
 

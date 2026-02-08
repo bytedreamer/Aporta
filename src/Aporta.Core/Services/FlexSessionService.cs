@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Concurrent;
-using Aporta.Core.Models.Flex;
+using Aporta.Shared.Models.Flex;
 
 namespace Aporta.Core.Services;
 
