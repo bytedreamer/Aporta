@@ -449,11 +449,11 @@ else
 
     private bool PersonIsEnrolled(int personId)
     {
-        return _assigned.Any(credential => credential.AssignedPersonId == personId);
+        return _assigned.Any(credential => credential.Id == personId);
     }
     
     private string PersonsBadgeIdentifier(int personId)
     {
-        return _assigned.FirstOrDefault(credential => credential.AssignedPersonId == personId)?.Number ?? string.Empty;
+        return _assigned.FirstOrDefault(credential => credential.Id == personId)?.Number ?? string.Empty;
     }
 }

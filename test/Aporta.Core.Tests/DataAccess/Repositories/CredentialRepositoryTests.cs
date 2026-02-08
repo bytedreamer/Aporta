@@ -8,6 +8,8 @@ using Aporta.Core.Models;
 using Aporta.Shared.Models;
 using Microsoft.Data.Sqlite;
 using NUnit.Framework;
+using Z9.Protobuf;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Tests.DataAccess.Repositories;
 
@@ -44,74 +46,55 @@ public class CredentialRepositoryTests
         _persistConnection?.Close();
         _persistConnection?.Dispose();
     }
-        
+
     [Test]
-    public async Task Get_AssignedCredential()
+    public async Task Get_CredentialWithZ9Cred()
     {
         // Arrange
-        var credentials = new[]
-        {
-            new Credential {Number = "2345342"},
-            new Credential {Number = "5345234"}
-        };
-            
         var credentialRepository = new CredentialRepository(_dataAccess);
-        foreach (var credential in credentials)
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+
+        var credential = new Credential { Number = "5345234" };
+        await credentialRepository.Insert(credential);
+
+        var cred = new Cred
         {
-            await credentialRepository.Insert(credential);
-        }
-            
-        var people = new[]
-        {
-            new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
-            new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+            Unid = credential.Id,
+            Name = "Smith, John",
+            Enabled = true,
+            CredTemplateUnid = 1
         };
+        SpCoreProtoUtil.InitRequired(cred);
+        await z9CredRepository.Upsert(cred);
 
-        var personRepository = new PersonRepository(_dataAccess);
-        foreach (var person in people)
-        {
-            await personRepository.Insert(person);
-        }
-
-        await credentialRepository.AssignPerson(credentials[1].Id, people[1].Id);
-
-        // Act 
-        var actual = await credentialRepository.Get(credentials[1].Id);
+        // Act
+        var actual = await credentialRepository.Get(credential.Id);
 
         // Assert
         Assert.That(actual.Number, Is.EqualTo("5345234"));
-        Assert.That(actual.AssignedPersonId, Is.EqualTo(people[1].Id));
         Assert.That(actual.Enabled, Is.True);
     }
-        
+
     [Test]
-    public async Task Get_UnassignedCredential()
+    public async Task Get_CredentialWithoutZ9Cred()
     {
         // Arrange
-        var credentials = new[]
-        {
-            new Credential {Number = "2345342"},
-            new Credential {Number = "5345234"}
-        };
-            
         var credentialRepository = new CredentialRepository(_dataAccess);
-        foreach (var credential in credentials)
-        {
-            await credentialRepository.Insert(credential);
-        }
 
-        // Act 
-        var actual = await credentialRepository.Get(credentials[1].Id);
+        var credential = new Credential { Number = "5345234" };
+        await credentialRepository.Insert(credential);
+
+        // Act
+        var actual = await credentialRepository.Get(credential.Id);
 
         // Assert
         Assert.That(actual.Number, Is.EqualTo("5345234"));
-        Assert.That(actual.AssignedPersonId, Is.Null);
         Assert.That(actual.Enabled, Is.Null);
     }
 
     [Test]
     public async Task Insert()
-    { 
+    {
         // Arrange
         var credentials = new[]
         {
@@ -125,7 +108,7 @@ public class CredentialRepositoryTests
             await credentialRepository.Insert(credential);
         }
 
-        // Act 
+        // Act
         var actualCredential = await credentialRepository.Get(2);
 
         // Assert
@@ -134,7 +117,7 @@ public class CredentialRepositoryTests
         Assert.That(actualCredential.LastEvent, Is.EqualTo(5));
         Assert.That(actualCredential.Number, Is.EqualTo("5345234"));
     }
-        
+
     [Test]
     public async Task Insert_DuplicateCardNumber()
     {
@@ -144,7 +127,7 @@ public class CredentialRepositoryTests
         var credentialRepository = new CredentialRepository(_dataAccess);
 
         await credentialRepository.Insert(credential);
-            
+
         // Assert
         async Task InsertCredential()
         {
@@ -164,199 +147,193 @@ public class CredentialRepositoryTests
             new Credential {Number = "2345342"},
             new Credential {Number = "5345234"},
         };
-            
+
         var credentialRepository = new CredentialRepository(_dataAccess);
         foreach (var credential in credentials)
         {
             await credentialRepository.Insert(credential);
         }
 
-        // Act 
+        // Act
         await credentialRepository.Delete(2);
 
         // Assert
         var actualCredentials = await credentialRepository.GetAll();
         Assert.That(actualCredentials.Count(), Is.EqualTo(1));
     }
-        
-    [Test]
-    public async Task AssignedCredential_NoAssignedPerson()
-    {
-        // Arrange
-        var credentials = new[]
-        {
-            new Credential {Number = "2345342"},
-            new Credential {Number = "5345234"}
-        };
-            
-        var credentialRepository = new CredentialRepository(_dataAccess);
-        foreach (var credential in credentials)
-        {
-            await credentialRepository.Insert(credential);
-        }
 
-        // Act 
+    [Test]
+    public async Task AssignedCredential_NoZ9CredName()
+    {
+        // Arrange - credential exists but no z9_cred with a name
+        var credentialRepository = new CredentialRepository(_dataAccess);
+
+        var credential = new Credential { Number = "5345234" };
+        await credentialRepository.Insert(credential);
+
+        // Act
         var actual = await credentialRepository.AssignedCredential("5345234");
 
-        // Assert - Null person
+        // Assert - Person should be null (not enrolled)
         Assert.That(actual.Person, Is.Null);
     }
-        
+
     [Test]
-    public async Task AssignedCredential_ActivePerson()
+    public async Task AssignedCredential_WithZ9CredName_Enabled()
     {
         // Arrange
-        var credentials = new[]
-        {
-            new Credential {Number = "2345342"},
-            new Credential {Number = "5345234"}
-        };
-            
         var credentialRepository = new CredentialRepository(_dataAccess);
-        foreach (var credential in credentials)
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+
+        var credential = new Credential { Number = "5345234" };
+        await credentialRepository.Insert(credential);
+
+        var cred = new Cred
         {
-            await credentialRepository.Insert(credential);
-        }
-            
-        var people = new[]
-        {
-            new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
-            new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+            Unid = credential.Id,
+            Name = "Smith, John",
+            Enabled = true,
+            CredTemplateUnid = 1
         };
+        SpCoreProtoUtil.InitRequired(cred);
+        await z9CredRepository.Upsert(cred);
 
-        var personRepository = new PersonRepository(_dataAccess);
-        foreach (var person in people)
-        {
-            await personRepository.Insert(person);
-        }
-
-        await credentialRepository.AssignPerson(credentials[1].Id, people[1].Id);
-
-        // Act 
+        // Act
         var actual = await credentialRepository.AssignedCredential("5345234");
 
         // Assert
         Assert.That(actual.Number, Is.EqualTo("5345234"));
         Assert.That(actual.Enabled, Is.True);
-        Assert.That(actual.Person.Id, Is.EqualTo(people[1].Id));
+        Assert.That(actual.Person, Is.Not.Null);
+        Assert.That(actual.Person.FirstName, Is.EqualTo("John"));
+        Assert.That(actual.Person.LastName, Is.EqualTo("Smith"));
+        Assert.That(actual.Person.Enabled, Is.True);
     }
-        
+
     [Test]
-    public async Task AssignedCredential_InactivePerson()
+    public async Task AssignedCredential_WithZ9CredName_Disabled()
     {
         // Arrange
-        var credentials = new[]
-        {
-            new Credential {Number = "2345342"},
-            new Credential {Number = "5345234"}
-        };
-            
         var credentialRepository = new CredentialRepository(_dataAccess);
-        foreach (var credential in credentials)
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+
+        var credential = new Credential { Number = "5345234" };
+        await credentialRepository.Insert(credential);
+
+        var cred = new Cred
         {
-            await credentialRepository.Insert(credential);
-        }
-            
-        var people = new[]
-        {
-            new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
-            new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
+            Unid = credential.Id,
+            Name = "Jones, Jane",
+            Enabled = false,
+            CredTemplateUnid = 1
         };
+        SpCoreProtoUtil.InitRequired(cred);
+        await z9CredRepository.Upsert(cred);
 
-        var personRepository = new PersonRepository(_dataAccess);
-        foreach (var person in people)
-        {
-            await personRepository.Insert(person);
-        }
-
-        await credentialRepository.AssignPerson(credentials[1].Id, people[0].Id);
-
-        // Act 
+        // Act
         var actual = await credentialRepository.AssignedCredential("5345234");
 
         // Assert
         Assert.That(actual.Number, Is.EqualTo("5345234"));
         Assert.That(actual.Enabled, Is.False);
-        Assert.That(actual.Person.Id, Is.EqualTo(people[0].Id));
+        Assert.That(actual.Person, Is.Not.Null);
+        Assert.That(actual.Person.FirstName, Is.EqualTo("Jane"));
+        Assert.That(actual.Person.LastName, Is.EqualTo("Jones"));
+        Assert.That(actual.Person.Enabled, Is.False);
     }
-        
+
     [Test]
-    public async Task AssignedCredential_AssignmentNotEnabled()
+    public async Task Assigned_ReturnsOnlyNamedCredentialsWithNumber()
     {
         // Arrange
-        var credentials = new[]
-        {
-            new Credential {Number = "2345342"},
-            new Credential {Number = "5345234"}
-        };
-            
         var credentialRepository = new CredentialRepository(_dataAccess);
-        foreach (var credential in credentials)
-        {
-            await credentialRepository.Insert(credential);
-        }
-            
-        var people = new[]
-        {
-            new Person {FirstName = "First1", LastName = "Last1", Enabled = true},
-            new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
-        };
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
 
-        var personRepository = new PersonRepository(_dataAccess);
-        foreach (var person in people)
-        {
-            await personRepository.Insert(person);
-        }
+        // Credential with name AND number (enrolled)
+        var enrolled = new Credential { Number = "1111" };
+        await credentialRepository.Insert(enrolled);
+        var enrolledCred = new Cred { Unid = enrolled.Id, Name = "Smith, John", Enabled = true, CredTemplateUnid = 1 };
+        SpCoreProtoUtil.InitRequired(enrolledCred);
+        await z9CredRepository.Upsert(enrolledCred);
 
-        await credentialRepository.AssignPerson(credentials[1].Id, people[0].Id, false);
+        // Credential with name but no number (person not yet enrolled)
+        var personOnly = new Credential();
+        await credentialRepository.Insert(personOnly);
+        var personCred = new Cred { Unid = personOnly.Id, Name = "Doe, Jane", Enabled = true, CredTemplateUnid = 1 };
+        SpCoreProtoUtil.InitRequired(personCred);
+        await z9CredRepository.Upsert(personCred);
 
-        // Act 
-        var actual = await credentialRepository.AssignedCredential("5345234");
+        // Credential with number but no name (raw swipe)
+        var swipe = new Credential { Number = "2222" };
+        await credentialRepository.Insert(swipe);
 
-        // Assert
-        Assert.That(actual.Number, Is.EqualTo("5345234"));
-        Assert.That(actual.Enabled, Is.False);
-        Assert.That(actual.Person.Id, Is.EqualTo(people[0].Id));
+        // Act
+        var assigned = (await credentialRepository.Assigned()).ToList();
+
+        // Assert - only the enrolled credential
+        Assert.That(assigned, Has.Exactly(1).Items);
+        Assert.That(assigned[0].Id, Is.EqualTo(enrolled.Id));
+        Assert.That(assigned[0].Number, Is.EqualTo("1111"));
     }
-    
+
     [Test]
-    public async Task RevokeCredential()
+    public async Task Unassigned_ReturnsCredentialsWithoutZ9CredName()
     {
         // Arrange
-        var credentials = new[]
-        {
-            new Credential {Number = "2345342"},
-            new Credential {Number = "5345234"}
-        };
-            
         var credentialRepository = new CredentialRepository(_dataAccess);
-        foreach (var credential in credentials)
-        {
-            await credentialRepository.Insert(credential);
-        }
-            
-        var people = new[]
-        {
-            new Person {FirstName = "First1", LastName = "Last1", Enabled = false},
-            new Person {FirstName = "First2", LastName = "Last2", Enabled = true},
-        };
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
 
-        var personRepository = new PersonRepository(_dataAccess);
-        foreach (var person in people)
-        {
-            await personRepository.Insert(person);
-        }
+        // Named credential (not unassigned)
+        var named = new Credential { Number = "1111" };
+        await credentialRepository.Insert(named);
+        var namedCred = new Cred { Unid = named.Id, Name = "Smith, John", Enabled = true, CredTemplateUnid = 1 };
+        SpCoreProtoUtil.InitRequired(namedCred);
+        await z9CredRepository.Upsert(namedCred);
 
-        await credentialRepository.AssignPerson(credentials[1].Id, people[1].Id);
+        // Raw swipe (no z9_cred name → unassigned)
+        var swipe = new Credential { Number = "2222" };
+        await credentialRepository.Insert(swipe);
 
-        // Act 
-        await credentialRepository.RevokePerson(credentials[1].Id, people[1].Id);
-        
+        // Act
+        var unassigned = (await credentialRepository.Unassigned()).ToList();
+
         // Assert
-        var unassignedCredentials = await credentialRepository.Unassigned();
-        Assert.That(unassignedCredentials, Has.Exactly(2).Items);
+        Assert.That(unassigned, Has.Exactly(1).Items);
+        Assert.That(unassigned[0].Id, Is.EqualTo(swipe.Id));
     }
-        
+
+    [Test]
+    public async Task Named_ReturnsAllPersonDTOs()
+    {
+        // Arrange
+        var credentialRepository = new CredentialRepository(_dataAccess);
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+
+        var cred1 = new Credential();
+        await credentialRepository.Insert(cred1);
+        var z9Cred1 = new Cred { Unid = cred1.Id, Name = "Smith, John", Enabled = true, CredTemplateUnid = 1 };
+        SpCoreProtoUtil.InitRequired(z9Cred1);
+        await z9CredRepository.Upsert(z9Cred1);
+
+        var cred2 = new Credential();
+        await credentialRepository.Insert(cred2);
+        var z9Cred2 = new Cred { Unid = cred2.Id, Name = "Doe, Jane", Enabled = false, CredTemplateUnid = 1 };
+        SpCoreProtoUtil.InitRequired(z9Cred2);
+        await z9CredRepository.Upsert(z9Cred2);
+
+        // Raw swipe (no name)
+        var swipe = new Credential { Number = "9999" };
+        await credentialRepository.Insert(swipe);
+
+        // Act
+        var people = (await credentialRepository.Named()).ToList();
+
+        // Assert - only 2 named people
+        Assert.That(people, Has.Exactly(2).Items);
+        Assert.That(people.Any(p => p.FirstName == "John" && p.LastName == "Smith" && p.Enabled), Is.True);
+        Assert.That(people.Any(p => p.FirstName == "Jane" && p.LastName == "Doe" && !p.Enabled), Is.True);
+    }
+
     [Test]
     public async Task UpdateLastEvent()
     {
@@ -365,11 +342,30 @@ public class CredentialRepositoryTests
         var credentialRepository = new CredentialRepository(_dataAccess);
         int credentialId = await credentialRepository.Insert(credential);
 
-        // Act 
+        // Act
         await credentialRepository.UpdateLastEvent(credentialId, 5);
 
         // Assert
         var actualCredential = await credentialRepository.Get(credentialId);
         Assert.That(actualCredential.LastEvent, Is.EqualTo(5));
+    }
+
+    [Test]
+    public void ParsePersonFromName_WithComma()
+    {
+        var person = CredentialRepository.ParsePersonFromName("Smith, John", 42, true);
+        Assert.That(person.Id, Is.EqualTo(42));
+        Assert.That(person.FirstName, Is.EqualTo("John"));
+        Assert.That(person.LastName, Is.EqualTo("Smith"));
+        Assert.That(person.Enabled, Is.True);
+    }
+
+    [Test]
+    public void ParsePersonFromName_WithoutComma()
+    {
+        var person = CredentialRepository.ParsePersonFromName("JohnOnly", 42, false);
+        Assert.That(person.FirstName, Is.EqualTo("JohnOnly"));
+        Assert.That(person.LastName, Is.Null);
+        Assert.That(person.Enabled, Is.False);
     }
 }

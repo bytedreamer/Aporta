@@ -7,8 +7,6 @@ public class Credential
     public string Number { get; set; }
         
     public int LastEvent { get; set; }
-        
-    public int? AssignedPersonId { get; set; }
-        
+
     public bool? Enabled { get; set; }
 }

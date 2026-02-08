@@ -18,12 +18,10 @@ namespace Aporta.Core.Services;
 
 public class Z9OpenCommunityProtocolService : IDisposable
 {
-    private const bool AutoCreatePersonForCredential = true;
     private const int DefaultOsdpTcpPort = 9843;
 
     private readonly ILogger<Z9OpenCommunityProtocolService> _logger;
     private readonly CredentialRepository _credentialRepository;
-    private readonly PersonRepository _personRepository;
 
     // Z9 Open protobuf repositories
     private readonly DataFormatRepository _dataFormatRepository;
@@ -109,7 +107,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
     {
         _logger = logger;
         _credentialRepository = new CredentialRepository(dataAccess);
-        _personRepository = new PersonRepository(dataAccess);
         _dataFormatRepository = new DataFormatRepository(dataAccess);
         _dataLayoutRepository = new DataLayoutRepository(dataAccess);
         _credTemplateRepository = new CredTemplateRepository(dataAccess);
@@ -266,12 +263,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
         foreach (var credDelete in dbChange.CredDelete)
         {
             _logger.LogInformation("Deleting credential {Unid}", credDelete);
-            _credentialRepository.RevokePerson(credDelete, credDelete).GetAwaiter().GetResult();
+            _z9CredRepository.Delete(credDelete).GetAwaiter().GetResult();
             _credentialRepository.Delete(credDelete).GetAwaiter().GetResult();
-            if (AutoCreatePersonForCredential)
-            {
-                _personRepository.Delete(credDelete).GetAwaiter().GetResult();
-            }
         }
 
         // Priv deletes
@@ -864,12 +857,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
         {
             _logger.LogWarning(
                 "Credential Unid={Unid} has no card number, deleting from Aporta if it exists", cred.Unid);
-            _credentialRepository.RevokePerson(cred.Unid, cred.Unid).GetAwaiter().GetResult();
+            _z9CredRepository.Delete(cred.Unid).GetAwaiter().GetResult();
             _credentialRepository.Delete(cred.Unid).GetAwaiter().GetResult();
-            if (AutoCreatePersonForCredential)
-            {
-                _personRepository.Delete(cred.Unid).GetAwaiter().GetResult();
-            }
             return;
         }
 
@@ -878,23 +867,11 @@ public class Z9OpenCommunityProtocolService : IDisposable
         // Store credential number as decimal string — card reads will be decoded to match
         var credNumString = credNum.ToString();
 
-        var personName = !string.IsNullOrWhiteSpace(cred.Name) ? cred.Name : credNumString;
-
         _logger.LogInformation("Processing credential Unid={Unid} Number={Number} Name={Name} PrivBindings={BindingCount}",
-            cred.Unid, credNumString, personName, cred.PrivBindings.Count);
+            cred.Unid, credNumString, cred.Name, cred.PrivBindings.Count);
 
-        // Store the full Z9 Cred proto (for privilege checking)
+        // Store the full Z9 Cred proto (for privilege checking and name/enabled)
         _z9CredRepository.Upsert(cred).GetAwaiter().GetResult();
-
-        if (AutoCreatePersonForCredential)
-        {
-            var person = new Person
-            {
-                FirstName = personName,
-                Enabled = cred.Enabled
-            };
-            _personRepository.Upsert(person, cred.Unid).GetAwaiter().GetResult();
-        }
 
         var credential = new Credential
         {
@@ -902,13 +879,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
             Enabled = cred.Enabled
         };
         _credentialRepository.Upsert(credential, cred.Unid).GetAwaiter().GetResult();
-
-        if (AutoCreatePersonForCredential)
-        {
-            _credentialRepository.RevokePerson(cred.Unid, cred.Unid).GetAwaiter().GetResult();
-            _credentialRepository.AssignPerson(cred.Unid, cred.Unid, cred.Enabled)
-                .GetAwaiter().GetResult();
-        }
     }
 
     /// <summary>

@@ -187,15 +187,14 @@ public class Z9OpenCommunityProtocolServiceTests
         var credential = credentialRepository.Get(100).GetAwaiter().GetResult();
         Assert.That(credential, Is.Not.Null);
         Assert.That(credential.Number, Is.EqualTo("123456"));
-        Assert.That(credential.AssignedPersonId, Is.EqualTo(100));
         Assert.That(credential.Enabled, Is.True);
 
-        // Verify person was auto-created
-        var personRepository = new PersonRepository(_dataAccess);
-        var person = personRepository.Get(100).GetAwaiter().GetResult();
-        Assert.That(person, Is.Not.Null);
-        Assert.That(person.FirstName, Is.EqualTo("John Doe"));
-        Assert.That(person.Enabled, Is.True);
+        // Verify Z9 Cred was stored
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+        var z9Cred = z9CredRepository.Get(100).GetAwaiter().GetResult();
+        Assert.That(z9Cred, Is.Not.Null);
+        Assert.That(z9Cred.Name, Is.EqualTo("John Doe"));
+        Assert.That(z9Cred.Enabled, Is.True);
     }
 
     [Test]
@@ -241,10 +240,10 @@ public class Z9OpenCommunityProtocolServiceTests
         var credential = credentialRepository.Get(200).GetAwaiter().GetResult();
         Assert.That(credential, Is.Null);
 
-        // Verify person was NOT created
-        var personRepository = new PersonRepository(_dataAccess);
-        var person = personRepository.Get(200).GetAwaiter().GetResult();
-        Assert.That(person, Is.Null);
+        // Verify Z9 Cred was NOT created
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+        var z9Cred = z9CredRepository.Get(200).GetAwaiter().GetResult();
+        Assert.That(z9Cred, Is.Null);
     }
 
     [Test]
@@ -294,11 +293,10 @@ public class Z9OpenCommunityProtocolServiceTests
         Assert.That(credential, Is.Not.Null);
         Assert.That(credential.Number, Is.EqualTo("789012"));
 
-        // Verify person was created with card number as name
-        var personRepository = new PersonRepository(_dataAccess);
-        var person = personRepository.Get(300).GetAwaiter().GetResult();
-        Assert.That(person, Is.Not.Null);
-        Assert.That(person.FirstName, Is.EqualTo("789012"));
+        // Verify Z9 Cred was stored (no name since cred had blank name)
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+        var z9Cred = z9CredRepository.Get(300).GetAwaiter().GetResult();
+        Assert.That(z9Cred, Is.Not.Null);
     }
 
     [Test]
