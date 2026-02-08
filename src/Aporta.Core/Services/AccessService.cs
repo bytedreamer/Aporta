@@ -38,7 +38,6 @@ public class AccessService
     private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
     private readonly CredentialRepository _credentialRepository;
-    private readonly PersonRepository _personRepository;
     private readonly EventRepository _eventRepository;
     private readonly Z9CredRepository _z9CredRepository;
     private readonly CredTemplateRepository _credTemplateRepository;
@@ -66,7 +65,6 @@ public class AccessService
     {
         _doorRepository = new DoorRepository(dataAccess);
         _credentialRepository = new CredentialRepository(dataAccess);
-        _personRepository = new PersonRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
         _eventRepository = new EventRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
@@ -269,7 +267,8 @@ public class AccessService
             {
                 if (_enrollCredential != null)
                 {
-                    // Auto-enroll with full Z9 data chain
+                    // Create credential and Z9 data chain (DataFormat, CredTemplate, Z9 Cred)
+                    // but leave unassigned — admin must enroll via API
                     var credentialId = await _credentialRepository.Insert(new Credential
                         { Number = matchingCardData, LastEvent = eventId });
                     var credNum = await _enrollCredential(matchingCardData, credentialId, matchingDoor.Id);
@@ -281,10 +280,6 @@ public class AccessService
                         credential.LastEvent = eventId;
                         await _credentialRepository.Update(credential);
                     }
-                    // Auto-create person and assignment so card works on next swipe
-                    var person = new Person { FirstName = credNum, Enabled = true };
-                    await _personRepository.Upsert(person, credentialId);
-                    await _credentialRepository.AssignPerson(credentialId, credentialId, true);
                 }
                 else
                 {
