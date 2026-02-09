@@ -71,7 +71,6 @@ public class CredentialService
 
         // Transfer Number from swipe credential to person credential
         personCredential.Number = swipeCredential.Number;
-        personCredential.LastEvent = swipeCredential.LastEvent;
         await _credentialRepository.Update(personCredential);
 
         // Merge card data from swipe Z9 Cred into person Z9 Cred

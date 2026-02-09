@@ -169,28 +169,6 @@ public class CredentialRepository : JsonDocumentRepository<Credential>
         });
     }
 
-    public async Task UpdateLastEvent(int credentialId, int lastEventId)
-    {
-        using var connection = DataAccess.CreateDbConnection();
-        connection.Open();
-
-        // Get the current credential data
-        var currentData = await connection.QuerySingleOrDefaultAsync<string>(
-            "SELECT data FROM credential WHERE id = @credentialId",
-            new { credentialId });
-
-        if (currentData != null)
-        {
-            var credential = JsonSerializer.Deserialize<Credential>(currentData, GetJsonOptions());
-            credential.LastEvent = lastEventId;
-            var newJson = JsonSerializer.Serialize(credential, GetJsonOptions());
-
-            await connection.ExecuteAsync(
-                "UPDATE credential SET data = @data WHERE id = @credentialId",
-                new { data = newJson, credentialId });
-        }
-    }
-
     public static Person ParsePersonFromName(string credName, int id, bool enabled)
     {
         var person = new Person { Id = id, Enabled = enabled };

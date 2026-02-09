@@ -98,8 +98,8 @@ public class CredentialRepositoryTests
         // Arrange
         var credentials = new[]
         {
-            new Credential {Number = "2345342", LastEvent = 4},
-            new Credential {Number = "5345234", LastEvent = 5},
+            new Credential {Number = "2345342"},
+            new Credential {Number = "5345234"},
         };
 
         var credentialRepository = new CredentialRepository(_dataAccess);
@@ -114,7 +114,6 @@ public class CredentialRepositoryTests
         // Assert
         Assert.That(credentials[1].Id, Is.EqualTo(2));
         Assert.That(actualCredential.Id, Is.EqualTo(2));
-        Assert.That(actualCredential.LastEvent, Is.EqualTo(5));
         Assert.That(actualCredential.Number, Is.EqualTo("5345234"));
     }
 
@@ -332,22 +331,6 @@ public class CredentialRepositoryTests
         Assert.That(people, Has.Exactly(2).Items);
         Assert.That(people.Any(p => p.FirstName == "John" && p.LastName == "Smith" && p.Enabled), Is.True);
         Assert.That(people.Any(p => p.FirstName == "Jane" && p.LastName == "Doe" && !p.Enabled), Is.True);
-    }
-
-    [Test]
-    public async Task UpdateLastEvent()
-    {
-        // Arrange
-        var credential = new Credential { Number = "2345342", LastEvent = 4 };
-        var credentialRepository = new CredentialRepository(_dataAccess);
-        int credentialId = await credentialRepository.Insert(credential);
-
-        // Act
-        await credentialRepository.UpdateLastEvent(credentialId, 5);
-
-        // Assert
-        var actualCredential = await credentialRepository.Get(credentialId);
-        Assert.That(actualCredential.LastEvent, Is.EqualTo(5));
     }
 
     [Test]

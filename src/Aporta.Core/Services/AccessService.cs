@@ -300,10 +300,6 @@ public class AccessService
                 // later from this event during enrollment
                 await InsertRawCredReadEvt(matchingCardData, accessPoint);
             }
-            else
-            {
-                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
-            }
 
             await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
@@ -339,7 +335,7 @@ public class AccessService
                         EventReason = EventReason.NoCredentialTemplate,
                         CardNumber = matchingCardData
                     });
-                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+
                 await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
                 AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
@@ -368,7 +364,7 @@ public class AccessService
                         EventReason = EventReason.CredentialDisabled,
                         CardNumber = matchingCardData
                     });
-                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+
                 await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
                 AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
@@ -401,7 +397,7 @@ public class AccessService
                             EventReason = EventReason.CredentialNotYetEffective,
                             CardNumber = matchingCardData
                         });
-                    await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+    
                     await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
                     AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
@@ -435,7 +431,7 @@ public class AccessService
                             EventReason = EventReason.CredentialExpired,
                             CardNumber = matchingCardData
                         });
-                    await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+    
                     await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
                     AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
@@ -468,7 +464,6 @@ public class AccessService
                     EventReason = reason,
                     CardNumber = matchingCardData
                 });
-            await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
 
             await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
@@ -501,7 +496,7 @@ public class AccessService
                         EventReason = EventReason.NoConfirmingPin,
                         CardNumber = matchingCardData
                     });
-                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+
                 await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
                 AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
                 {
@@ -526,7 +521,7 @@ public class AccessService
                         EventReason = EventReason.IncorrectConfirmingPin,
                         CardNumber = matchingCardData
                     });
-                await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
+
                 await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
                 AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
                 {
@@ -556,7 +551,6 @@ public class AccessService
                 EventReason = EventReason.None,
                 CardNumber = matchingCardData
             });
-        await _credentialRepository.UpdateLastEvent(assignedCredential.Id, eventId);
 
         await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
