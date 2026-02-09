@@ -1,17 +1,12 @@
 @page "/configuration/sensors"
 
-@using System.Text
-@using System.Text.Json
-
 @using Microsoft.AspNetCore.SignalR.Client
 
-@using Aporta.Shared.Models
 @using Aporta.Shared.Models.Flex
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.WebClient.Messaging
 
-@inject HttpClient Http
 @inject FlexApiService FlexApi
 @inject NavigationManager NavigationManager
 
@@ -26,7 +21,7 @@ else
 {
     <Row>
         <Column ColumnSize="ColumnSize.Is6.OnDesktop">
-            @if (_availableMonitorPoints.Any())
+            @if (_availableSensors != null && _availableSensors.InstanceList.Any())
             {
                 <Button Color="Color.Primary" Clicked="_addInputModal.Show">Add Sensor</Button>
             }
@@ -58,7 +53,7 @@ else
                                         @sensor.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
-                                        <Button Clicked="@(async () => await RemoveInput(sensor))">
+                                        <Button Clicked="@(async () => await RemoveSensor(sensor))">
                                             <Icon Name="IconName.Delete" Style="color: red"/>
                                         </Button>
                                     </TableRowCell>
@@ -85,7 +80,7 @@ else
                         <Field>
                             <FieldLabel>Name</FieldLabel>
                             <FieldBody>
-                                <TextEdit @bind-Text="_addInput.Name">
+                                <TextEdit @bind-Text="_addName">
                                     <Feedback>
                                         <ValidationError>
                                             Please enter a name for the sensor
@@ -99,10 +94,10 @@ else
                     <Field>
                         <FieldLabel>Device Endpoint</FieldLabel>
                         <FieldBody>
-                            <Select TValue="int" @bind-SelectedValue="_addInput.EndpointId">
-                                @foreach (var monitorPoint in _availableMonitorPoints)
+                            <Select TValue="int" @bind-SelectedValue="_addEndpointUnid">
+                                @foreach (var available in _availableSensors.InstanceList)
                                 {
-                                    <SelectItem Value="@monitorPoint.Id">@monitorPoint.Name</SelectItem>
+                                    <SelectItem Value="@available.Unid.Value">@available.Name</SelectItem>
                                 }
                             </Select>
                         </FieldBody>
@@ -111,7 +106,7 @@ else
             </ModalBody>
             <ModalFooter>
                 <Button Color="Color.Secondary" Clicked="@_addInputModal.Hide">Cancel</Button>
-                <Button Color="Color.Primary" Clicked="@(async () => await AddInput())">Add</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await AddSensor())">Add</Button>
             </ModalFooter>
         </ModalContent>
     </Modal>
@@ -130,8 +125,9 @@ else
     IMessageService MessageService { get; set; }
 
     private FlexListResponse<FlexDev> _sensors;
-    private Endpoint[] _availableMonitorPoints;
-    private Input _addInput;
+    private FlexListResponse<FlexDev> _availableSensors;
+    private string _addName;
+    private int _addEndpointUnid;
 
     private HubConnection _hubConnection;
 
@@ -145,7 +141,7 @@ else
     {
         _sensors = await FlexApi.GetSensorListAsync(0, 1000);
 
-        await InitializedAvailableInputs();
+        await InitializeAvailableSensors();
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
@@ -154,30 +150,26 @@ else
         _hubConnection.On<int>(Methods.InputInserted, async _ =>
         {
             _sensors = await FlexApi.GetSensorListAsync(0, 1000);
-            await InitializedAvailableInputs();
+            await InitializeAvailableSensors();
             StateHasChanged();
         });
         _hubConnection.On<int>(Methods.InputDeleted, async _ =>
         {
             _sensors = await FlexApi.GetSensorListAsync(0, 1000);
-            await InitializedAvailableInputs();
+            await InitializeAvailableSensors();
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
     }
 
-    private async Task InitializedAvailableInputs()
+    private async Task InitializeAvailableSensors()
     {
-        _availableMonitorPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Inputs}/available");
-
-        _addInput = new Input();
-        if (_availableMonitorPoints != null && _availableMonitorPoints.Any())
-        {
-            _addInput.EndpointId = _availableMonitorPoints.First().Id;
-        }
+        _availableSensors = await FlexApi.GetAvailableSensorsAsync();
+        _addName = "";
+        _addEndpointUnid = _availableSensors.InstanceList.FirstOrDefault()?.Unid ?? 0;
     }
 
-    private async Task AddInput()
+    private async Task AddSensor()
     {
         if (! await _addInputValidations.ValidateAll())
         {
@@ -185,18 +177,11 @@ else
         }
         await _addInputModal.Hide();
 
-        string url = string.Format(Paths.Inputs);
-        var response = await Http.PutAsync(url,
-            new StringContent(JsonSerializer.Serialize(_addInput), Encoding.UTF8, "application/json"));
-        if (!response.IsSuccessStatusCode)
-        {
-            _snackbarMessage = "Unable to add sensor";
-            _snackbarColor = SnackbarColor.Danger;
-            await _snackbar.Show();
-         }
+        var dev = new FlexDev { Unid = _addEndpointUnid, Name = _addName };
+        await FlexApi.SaveSensorAsync(dev);
     }
 
-    private async Task RemoveInput(FlexDev sensor)
+    private async Task RemoveSensor(FlexDev sensor)
     {
         if (!await MessageService.Confirm($"Are you sure you want to delete sensor '{sensor.Name}'?", "Delete Sensor", options =>
         {
@@ -207,13 +192,6 @@ else
             return;
         }
 
-        string url = string.Format($"{Paths.Inputs}/{sensor.Unid}");
-        var response = await Http.DeleteAsync(url);
-        if (!response.IsSuccessStatusCode)
-        {
-            _snackbarMessage = "Unable to remove sensor";
-            _snackbarColor = SnackbarColor.Danger;
-            await _snackbar.Show();
-        }
+        await FlexApi.DeleteSensorAsync(sensor.Unid.Value);
     }
 }

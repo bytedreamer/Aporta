@@ -8,12 +8,12 @@ using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
 using Aporta.Extensions;
-using Aporta.Shared.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
 using SignalR_UnitTestingSupportCommon.IHubContextSupport;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Tests.Services;
 
@@ -68,29 +68,32 @@ public class OutputServiceTests
     public async Task SetState()
     {
         // Arrange
-        var outputService = new OutputService(_dataAccess,
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
+        // OutputService is still instantiated to subscribe to StateChanged events
+        _ = new OutputService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
             _extensionService, new DevStateService());
 
-        var available = (await outputService.AvailableControlPoints()).ToArray();
+        var available = (await z9DevRepository.GetAvailableByDevType(DevType.Actuator)).ToArray();
         Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available actuator endpoints");
 
-        var outputs = new[]
+        // Assign actuators (set name + enabled)
+        foreach (var dev in available)
         {
-            new Output {Name = "TestOutput1", EndpointId = available[0].Id},
-            new Output {Name = "TestOutput2", EndpointId = available[1].Id}
-        };
-        foreach (var output in outputs)
-        {
-            await outputService.Insert(output);
+            dev.Name = $"TestOutput_{dev.Unid}";
+            dev.Enabled = true;
+            await z9DevRepository.Upsert(dev);
         }
 
+        // Get extension ID for state calls
+        var extensionId = await z9DevRepository.GetExtensionId(available[0]);
+
         // Act
-        await outputService.SetState(outputs[0].Id, true);
-        await outputService.SetState(outputs[1].Id, false);
+        await _extensionService.GetControlPoint(extensionId.Value, available[0].ExternalId).SetState(true);
+        await _extensionService.GetControlPoint(extensionId.Value, available[1].ExternalId).SetState(false);
 
         // Assert
-        Assert.That(await outputService.GetState(outputs[0].Id), Is.True);
-        Assert.That(await outputService.GetState(outputs[1].Id), Is.False);
+        Assert.That(await _extensionService.GetControlPoint(extensionId.Value, available[0].ExternalId).GetState(), Is.True);
+        Assert.That(await _extensionService.GetControlPoint(extensionId.Value, available[1].ExternalId).GetState(), Is.False);
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Shared.Models.Flex;
 
@@ -62,6 +63,64 @@ public class FlexApiService
     public async Task<FlexVoid> EnrollCredAsync(int credentialId, int personId)
     {
         return await FlexPostAsync<FlexVoid>($"flex/cred/{credentialId}/enroll/{personId}");
+    }
+
+    public async Task<FlexListResponse<FlexDev>> GetAvailableSensorsAsync()
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDev>>("flex/sensor/available");
+    }
+
+    public async Task<FlexListResponse<FlexDev>> GetAvailableActuatorsAsync()
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDev>>("flex/actuator/available");
+    }
+
+    public async Task<FlexInstanceResponse<FlexDev>> SaveSensorAsync(FlexDev sensor)
+    {
+        return await FlexPostAsync<FlexInstanceResponse<FlexDev>>("flex/sensor/save", sensor);
+    }
+
+    public async Task<FlexInstanceResponse<FlexDev>> SaveActuatorAsync(FlexDev actuator)
+    {
+        return await FlexPostAsync<FlexInstanceResponse<FlexDev>>("flex/actuator/save", actuator);
+    }
+
+    public async Task<FlexVoid> DeleteSensorAsync(int unid)
+    {
+        return await FlexPostAsync<FlexVoid>($"flex/sensor/delete/{unid}");
+    }
+
+    public async Task<FlexVoid> DeleteActuatorAsync(int unid)
+    {
+        return await FlexPostAsync<FlexVoid>($"flex/actuator/delete/{unid}");
+    }
+
+    public async Task<bool?> GetSensorStateAsync(int id)
+    {
+        var json = await FlexGetAsync<JsonElement>($"flex/sensor/state/{id}");
+        return ParseStateResponse(json);
+    }
+
+    public async Task<bool?> GetActuatorStateAsync(int id)
+    {
+        var json = await FlexGetAsync<JsonElement>($"flex/actuator/state/{id}");
+        return ParseStateResponse(json);
+    }
+
+    public async Task SetActuatorStateAsync(int id, bool state)
+    {
+        await FlexPostAsync<FlexVoid>($"flex/actuator/state/{id}?state={state}");
+    }
+
+    private static bool? ParseStateResponse(JsonElement json)
+    {
+        if (json.TryGetProperty("state", out var stateProp))
+        {
+            if (stateProp.ValueKind == JsonValueKind.Null)
+                return null;
+            return stateProp.GetBoolean();
+        }
+        return null;
     }
 
     private async Task<T> FlexGetAsync<T>(string url)

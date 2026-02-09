@@ -19,7 +19,7 @@ using Aporta.Core.Hubs;
 using Aporta.Core.Services;
 using Aporta.Extensions;
 using Aporta.Shared.Messaging;
-using Aporta.Shared.Models;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Tests.Services;
 
@@ -74,31 +74,34 @@ public class InputServiceTests
     public async Task GetState()
     {
         // Arrange
-        var inputService = new InputService(_dataAccess,
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
+        // InputService is still instantiated to subscribe to StateChanged events
+        _ = new InputService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
             _extensionService, new DevStateService());
 
-        var available = (await inputService.AvailableMonitorPoints()).ToArray();
+        var available = (await z9DevRepository.GetAvailableByDevType(DevType.Sensor)).ToArray();
         Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available sensor endpoints");
 
-        var inputs = new[]
+        // Assign sensors (set name + enabled)
+        foreach (var dev in available)
         {
-            new Input {Name = "TestInput1", EndpointId = available[0].Id},
-            new Input {Name = "TestInput2", EndpointId = available[1].Id}
-        };
-
-        foreach (var input in inputs)
-        {
-            await inputService.Insert(input);
+            dev.Name = $"TestInput_{dev.Unid}";
+            dev.Enabled = true;
+            await z9DevRepository.Upsert(dev);
         }
 
         // Act — send state via named pipe using the driver endpoint ID of the second input
-        await SendInputState(available[1].DriverEndpointId, true);
+        var secondDev = available[1];
+        var extensionId = await z9DevRepository.GetExtensionId(secondDev);
+        await SendInputState(secondDev.ExternalId, true);
 
         // Assert
-        Assert.That(async () => await inputService.GetState(inputs[0].Id),
+        Assert.That(async () =>
+            await _extensionService.GetMonitorPoint(extensionId.Value, available[0].ExternalId).GetState(),
             Is.False.After(1000, 100));
-        Assert.That(async () => await inputService.GetState(inputs[1].Id),
+        Assert.That(async () =>
+            await _extensionService.GetMonitorPoint(extensionId.Value, secondDev.ExternalId).GetState(),
             Is.True.After(1000, 100));
     }
 
@@ -107,31 +110,32 @@ public class InputServiceTests
     {
         // Arrange
         var hubContext = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
-        var inputService = new InputService(_dataAccess, hubContext.IHubContextMock.Object, _extensionService, new DevStateService());
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
+        _ = new InputService(_dataAccess, hubContext.IHubContextMock.Object, _extensionService, new DevStateService());
 
-        var available = (await inputService.AvailableMonitorPoints()).ToArray();
+        var available = (await z9DevRepository.GetAvailableByDevType(DevType.Sensor)).ToArray();
         Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available sensor endpoints");
 
-        var inputs = new[]
+        // Assign sensors (set name + enabled)
+        foreach (var dev in available)
         {
-            new Input {Name = "TestInput1", EndpointId = available[0].Id},
-            new Input {Name = "TestInput2", EndpointId = available[1].Id}
-        };
-
-        foreach (var input in inputs)
-        {
-            await inputService.Insert(input);
+            dev.Name = $"TestInput_{dev.Unid}";
+            dev.Enabled = true;
+            await z9DevRepository.Upsert(dev);
         }
 
         // Act — send state via named pipe using the driver endpoint ID of the second input
-        await SendInputState(available[1].DriverEndpointId, true);
+        var secondDev = available[1];
+        var extensionId = await z9DevRepository.GetExtensionId(secondDev);
+        await SendInputState(secondDev.ExternalId, true);
 
         // Assert
         // Wait for state to be updated on service before verifying
-        Assert.That(async () => await inputService.GetState(inputs[1].Id),
+        Assert.That(async () =>
+            await _extensionService.GetMonitorPoint(extensionId.Value, secondDev.ExternalId).GetState(),
             Is.True.After(1000, 100));
         hubContext.ClientsAllMock.Verify(clientProxy =>
-            clientProxy.SendCoreAsync(Methods.InputStateChanged, new object[] {inputs[1].Id, true},
+            clientProxy.SendCoreAsync(Methods.InputStateChanged, new object[] {secondDev.Unid, true},
                 It.IsAny<CancellationToken>()));
     }
 

@@ -6,11 +6,13 @@
 @using Microsoft.AspNetCore.SignalR.Client
 
 @using Aporta.Shared.Models
+@using Aporta.Shared.Models.Flex
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Messaging
 @using Aporta.WebClient.Messaging
 
 @inject HttpClient Http
+@inject FlexApiService FlexApi
 @inject NavigationManager NavigationManager
 
 <Heading Size="HeadingSize.Is1">Doors</Heading>
@@ -145,9 +147,9 @@ else
                                 <Select TValue="int?" @bind-SelectedValue="@_addDoor.DoorStrikeEndpointId">
                                     <ChildContent>
                                         <SelectItem Value="-1">None</SelectItem>
-                                        @foreach (var controlPoint in _availableControlPoints)
+                                        @foreach (var controlPoint in _availableControlPoints.InstanceList)
                                         {
-                                            <SelectItem Value="@controlPoint.Id">@controlPoint.Name</SelectItem>
+                                            <SelectItem Value="@controlPoint.Unid">@controlPoint.Name</SelectItem>
                                         }
                                     </ChildContent>
                                     
@@ -184,7 +186,7 @@ else
     
     private List<Door> _doors;
     private Endpoint[] _availableAccessPoints;
-    private Endpoint[] _availableControlPoints;
+    private FlexListResponse<FlexDev> _availableControlPoints;
     private Door _addDoor;
     
     private HubConnection _hubConnection;
@@ -240,7 +242,7 @@ else
     private async Task InitializedAvailableEndpoints()
     {
         _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
-        _availableControlPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Outputs}/available");
+        _availableControlPoints = await FlexApi.GetAvailableActuatorsAsync();
 
         _addDoor = new Door {InAccessEndpointId = -1, OutAccessEndpointId = -1, DoorStrikeEndpointId = -1};
     }

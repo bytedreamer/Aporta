@@ -1,10 +1,14 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
+using Aporta.Core.Hubs;
+using Aporta.Shared.Messaging;
 using Aporta.Shared.Models.Flex;
 using Aporta.Core.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Z9.Spcore.Proto;
 
 namespace Aporta.Controllers.Flex;
@@ -94,16 +98,208 @@ public class FlexControllerController : FlexDevTypeControllerBase
 [Route("flex/sensor")]
 public class FlexSensorController : FlexDevTypeControllerBase
 {
-    public FlexSensorController(IDataAccess dataAccess) : base(dataAccess) { }
+    private readonly Z9DevRepository _repository;
+    private readonly IHubContext<DataChangeNotificationHub> _hubContext;
+    private readonly ExtensionService _extensionService;
+
+    public FlexSensorController(IDataAccess dataAccess,
+        IHubContext<DataChangeNotificationHub> hubContext,
+        ExtensionService extensionService) : base(dataAccess)
+    {
+        _repository = new Z9DevRepository(dataAccess);
+        _hubContext = hubContext;
+        _extensionService = extensionService;
+    }
+
     protected override DevType FilterDevType => DevType.Sensor;
+
+    [HttpGet("list")]
+    public override async Task<IActionResult> List([FromQuery] int offset = 0, [FromQuery] int max = 50)
+    {
+        var all = (await Repository.GetAll())
+            .Where(d => d.DevType == DevType.Sensor && d.Enabled)
+            .ToList();
+        var count = all.Count;
+        var page = all.Skip(offset).Take(max).Select(ToFlex).ToList();
+
+        return Ok(new FlexListResponse<FlexDev>
+        {
+            Offset = offset,
+            Max = max,
+            Count = count,
+            InstanceList = page,
+        });
+    }
+
+    public override async Task<IActionResult> Save([FromBody] FlexDev body)
+    {
+        var poolDev = await _repository.Get(body.Unid ?? 0);
+        if (poolDev == null)
+            return NotFound();
+
+        poolDev.Name = body.Name;
+        poolDev.Enabled = true;
+        await _repository.Upsert(poolDev);
+
+        await _hubContext.Clients.All.SendAsync(Methods.InputInserted, poolDev.Unid);
+
+        return Ok(new FlexInstanceResponse<FlexDev> { Instance = ToFlex(poolDev) });
+    }
+
+    public override async Task<IActionResult> Delete(string id)
+    {
+        var result = await base.Delete(id);
+
+        if (int.TryParse(id, out var unid))
+            await _hubContext.Clients.All.SendAsync(Methods.InputDeleted, unid);
+
+        return result;
+    }
+
+    [HttpGet("available")]
+    public async Task<IActionResult> Available()
+    {
+        var available = await _repository.GetAvailableByDevType(DevType.Sensor);
+        var list = available.Select(ToFlex).ToList();
+        return Ok(new FlexListResponse<FlexDev>
+        {
+            Offset = 0,
+            Max = list.Count,
+            Count = list.Count,
+            InstanceList = list,
+        });
+    }
+
+    [HttpGet("state/{id:int}")]
+    public async Task<IActionResult> GetState(int id)
+    {
+        var dev = await _repository.Get(id);
+        if (dev == null)
+            return NotFound();
+
+        var extensionId = await _repository.GetExtensionId(dev);
+        if (!extensionId.HasValue)
+            return Ok(new { state = (bool?)null });
+
+        var state = await _extensionService.GetMonitorPoint(extensionId.Value, dev.ExternalId).GetState();
+        return Ok(new { state });
+    }
 }
 
 [ApiController]
 [Route("flex/actuator")]
 public class FlexActuatorController : FlexDevTypeControllerBase
 {
-    public FlexActuatorController(IDataAccess dataAccess) : base(dataAccess) { }
+    private readonly Z9DevRepository _repository;
+    private readonly IHubContext<DataChangeNotificationHub> _hubContext;
+    private readonly ExtensionService _extensionService;
+    private readonly DevStateService _devStateService;
+
+    public FlexActuatorController(IDataAccess dataAccess,
+        IHubContext<DataChangeNotificationHub> hubContext,
+        ExtensionService extensionService,
+        DevStateService devStateService) : base(dataAccess)
+    {
+        _repository = new Z9DevRepository(dataAccess);
+        _hubContext = hubContext;
+        _extensionService = extensionService;
+        _devStateService = devStateService;
+    }
+
     protected override DevType FilterDevType => DevType.Actuator;
+
+    [HttpGet("list")]
+    public override async Task<IActionResult> List([FromQuery] int offset = 0, [FromQuery] int max = 50)
+    {
+        var all = (await Repository.GetAll())
+            .Where(d => d.DevType == DevType.Actuator && d.Enabled)
+            .ToList();
+        var count = all.Count;
+        var page = all.Skip(offset).Take(max).Select(ToFlex).ToList();
+
+        return Ok(new FlexListResponse<FlexDev>
+        {
+            Offset = offset,
+            Max = max,
+            Count = count,
+            InstanceList = page,
+        });
+    }
+
+    public override async Task<IActionResult> Save([FromBody] FlexDev body)
+    {
+        var poolDev = await _repository.Get(body.Unid ?? 0);
+        if (poolDev == null)
+            return NotFound();
+
+        poolDev.Name = body.Name;
+        poolDev.Enabled = true;
+        await _repository.Upsert(poolDev);
+
+        await _hubContext.Clients.All.SendAsync(Methods.OutputInserted, poolDev.Unid);
+
+        return Ok(new FlexInstanceResponse<FlexDev> { Instance = ToFlex(poolDev) });
+    }
+
+    public override async Task<IActionResult> Delete(string id)
+    {
+        var result = await base.Delete(id);
+
+        if (int.TryParse(id, out var unid))
+            await _hubContext.Clients.All.SendAsync(Methods.OutputDeleted, unid);
+
+        return result;
+    }
+
+    [HttpGet("available")]
+    public async Task<IActionResult> Available()
+    {
+        var available = await _repository.GetAvailableByDevType(DevType.Actuator);
+        var list = available.Select(ToFlex).ToList();
+        return Ok(new FlexListResponse<FlexDev>
+        {
+            Offset = 0,
+            Max = list.Count,
+            Count = list.Count,
+            InstanceList = list,
+        });
+    }
+
+    [HttpGet("state/{id:int}")]
+    public async Task<IActionResult> GetState(int id)
+    {
+        var dev = await _repository.Get(id);
+        if (dev == null)
+            return NotFound();
+
+        var extensionId = await _repository.GetExtensionId(dev);
+        if (!extensionId.HasValue)
+            return Ok(new { state = (bool?)null });
+
+        var state = await _extensionService.GetControlPoint(extensionId.Value, dev.ExternalId).GetState();
+        return Ok(new { state });
+    }
+
+    [HttpPost("state/{id:int}")]
+    public async Task<IActionResult> SetState(int id, [FromQuery] bool state)
+    {
+        var dev = await _repository.Get(id);
+        if (dev == null)
+            return NotFound();
+
+        var extensionId = await _repository.GetExtensionId(dev);
+        if (!extensionId.HasValue)
+            return NotFound();
+
+        await _extensionService.GetControlPoint(extensionId.Value, dev.ExternalId).SetState(state);
+
+        await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, dev.Unid, state);
+
+        _devStateService.UpdateAspect(dev.Unid, DevAspect.Primary,
+            s => s.ActivityState = state ? ActivityState.Active : ActivityState.Inactive);
+
+        return Ok(new FlexVoid());
+    }
 }
 
 [ApiController]
