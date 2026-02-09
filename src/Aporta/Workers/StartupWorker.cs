@@ -142,29 +142,6 @@ public class StartupWorker : BackgroundService
                     "Z9/Open Community protocol service not started" +
                     " (use --z9OpenCommunityHost to specify upstream host)");
 
-                // Wire card data decoder — creates raw DataFormat on first encounter
-                _accessService.SetCardDataDecoder(rawBits =>
-                {
-                    var result = _z9OpenCommunityProtocolService.DecodeCardRead(rawBits);
-                    if (result == null)
-                    {
-                        _z9OpenCommunityProtocolService.EnsureRawDataFormat(rawBits.Length);
-                        result = _z9OpenCommunityProtocolService.DecodeCardRead(rawBits);
-                    }
-                    return result?.credNum.ToString();
-                });
-
-                // Wire enrollment handler — creates Z9 data chain on first enrollment
-                _accessService.SetEnrollmentHandler((rawBits, credentialId, doorId) =>
-                {
-                    _z9OpenCommunityProtocolService.EnsureRawDataFormat(rawBits.Length);
-                    _z9OpenCommunityProtocolService.EnsureDefaultCredTemplate();
-                    var decoded = _z9OpenCommunityProtocolService.DecodeCardRead(rawBits);
-                    var credNum = decoded!.Value.credNum;
-                    _z9OpenCommunityProtocolService.CreateStandaloneCred(credentialId, credNum, doorId);
-                    return Task.FromResult(credNum.ToString());
-                });
-
                 // Primary config mode: configure OSDP from a JSON file
                 if (isPrimaryConfigMode)
                 {

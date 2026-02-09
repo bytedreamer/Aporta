@@ -53,7 +53,6 @@ public class AccessService
     private Func<string, (int?, int?)> _getStrikeTimesForEndpoint;
     private Func<string, DoorModeType?> _getDoorModeForEndpoint;
     private Func<string, string> _decodeCardData;
-    private Func<string, int, int, Task<string>> _enrollCredential;
 
     /// <summary>
     /// Event raised when an access decision is made (granted or denied).
@@ -117,16 +116,6 @@ public class AccessService
     public void SetCardDataDecoder(Func<string, string> decodeCardData)
     {
         _decodeCardData = decodeCardData;
-    }
-
-    /// <summary>
-    /// Sets a handler called during auto-enrollment to create Z9 data structures
-    /// (DataFormat, CredTemplate, Z9 Cred) for a newly enrolled credential.
-    /// Signature: (rawBits, credentialId, doorId) → credNum string.
-    /// </summary>
-    public void SetEnrollmentHandler(Func<string, int, int, Task<string>> enrollCredential)
-    {
-        _enrollCredential = enrollCredential;
     }
 
     public void Startup()
@@ -307,27 +296,9 @@ public class AccessService
 
             if (assignedCredential == null)
             {
-                if (_enrollCredential != null)
-                {
-                    // Create credential and Z9 data chain (DataFormat, CredTemplate, Z9 Cred)
-                    // but leave unassigned — admin must enroll via API
-                    var credentialId = await _credentialRepository.Insert(new Credential
-                        { Number = matchingCardData, LastEvent = eventId });
-                    var credNum = await _enrollCredential(matchingCardData, credentialId, matchingDoor.Id);
-                    // Update credential number to decoded credNum
-                    var credential = await _credentialRepository.Get(credentialId);
-                    if (credential != null)
-                    {
-                        credential.Number = credNum;
-                        credential.LastEvent = eventId;
-                        await _credentialRepository.Update(credential);
-                    }
-                }
-                else
-                {
-                    await _credentialRepository.Insert(new Credential
-                        { Number = matchingCardData, LastEvent = eventId });
-                }
+                // Insert RAW_CRED_READ event with raw bits — credential will be created
+                // later from this event during enrollment
+                await InsertRawCredReadEvt(matchingCardData, accessPoint);
             }
             else
             {
@@ -624,6 +595,34 @@ public class AccessService
         }
 
         return await _z9EvtRepository.Insert(evt);
+    }
+
+    private async Task InsertRawCredReadEvt(string rawBits, Endpoint accessPoint)
+    {
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var evt = new Evt
+        {
+            EvtCode = EvtCode.RawCredRead,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            Data = rawBits,
+        };
+
+        // Set EvtDevRef to the CredReader dev if available
+        var credReaderDev = await _z9DevRepository.GetByExternalId(accessPoint.DriverEndpointId);
+        if (credReaderDev != null)
+        {
+            evt.EvtDevRef = new EvtDevRef
+            {
+                Unid = credReaderDev.Unid,
+                Name = credReaderDev.Name,
+                DevType = DevType.CredReader
+            };
+        }
+
+        await _z9EvtRepository.Insert(evt);
     }
 
     private int GetStrikeTimeMs(string endpointId, bool useExtendedTime)
