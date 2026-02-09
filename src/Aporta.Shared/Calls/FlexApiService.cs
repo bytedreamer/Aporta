@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Aporta.Shared.Models;
 using Aporta.Shared.Models.Flex;
 
 namespace Aporta.Shared.Calls;
@@ -63,6 +64,31 @@ public class FlexApiService
     public async Task<FlexVoid> EnrollCredAsync(int credentialId, int personId)
     {
         return await FlexPostAsync<FlexVoid>($"flex/cred/{credentialId}/enroll/{personId}");
+    }
+
+    public async Task<FlexListResponse<FlexDev>> GetDoorListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDev>>($"flex/door/list?offset={offset}&max={max}");
+    }
+
+    public async Task<FlexListResponse<FlexDev>> GetAvailableCredReadersAsync()
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDev>>("flex/door/available/readers");
+    }
+
+    public async Task<FlexVoid> CreateDoorAsync(Door door)
+    {
+        return await FlexPostAsync<FlexVoid>("flex/door/create", door);
+    }
+
+    public async Task<FlexVoid> DeleteDoorAsync(int unid)
+    {
+        return await FlexPostAsync<FlexVoid>($"flex/door/delete/{unid}");
+    }
+
+    public virtual async Task<FlexListResponse<FlexDev>> GetAvailableEndpointsAsync()
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDev>>("flex/door/available/endpoints");
     }
 
     public async Task<FlexListResponse<FlexDev>> GetAvailableSensorsAsync()

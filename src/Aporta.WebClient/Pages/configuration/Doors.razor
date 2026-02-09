@@ -1,8 +1,5 @@
 @page "/configuration/doors"
 
-@using System.Text
-@using System.Text.Json
-
 @using Microsoft.AspNetCore.SignalR.Client
 
 @using Aporta.Shared.Models
@@ -11,7 +8,6 @@
 @using Aporta.Shared.Messaging
 @using Aporta.WebClient.Messaging
 
-@inject HttpClient Http
 @inject FlexApiService FlexApi
 @inject NavigationManager NavigationManager
 
@@ -26,7 +22,7 @@ else
 {
     <Row>
         <Column ColumnSize="ColumnSize.Is6.OnDesktop">
-            @if (_availableAccessPoints.Any())
+            @if (_availableAccessPoints.InstanceList.Any())
             {
                 <Button Color="Color.Primary" Clicked="_addDoorModal.Show">Add Door</Button>
             }
@@ -51,14 +47,14 @@ else
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            @foreach (var door in _doors.OrderBy(door => door.Name))
+                            @foreach (var door in _doors.InstanceList.OrderBy(door => door.Name))
                             {
                                 <TableRow>
                                     <TableRowHeader>
                                         @door.Name
                                     </TableRowHeader>
                                     <TableRowCell TextAlignment="TextAlignment.End">
-                                        <Button Clicked="@(async () => await RemoveDoor(door.Id, door.Name))">
+                                        <Button Clicked="@(async () => await RemoveDoor(door.Unid.Value, door.Name))">
                                             <Icon Name="IconName.Delete" Style="color: red"/>
                                         </Button>
                                     </TableRowCell>
@@ -68,9 +64,9 @@ else
                     </Table>
                 </CardBody>
             </Card>
-        </Column> 
+        </Column>
     </Row>
-    
+
     <Modal @ref="_addDoorModal">
         <ModalContent Size="ModalSize.Default" Centered="true">
             <ModalHeader>
@@ -95,7 +91,7 @@ else
                             </FieldBody>
                         </Field>
                     </Validation>
-                 
+
                     <Validation Validator="@ValidateEitherInOrOutIsSelected" >
                         <Field>
                             <FieldLabel>Access Reader In</FieldLabel>
@@ -103,9 +99,9 @@ else
                                 <Select TValue="int?" @bind-SelectedValue="@_addDoor.InAccessEndpointId">
                                     <ChildContent>
                                         <SelectItem Value="-1">None</SelectItem>
-                                        @foreach (var accessPoint in _availableAccessPoints)
+                                        @foreach (var available in _availableAccessPoints.InstanceList)
                                         {
-                                            <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                            <SelectItem Value="@available.Unid">@available.Name</SelectItem>
                                         }
                                     </ChildContent>
 
@@ -125,9 +121,9 @@ else
                                 <Select TValue="int?" @bind-SelectedValue="@_addDoor.OutAccessEndpointId">
                                     <ChildContent>
                                         <SelectItem Value="-1">None</SelectItem>
-                                        @foreach (var accessPoint in _availableAccessPoints)
+                                        @foreach (var available in _availableAccessPoints.InstanceList)
                                         {
-                                            <SelectItem Value="@accessPoint.Id">@accessPoint.Name</SelectItem>
+                                            <SelectItem Value="@available.Unid">@available.Name</SelectItem>
                                         }
                                     </ChildContent>
 
@@ -152,7 +148,7 @@ else
                                             <SelectItem Value="@controlPoint.Unid">@controlPoint.Name</SelectItem>
                                         }
                                     </ChildContent>
-                                    
+
                                     <Feedback>
                                         <ValidationError>
                                             Validation error
@@ -181,16 +177,16 @@ else
 <MessageProvider />
 
 @code {
-    [Inject] 
+    [Inject]
     IMessageService MessageService { get; set; }
-    
-    private List<Door> _doors;
-    private Endpoint[] _availableAccessPoints;
+
+    private FlexListResponse<FlexDev> _doors;
+    private FlexListResponse<FlexDev> _availableAccessPoints;
     private FlexListResponse<FlexDev> _availableControlPoints;
     private Door _addDoor;
-    
+
     private HubConnection _hubConnection;
-    
+
     private Modal _addDoorModal;
     private Validations _addDoorValidations;
 #pragma warning disable 649
@@ -198,50 +194,45 @@ else
 #pragma warning restore 649
     private SnackbarColor _snackbarColor;
     private string _snackbarMessage = string.Empty;
-    
+
     protected override async Task OnInitializedAsync()
     {
-        _doors = await Http.GetFromJsonAsync<List<Door>>(Paths.Doors);
+        _doors = await FlexApi.GetDoorListAsync(0, 1000);
 
-        await InitializedAvailableEndpoints();
-        
+        await InitializeAvailableEndpoints();
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
             .WithAutomaticReconnect(new SignalRRetryPolicy())
             .Build();
-        _hubConnection.On<int>(Methods.DoorInserted, async doorId =>
+        _hubConnection.On<int>(Methods.DoorInserted, async _ =>
         {
-            _doors.Add( await Http.GetFromJsonAsync<Door>($"{Paths.Doors}/{doorId}"));
-            
-            await InitializedAvailableEndpoints();
-            
+            _doors = await FlexApi.GetDoorListAsync(0, 1000);
+
+            await InitializeAvailableEndpoints();
+
             StateHasChanged();
         });
-        _hubConnection.On<int>(Methods.DoorDeleted, async doorId =>
+        _hubConnection.On<int>(Methods.DoorDeleted, async _ =>
         {
-            var door = _doors.FirstOrDefault(o => o.Id == doorId);
-            if (door == null) return;
-            
-            _doors.Remove(door);
-            
-            await InitializedAvailableEndpoints();
+            _doors = await FlexApi.GetDoorListAsync(0, 1000);
+
+            await InitializeAvailableEndpoints();
 
             StateHasChanged();
         });
         _hubConnection.On<int>(Methods.ExtensionDataChanged, async _ =>
         {
-
-
-            await InitializedAvailableEndpoints();
+            await InitializeAvailableEndpoints();
 
             StateHasChanged();
         });
         await _hubConnection.StartAsync();
     }
 
-    private async Task InitializedAvailableEndpoints()
+    private async Task InitializeAvailableEndpoints()
     {
-        _availableAccessPoints = await Http.GetFromJsonAsync<Endpoint[]>($"{Paths.Doors}/available");
+        _availableAccessPoints = await FlexApi.GetAvailableCredReadersAsync();
         _availableControlPoints = await FlexApi.GetAvailableActuatorsAsync();
 
         _addDoor = new Door {InAccessEndpointId = -1, OutAccessEndpointId = -1, DoorStrikeEndpointId = -1};
@@ -258,16 +249,17 @@ else
         if (_addDoor.InAccessEndpointId == -1) _addDoor.InAccessEndpointId = null;
         if (_addDoor.OutAccessEndpointId == -1) _addDoor.OutAccessEndpointId = null;
         if (_addDoor.DoorStrikeEndpointId == -1) _addDoor.DoorStrikeEndpointId = null;
-        
-        string url = string.Format(Paths.Doors);
-        var response = await Http.PutAsync(url,
-            new StringContent(JsonSerializer.Serialize(_addDoor), Encoding.UTF8, "application/json"));
-        if (!response.IsSuccessStatusCode)
+
+        try
+        {
+            await FlexApi.CreateDoorAsync(_addDoor);
+        }
+        catch
         {
             _snackbarMessage = "Unable to add door";
             _snackbarColor = SnackbarColor.Danger;
             await _snackbar.Show();
-         }
+        }
     }
 
     private async Task RemoveDoor(int doorId, string doorName)
@@ -281,9 +273,11 @@ else
             return;
         }
 
-        string url = string.Format($"{Paths.Doors}/{doorId}");
-        var response = await Http.DeleteAsync(url);
-        if (!response.IsSuccessStatusCode)
+        try
+        {
+            await FlexApi.DeleteDoorAsync(doorId);
+        }
+        catch
         {
             _snackbarMessage = "Unable to remove door";
             _snackbarColor = SnackbarColor.Danger;
@@ -306,7 +300,7 @@ else
             eventArgs.ErrorText = "Either a in or out access point must be selected";
         }
     }
-    
+
     private void ValidateDoorStrikeIsSelected(ValidatorEventArgs eventArgs)
     {
         eventArgs.Status = _addDoor.DoorStrikeEndpointId > -1

@@ -16,40 +16,16 @@ public class DoorsController : ControllerBase
     {
         _doorConfigurationService = doorConfigurationService;
     }
-        
+
     [HttpGet]
     public async Task<IEnumerable<Door>> Get()
     {
         return await _doorConfigurationService.GetAll();
     }
-        
+
     [HttpGet("{doorId:int}")]
     public async Task<Door> Get(int doorId)
     {
         return await _doorConfigurationService.Get(doorId);
-    }
-
-    [HttpPut]
-    public async Task Put([FromBody]Door door)
-    {
-        await _doorConfigurationService.Insert(door);
-    }
-        
-    [HttpDelete("{doorId:int}")]
-    public async Task Delete(int doorId)
-    {
-        await _doorConfigurationService.Delete(doorId);
-    }
-        
-    [HttpGet("available")]
-    public async Task<IEnumerable<Endpoint>> Available()
-    {
-        return await _doorConfigurationService.AvailableAccessPoints();
-    }
-
-    [HttpGet("endpointsavailable")]
-    public async Task<IEnumerable<Endpoint>> AvailableEndPoints()
-    {
-        return await _doorConfigurationService.AvailableEndPoints();
     }
 }

@@ -74,8 +74,85 @@ public abstract class FlexDevTypeControllerBase : FlexCrudControllerBase<Dev, Fl
 [Route("flex/door")]
 public class FlexDoorController : FlexDevTypeControllerBase
 {
-    public FlexDoorController(IDataAccess dataAccess) : base(dataAccess) { }
+    private readonly Z9DevRepository _repository;
+    private readonly DoorConfigurationService _doorConfigurationService;
+
+    public FlexDoorController(IDataAccess dataAccess,
+        DoorConfigurationService doorConfigurationService) : base(dataAccess)
+    {
+        _repository = new Z9DevRepository(dataAccess);
+        _doorConfigurationService = doorConfigurationService;
+    }
+
     protected override DevType FilterDevType => DevType.Door;
+
+    [HttpGet("list")]
+    public override async Task<IActionResult> List([FromQuery] int offset = 0, [FromQuery] int max = 50)
+    {
+        var doors = await _doorConfigurationService.GetAll();
+        var all = doors.ToList();
+        var count = all.Count;
+        var page = all.Skip(offset).Take(max).Select(d =>
+            new FlexDev { Unid = d.Id, Name = d.Name }).ToList();
+
+        return Ok(new FlexListResponse<FlexDev>
+        {
+            Offset = offset,
+            Max = max,
+            Count = count,
+            InstanceList = page,
+        });
+    }
+
+    [HttpPost("create")]
+    public async Task<IActionResult> Create([FromBody] Aporta.Shared.Models.Door door)
+    {
+        await _doorConfigurationService.Insert(door);
+        return Ok(new FlexVoid());
+    }
+
+    public override async Task<IActionResult> Delete(string id)
+    {
+        if (int.TryParse(id, out var unid))
+        {
+            await _doorConfigurationService.Delete(unid);
+            return Ok(new FlexVoid());
+        }
+        return BadRequest();
+    }
+
+    [HttpGet("available/readers")]
+    public async Task<IActionResult> AvailableReaders()
+    {
+        var available = await _repository.GetAvailableByDevType(DevType.CredReader);
+        var list = available.Select(ToFlex).ToList();
+        return Ok(new FlexListResponse<FlexDev>
+        {
+            Offset = 0,
+            Max = list.Count,
+            Count = list.Count,
+            InstanceList = list,
+        });
+    }
+
+    [HttpGet("available/endpoints")]
+    public async Task<IActionResult> AvailableEndpoints()
+    {
+        var endpoints = await _doorConfigurationService.AvailableEndPoints();
+        var list = endpoints.Select(e => new FlexDev
+        {
+            Unid = e.Id,
+            Name = e.Name,
+            ExternalId = e.DriverEndpointId,
+        }).ToList();
+        return Ok(new FlexListResponse<FlexDev>
+        {
+            Offset = 0,
+            Max = list.Count,
+            Count = list.Count,
+            InstanceList = list,
+        });
+    }
 }
 
 [ApiController]
