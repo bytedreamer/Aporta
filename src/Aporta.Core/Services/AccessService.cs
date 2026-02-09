@@ -37,7 +37,6 @@ public class AccessService
 {
     private readonly ExtensionService _extensionService;
     private readonly ILogger<AccessService> _logger;
-    private readonly EndpointRepository _endpointRepository;
     private readonly Z9DevRepository _z9DevRepository;
     private readonly CredentialRepository _credentialRepository;
     private readonly Z9EvtRepository _z9EvtRepository;
@@ -68,7 +67,6 @@ public class AccessService
         DoorConfigurationService doorConfigurationService)
     {
         _credentialRepository = new CredentialRepository(dataAccess);
-        _endpointRepository = new EndpointRepository(dataAccess);
         _z9DevRepository = new Z9DevRepository(dataAccess);
         _z9EvtRepository = new Z9EvtRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
@@ -126,7 +124,7 @@ public class AccessService
     public void Shutdown()
     {
         _processAccessCredential.Clear();
-            
+
         _extensionService.AccessCredentialReceived -= ExtensionServiceOnAccessCredentialReceived;
     }
 
@@ -147,9 +145,7 @@ public class AccessService
     {
         try
         {
-            var endpoints = (await _endpointRepository.GetAll()).ToArray();
-
-            var matchingDoor = await MatchingDoor(eventArgs.Access.Id, endpoints);
+            var matchingDoor = await MatchingDoor(eventArgs.Access.Id);
 
             if (matchingDoor == null)
             {
@@ -158,9 +154,26 @@ public class AccessService
                 return;
             }
 
-            var accessPoint = endpoints.First(endpoint => endpoint.DriverEndpointId == eventArgs.Access.Id);
+            // Build an Endpoint-like reference from the access point's z9_dev
+            var accessPointDev = await _z9DevRepository.GetByExternalId(eventArgs.Access.Id);
+            var accessPointExtensionId = accessPointDev != null
+                ? await _z9DevRepository.GetExtensionId(accessPointDev)
+                : null;
+            var accessPoint = new Endpoint
+            {
+                Id = accessPointDev?.Unid ?? 0,
+                Name = eventArgs.Access.Name,
+                DriverEndpointId = eventArgs.Access.Id,
+                ExtensionId = accessPointExtensionId ?? Guid.Empty,
+                Type = EndpointType.Reader
+            };
 
-            var matchingDoorStrike = MatchingDoorStrike(matchingDoor.DoorStrikeEndpointId, endpoints);
+            // Find the door strike z9_dev
+            Dev matchingStrikeDev = null;
+            if (matchingDoor.DoorStrikeEndpointId.HasValue)
+            {
+                matchingStrikeDev = await _z9DevRepository.Get(matchingDoor.DoorStrikeEndpointId.Value);
+            }
 
             if (!eventArgs.Handler.IsValid())
             {
@@ -200,10 +213,10 @@ public class AccessService
             if (granted)
             {
                 // Only open door if strike is assigned - community controllers may not have one
-                if (matchingDoorStrike != null)
+                if (matchingStrikeDev != null)
                 {
                     var strikeTimeMs = GetStrikeTimeMs(accessPoint.DriverEndpointId, useExtendedTime);
-                    await OpenDoor(eventArgs.Access, matchingDoorStrike, strikeTimeMs);
+                    await OpenDoor(eventArgs.Access, matchingStrikeDev, strikeTimeMs);
                 }
                 else
                 {
@@ -298,7 +311,7 @@ public class AccessService
             {
                 // Insert RAW_CRED_READ event with raw bits — credential will be created
                 // later from this event during enrollment
-                await InsertRawCredReadEvt(matchingCardData, accessPoint);
+                await InsertRawCredReadEvt(matchingCardData, accessPoint.DriverEndpointId);
             }
 
             await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
@@ -397,7 +410,7 @@ public class AccessService
                             EventReason = EventReason.CredentialNotYetEffective,
                             CardNumber = matchingCardData
                         });
-    
+
                     await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
                     AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
@@ -431,7 +444,7 @@ public class AccessService
                             EventReason = EventReason.CredentialExpired,
                             CardNumber = matchingCardData
                         });
-    
+
                     await _hubContext.Clients.All.SendAsync(Methods.NewEventReceived, eventId);
 
                     AccessDecisionMade?.Invoke(this, new AccessDecisionEventArgs
@@ -591,7 +604,7 @@ public class AccessService
         return await _z9EvtRepository.Insert(evt);
     }
 
-    private async Task InsertRawCredReadEvt(string rawBits, Endpoint accessPoint)
+    private async Task InsertRawCredReadEvt(string rawBits, string driverEndpointId)
     {
         var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var evt = new Evt
@@ -605,7 +618,7 @@ public class AccessService
         };
 
         // Set EvtDevRef to the CredReader dev if available
-        var credReaderDev = await _z9DevRepository.GetByExternalId(accessPoint.DriverEndpointId);
+        var credReaderDev = await _z9DevRepository.GetByExternalId(driverEndpointId);
         if (credReaderDev != null)
         {
             evt.EvtDevRef = new EvtDevRef
@@ -627,17 +640,24 @@ public class AccessService
         return strikeTimeMs ?? 3000;
     }
 
-    private async Task OpenDoor(IAccess access, Endpoint matchingDoorStrike, int strikeTimeMs)
+    private async Task OpenDoor(IAccess access, Dev strikeDev, int strikeTimeMs)
     {
+        var extensionId = await _z9DevRepository.GetExtensionId(strikeDev);
+        if (!extensionId.HasValue)
+        {
+            _logger.LogWarning("No extension ID found for strike z9_dev {Unid}", strikeDev.Unid);
+            return;
+        }
+
         var controlPoint =
-            _extensionService.GetControlPoint(matchingDoorStrike.ExtensionId, matchingDoorStrike.DriverEndpointId); 
-            
+            _extensionService.GetControlPoint(extensionId.Value, strikeDev.ExternalId);
+
         async Task ControlStrike()
         {
             await controlPoint.SetState(true);
             await Task.Delay(TimeSpan.FromMilliseconds(strikeTimeMs));
             await controlPoint.SetState(false);
-        } 
+        }
 
         // Fire strike asynchronously - don't block access processing
         // (blocking would keep the task in WaitingForActivation state,
@@ -863,7 +883,7 @@ public class AccessService
         return inSched;
     }
 
-    private async Task<Door> MatchingDoor(string accessPointId, Endpoint[] endpoints)
+    private async Task<Door> MatchingDoor(string accessPointId)
     {
         // Find CredReader Dev by ExternalId = accessPointId (DriverEndpointId)
         var credReaderDev = await _z9DevRepository.GetByExternalId(accessPointId);
@@ -888,10 +908,5 @@ public class AccessService
         }
 
         return await _doorConfigurationService.BuildDoorDto(parentDev);
-    }
-
-    private static Endpoint MatchingDoorStrike(int? doorStrikeEndpointId, IEnumerable<Endpoint> endpoints)
-    {
-        return endpoints.FirstOrDefault(endpoint => doorStrikeEndpointId == endpoint.Id);
     }
 }

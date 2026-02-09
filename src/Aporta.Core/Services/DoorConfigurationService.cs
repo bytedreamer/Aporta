@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,32 +21,52 @@ public class DoorConfigurationService(
     IHubContext<DataChangeNotificationHub> hubContext,
     ILogger<DoorConfigurationService> logger)
 {
-    private readonly EndpointRepository _endpointRepository = new(dataAccess);
     private readonly Z9DevRepository _z9DevRepository = new(dataAccess);
 
     public async Task<IEnumerable<Endpoint>> AvailableAccessPoints()
     {
-        var endpoints = await _endpointRepository.GetAll();
-        var credReaders = await _z9DevRepository.GetAllByDevType(DevType.CredReader);
-        var credReaderExternalIds = credReaders
-            .Where(d => !string.IsNullOrEmpty(d.ExternalId))
-            .Select(d => d.ExternalId)
-            .ToHashSet();
-        return endpoints.Where(endpoint =>
-            endpoint.Type == EndpointType.Reader &&
-            !credReaderExternalIds.Contains(endpoint.DriverEndpointId));
+        var available = await _z9DevRepository.GetAvailableByDevType(DevType.CredReader);
+        var tasks = available.Select(async d =>
+        {
+            var extensionId = await _z9DevRepository.GetExtensionId(d);
+            return new Endpoint
+            {
+                Id = d.Unid,
+                Name = d.Name,
+                DriverEndpointId = d.ExternalId,
+                ExtensionId = extensionId ?? Guid.Empty,
+                Type = EndpointType.Reader,
+            };
+        });
+        return await Task.WhenAll(tasks);
     }
 
     public async Task<IEnumerable<Endpoint>> AvailableEndPoints()
     {
-        var endpoints = await _endpointRepository.GetAll();
-        var allDevs = (await _z9DevRepository.GetAll()).ToArray();
-        var assignedExternalIds = allDevs
-            .Where(d => !string.IsNullOrEmpty(d.ExternalId))
-            .Select(d => d.ExternalId)
-            .ToHashSet();
-        return endpoints.Where(endpoint =>
-            !assignedExternalIds.Contains(endpoint.DriverEndpointId));
+        var allAvailable = (await _z9DevRepository.GetAll())
+            .Where(d => d.DevPlatformCase == Dev.DevPlatformOneofCase.DevPlatform &&
+                        d.DevPlatform == DevPlatform.External &&
+                        d.DevType != DevType.IoController);
+        var tasks = allAvailable.Select(async d =>
+        {
+            var extensionId = await _z9DevRepository.GetExtensionId(d);
+            var type = d.DevType switch
+            {
+                DevType.Actuator => EndpointType.Output,
+                DevType.Sensor => EndpointType.Input,
+                DevType.CredReader => EndpointType.Reader,
+                _ => EndpointType.Output,
+            };
+            return new Endpoint
+            {
+                Id = d.Unid,
+                Name = d.Name,
+                DriverEndpointId = d.ExternalId,
+                ExtensionId = extensionId ?? Guid.Empty,
+                Type = type,
+            };
+        });
+        return await Task.WhenAll(tasks);
     }
 
     public async Task<IEnumerable<Door>> GetAll()
@@ -94,23 +115,20 @@ public class DoorConfigurationService(
         SpCoreProtoUtil.InitRequired(doorDev);
         var doorUnid = await _z9DevRepository.Insert(doorDev);
 
-        // Create CredReader child for in-access
+        // Assign CredReader child for in-access (from pool z9_dev)
         if (door.InAccessEndpointId.HasValue)
         {
-            var endpoint = await _endpointRepository.Get(door.InAccessEndpointId.Value);
-            if (endpoint != null)
-            {
-                var childUnid = await CreateChildDev(doorUnid, DevType.CredReader, DevUse.ActuatorDoorStrike,
-                    endpoint.DriverEndpointId, endpoint.Name, setDevUse: false);
-                doorDev.LogicalChildrenUnid.Add(childUnid);
-            }
+            var childUnid = await AssignPoolDevAsDoorChild(
+                door.InAccessEndpointId.Value, doorUnid, DevUse.ActuatorDoorStrike, setDevUse: false);
+            if (childUnid.HasValue)
+                doorDev.LogicalChildrenUnid.Add(childUnid.Value);
         }
 
         // Create exit Door child + CredReader grandchild for out-access
         if (door.OutAccessEndpointId.HasValue)
         {
-            var endpoint = await _endpointRepository.Get(door.OutAccessEndpointId.Value);
-            if (endpoint != null)
+            var poolDev = await _z9DevRepository.Get(door.OutAccessEndpointId.Value);
+            if (poolDev != null)
             {
                 var exitDoorDev = new Dev
                 {
@@ -122,47 +140,41 @@ public class DoorConfigurationService(
                 var exitDoorUnid = await _z9DevRepository.Insert(exitDoorDev);
                 doorDev.LogicalChildrenUnid.Add(exitDoorUnid);
 
-                var grandchildUnid = await CreateChildDev(exitDoorUnid, DevType.CredReader, DevUse.ActuatorDoorStrike,
-                    endpoint.DriverEndpointId, endpoint.Name, setDevUse: false);
-                exitDoorDev.LogicalChildrenUnid.Add(grandchildUnid);
-                await _z9DevRepository.Upsert(exitDoorDev);
+                var grandchildUnid = await AssignPoolDevAsDoorChild(
+                    door.OutAccessEndpointId.Value, exitDoorUnid, DevUse.ActuatorDoorStrike, setDevUse: false);
+                if (grandchildUnid.HasValue)
+                {
+                    exitDoorDev.LogicalChildrenUnid.Add(grandchildUnid.Value);
+                    await _z9DevRepository.Upsert(exitDoorDev);
+                }
             }
         }
 
-        // Create Sensor child for door contact
+        // Assign Sensor child for door contact (from pool z9_dev)
         if (door.DoorContactEndpointId.HasValue)
         {
-            var endpoint = await _endpointRepository.Get(door.DoorContactEndpointId.Value);
-            if (endpoint != null)
-            {
-                var childUnid = await CreateChildDev(doorUnid, DevType.Sensor, DevUse.SensorDoorContact,
-                    endpoint.DriverEndpointId, endpoint.Name);
-                doorDev.LogicalChildrenUnid.Add(childUnid);
-            }
+            var childUnid = await AssignPoolDevAsDoorChild(
+                door.DoorContactEndpointId.Value, doorUnid, DevUse.SensorDoorContact);
+            if (childUnid.HasValue)
+                doorDev.LogicalChildrenUnid.Add(childUnid.Value);
         }
 
-        // Create Sensor child for REX
+        // Assign Sensor child for REX (from pool z9_dev)
         if (door.RequestToExitEndpointId.HasValue)
         {
-            var endpoint = await _endpointRepository.Get(door.RequestToExitEndpointId.Value);
-            if (endpoint != null)
-            {
-                var childUnid = await CreateChildDev(doorUnid, DevType.Sensor, DevUse.SensorRex,
-                    endpoint.DriverEndpointId, endpoint.Name);
-                doorDev.LogicalChildrenUnid.Add(childUnid);
-            }
+            var childUnid = await AssignPoolDevAsDoorChild(
+                door.RequestToExitEndpointId.Value, doorUnid, DevUse.SensorRex);
+            if (childUnid.HasValue)
+                doorDev.LogicalChildrenUnid.Add(childUnid.Value);
         }
 
-        // Create Actuator child for door strike
+        // Assign Actuator child for door strike (from pool z9_dev)
         if (door.DoorStrikeEndpointId.HasValue)
         {
-            var endpoint = await _endpointRepository.Get(door.DoorStrikeEndpointId.Value);
-            if (endpoint != null)
-            {
-                var childUnid = await CreateChildDev(doorUnid, DevType.Actuator, DevUse.ActuatorDoorStrike,
-                    endpoint.DriverEndpointId, endpoint.Name);
-                doorDev.LogicalChildrenUnid.Add(childUnid);
-            }
+            var childUnid = await AssignPoolDevAsDoorChild(
+                door.DoorStrikeEndpointId.Value, doorUnid, DevUse.ActuatorDoorStrike);
+            if (childUnid.HasValue)
+                doorDev.LogicalChildrenUnid.Add(childUnid.Value);
         }
 
         // Update Door Dev with children
@@ -170,6 +182,25 @@ public class DoorConfigurationService(
         door.Id = doorUnid;
 
         await hubContext.Clients.All.SendAsync(Methods.DoorInserted, door.Id);
+    }
+
+    /// <summary>
+    /// Assigns a pool z9_dev as a door child by setting logicalParentUnid and clearing DevPlatform.
+    /// Returns the z9_dev unid, or null if the pool dev was not found.
+    /// </summary>
+    private async Task<int?> AssignPoolDevAsDoorChild(int poolDevUnid, int doorUnid, DevUse devUse, bool setDevUse = true)
+    {
+        var poolDev = await _z9DevRepository.Get(poolDevUnid);
+        if (poolDev == null) return null;
+
+        poolDev.LogicalParentUnid = doorUnid;
+        poolDev.DevPlatform = DevPlatform.Z9Security; // Clear the External marker
+        if (setDevUse)
+        {
+            poolDev.DevUse = devUse;
+        }
+        await _z9DevRepository.Upsert(poolDev);
+        return poolDev.Unid;
     }
 
     public async Task Delete(int id)
@@ -200,24 +231,6 @@ public class DoorConfigurationService(
         await hubContext.Clients.All.SendAsync(Methods.DoorDeleted, id);
     }
 
-    private async Task<int> CreateChildDev(int parentUnid, DevType devType, DevUse devUse,
-        string externalId, string name, bool setDevUse = true)
-    {
-        var dev = new Dev
-        {
-            Name = name,
-            DevType = devType,
-            ExternalId = externalId,
-            LogicalParentUnid = parentUnid,
-        };
-        if (setDevUse)
-        {
-            dev.DevUse = devUse;
-        }
-        SpCoreProtoUtil.InitRequired(dev);
-        return await _z9DevRepository.Insert(dev);
-    }
-
     internal async Task<Door> BuildDoorDto(Dev doorDev)
     {
         var door = new Door
@@ -233,10 +246,8 @@ public class DoorConfigurationService(
             switch (child.DevType)
             {
                 case DevType.CredReader:
-                    // In-access reader
-                    var inEndpoint = await _endpointRepository.GetByDriverEndpointId(child.ExternalId);
-                    if (inEndpoint != null)
-                        door.InAccessEndpointId = inEndpoint.Id;
+                    // In-access reader — EndpointId is the z9_dev unid
+                    door.InAccessEndpointId = child.Unid;
                     break;
 
                 case DevType.Door:
@@ -244,29 +255,19 @@ public class DoorConfigurationService(
                     var grandchildren = (await _z9DevRepository.GetChildren(child.Unid)).ToArray();
                     var outReader = grandchildren.FirstOrDefault(gc => gc.DevType == DevType.CredReader);
                     if (outReader != null)
-                    {
-                        var outEndpoint = await _endpointRepository.GetByDriverEndpointId(outReader.ExternalId);
-                        if (outEndpoint != null)
-                            door.OutAccessEndpointId = outEndpoint.Id;
-                    }
+                        door.OutAccessEndpointId = outReader.Unid;
                     break;
 
                 case DevType.Sensor when child.DevUseCase == Dev.DevUseOneofCase.DevUse && child.DevUse == DevUse.SensorDoorContact:
-                    var contactEndpoint = await _endpointRepository.GetByDriverEndpointId(child.ExternalId);
-                    if (contactEndpoint != null)
-                        door.DoorContactEndpointId = contactEndpoint.Id;
+                    door.DoorContactEndpointId = child.Unid;
                     break;
 
                 case DevType.Sensor when child.DevUseCase == Dev.DevUseOneofCase.DevUse && child.DevUse == DevUse.SensorRex:
-                    var rexEndpoint = await _endpointRepository.GetByDriverEndpointId(child.ExternalId);
-                    if (rexEndpoint != null)
-                        door.RequestToExitEndpointId = rexEndpoint.Id;
+                    door.RequestToExitEndpointId = child.Unid;
                     break;
 
                 case DevType.Actuator when child.DevUseCase == Dev.DevUseOneofCase.DevUse && child.DevUse == DevUse.ActuatorDoorStrike:
-                    var strikeEndpoint = await _endpointRepository.GetByDriverEndpointId(child.ExternalId);
-                    if (strikeEndpoint != null)
-                        door.DoorStrikeEndpointId = strikeEndpoint.Id;
+                    door.DoorStrikeEndpointId = child.Unid;
                     break;
             }
         }

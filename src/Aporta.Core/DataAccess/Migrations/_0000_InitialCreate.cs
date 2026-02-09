@@ -30,12 +30,6 @@ namespace Aporta.Core.DataAccess.Migrations
                 );
                 CREATE UNIQUE INDEX extension_id_uindex ON extension (id);
 
-                -- Endpoint table
-                CREATE TABLE endpoint (
-                    id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
-                );
-
                 -- Global setting table (string primary key)
                 CREATE TABLE global_setting (
                     name TEXT NOT NULL PRIMARY KEY,
@@ -93,7 +87,8 @@ namespace Aporta.Core.DataAccess.Migrations
                 -- Z9 Device table (stores full Dev proto messages)
                 CREATE TABLE z9_dev (
                     id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
+                    data TEXT NOT NULL,
+                    external_dev_mod_id TEXT
                 );
 
                 -- Encryption Key table

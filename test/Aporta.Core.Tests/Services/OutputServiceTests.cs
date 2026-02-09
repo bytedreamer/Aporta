@@ -41,17 +41,17 @@ public class OutputServiceTests
         await _extensionService.Startup();
         await _extensionService.EnableExtension(_extensionId, true);
 
-        // Wait for endpoints to be inserted
-        var endpointRepository = new EndpointRepository(_dataAccess);
+        // Wait for pool z9_devs to be synced from driver (1 controller + 5 endpoints)
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
         using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        while ((await endpointRepository.GetAll()).Count() != 5 && !cancellationTokenSource.Token.IsCancellationRequested)
+        while ((await z9DevRepository.GetAll()).Count() < 6 && !cancellationTokenSource.Token.IsCancellationRequested)
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSource.Token);
         }
 
         if(cancellationTokenSource.Token.IsCancellationRequested)
         {
-            Assert.Fail("Timeout waiting for endpoints to be inserted");
+            Assert.Fail("Timeout waiting for pool z9_devs to be synced");
         }
     }
 
@@ -72,10 +72,13 @@ public class OutputServiceTests
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
             _extensionService);
 
+        var available = (await outputService.AvailableControlPoints()).ToArray();
+        Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available actuator endpoints");
+
         var outputs = new[]
         {
-            new Output {Name = "TestOutput1", EndpointId = 2},
-            new Output {Name = "TestOutput2", EndpointId = 3}
+            new Output {Name = "TestOutput1", EndpointId = available[0].Id},
+            new Output {Name = "TestOutput2", EndpointId = available[1].Id}
         };
         foreach (var output in outputs)
         {

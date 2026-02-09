@@ -33,7 +33,6 @@ public class StartupWorker : BackgroundService
     private readonly ExtensionService _extensionService;
     private readonly AccessService _accessService;
     private readonly Z9OpenCommunityProtocolService _z9OpenCommunityProtocolService;
-    private readonly EndpointRepository _endpointRepository;
     private readonly Z9DevRepository _z9DevRepository;
     private readonly HashSet<string> _configuredOsdpBuses = new();
     private readonly Dictionary<int, bool> _doorStrikeActive = new();
@@ -57,7 +56,6 @@ public class StartupWorker : BackgroundService
         _configuration = configuration;
         _logger = logger;
         _applicationLifetime = applicationLifetime;
-        _endpointRepository = new EndpointRepository(dataAccess);
         _z9DevRepository = new Z9DevRepository(dataAccess);
     }
 
@@ -474,30 +472,22 @@ public class StartupWorker : BackgroundService
 
     private async Task EnsureDoorExistsForReader(string driverEndpointId, string readerName)
     {
-        // Check if CredReader Dev with this ExternalId already exists — door already exists
-        Dev existingCredReader = null;
-        for (int retry = 0; retry < 10; retry++)
+        // Wait for the pool z9_dev for this reader to appear (created by DriverOnUpdatedEndpoints)
+        var readerPoolDev = await WaitForPoolDev(driverEndpointId);
+        if (readerPoolDev == null)
         {
-            existingCredReader = await _z9DevRepository.GetByExternalId(driverEndpointId);
-            if (existingCredReader != null)
-                break;
-
-            // Endpoint may not be persisted immediately, check if it exists yet
-            var endpoint = await _endpointRepository.GetByDriverEndpointId(driverEndpointId);
-            if (endpoint != null)
-                break; // Endpoint exists but no dev yet — proceed to create
-
-            await Task.Delay(500);  // Wait for endpoint to be persisted
-        }
-
-        if (existingCredReader != null && existingCredReader.DevType == DevType.CredReader)
-        {
-            _logger.LogDebug("CredReader Dev already exists for endpoint {EndpointId}, door exists",
-                driverEndpointId);
+            _logger.LogWarning("Pool z9_dev for reader endpoint {EndpointId} not found after retries", driverEndpointId);
             return;
         }
 
-        // Create Door Dev tree
+        // If already assigned to a door (has logicalParentUnid), door already exists
+        if (readerPoolDev.LogicalParentUnidCase == Dev.LogicalParentUnidOneofCase.LogicalParentUnid)
+        {
+            _logger.LogDebug("CredReader z9_dev already assigned to door for endpoint {EndpointId}", driverEndpointId);
+            return;
+        }
+
+        // Create Door Dev
         var doorDev = new Dev
         {
             Name = $"Door - {readerName}",
@@ -506,128 +496,80 @@ public class StartupWorker : BackgroundService
         SpCoreProtoUtil.InitRequired(doorDev);
         var doorUnid = await _z9DevRepository.Insert(doorDev);
 
-        // Create CredReader child
-        var credReaderDev = new Dev
-        {
-            Name = readerName,
-            DevType = DevType.CredReader,
-            ExternalId = driverEndpointId,
-            LogicalParentUnid = doorUnid,
-        };
-        SpCoreProtoUtil.InitRequired(credReaderDev);
-        var credReaderUnid = await _z9DevRepository.Insert(credReaderDev);
-        doorDev.LogicalChildrenUnid.Add(credReaderUnid);
+        // Assign the reader pool dev as door child
+        readerPoolDev.LogicalParentUnid = doorUnid;
+        readerPoolDev.DevPlatform = DevPlatform.Z9Security;
+        await _z9DevRepository.Upsert(readerPoolDev);
+        doorDev.LogicalChildrenUnid.Add(readerPoolDev.Unid);
 
         var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
 
-        // If the reader has a strike output configured, create Actuator child
+        // If the reader has a strike output configured, assign Actuator pool dev
         if (config?.StrikeOutputNumber != null)
         {
             var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
-            _logger.LogInformation("Looking for strike output endpoint: {StrikeEndpointId}", strikeDriverEndpointId);
+            _logger.LogInformation("Looking for strike output pool z9_dev: {StrikeEndpointId}", strikeDriverEndpointId);
 
-            Endpoint strikeEndpoint = null;
-            for (int retry = 0; retry < 20; retry++)
+            var strikePoolDev = await WaitForPoolDev(strikeDriverEndpointId);
+            if (strikePoolDev != null)
             {
-                strikeEndpoint = await _endpointRepository.GetByDriverEndpointId(strikeDriverEndpointId);
-                if (strikeEndpoint != null)
-                    break;
-                await Task.Delay(500);
-            }
-
-            if (strikeEndpoint != null)
-            {
-                var strikeDev = new Dev
-                {
-                    Name = strikeEndpoint.Name,
-                    DevType = DevType.Actuator,
-                    DevUse = DevUse.ActuatorDoorStrike,
-                    ExternalId = strikeDriverEndpointId,
-                    LogicalParentUnid = doorUnid,
-                };
-                SpCoreProtoUtil.InitRequired(strikeDev);
-                var strikeUnid = await _z9DevRepository.Insert(strikeDev);
-                doorDev.LogicalChildrenUnid.Add(strikeUnid);
-                _logger.LogInformation("Created Actuator Dev for door strike {EndpointId}", strikeDriverEndpointId);
+                strikePoolDev.LogicalParentUnid = doorUnid;
+                strikePoolDev.DevPlatform = DevPlatform.Z9Security;
+                strikePoolDev.DevUse = DevUse.ActuatorDoorStrike;
+                await _z9DevRepository.Upsert(strikePoolDev);
+                doorDev.LogicalChildrenUnid.Add(strikePoolDev.Unid);
+                _logger.LogInformation("Assigned Actuator pool z9_dev for door strike {EndpointId}", strikeDriverEndpointId);
             }
             else
             {
-                _logger.LogWarning("Strike output endpoint {StrikeEndpointId} not found after retries", strikeDriverEndpointId);
+                _logger.LogWarning("Strike output pool z9_dev {StrikeEndpointId} not found after retries", strikeDriverEndpointId);
             }
         }
 
         _logger.LogInformation("Created door '{DoorName}' (unid={DoorUnid}) for reader endpoint {EndpointId}",
             doorDev.Name, doorUnid, driverEndpointId);
 
-        // If the reader has a door contact input configured, create Sensor child
+        // If the reader has a door contact input configured, assign Sensor pool dev
         if (config?.DoorContactInputNumber != null)
         {
             var contactDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:I{config.DoorContactInputNumber}";
-            _logger.LogInformation("Looking for door contact input endpoint: {ContactEndpointId}", contactDriverEndpointId);
+            _logger.LogInformation("Looking for door contact input pool z9_dev: {ContactEndpointId}", contactDriverEndpointId);
 
-            Endpoint contactEndpoint = null;
-            for (int retry = 0; retry < 20; retry++)
+            var contactPoolDev = await WaitForPoolDev(contactDriverEndpointId);
+            if (contactPoolDev != null)
             {
-                contactEndpoint = await _endpointRepository.GetByDriverEndpointId(contactDriverEndpointId);
-                if (contactEndpoint != null)
-                    break;
-                await Task.Delay(500);
-            }
-
-            if (contactEndpoint != null)
-            {
-                var contactDev = new Dev
-                {
-                    Name = contactEndpoint.Name,
-                    DevType = DevType.Sensor,
-                    DevUse = DevUse.SensorDoorContact,
-                    ExternalId = contactDriverEndpointId,
-                    LogicalParentUnid = doorUnid,
-                };
-                SpCoreProtoUtil.InitRequired(contactDev);
-                var contactUnid = await _z9DevRepository.Insert(contactDev);
-                doorDev.LogicalChildrenUnid.Add(contactUnid);
-                _logger.LogInformation("Created Sensor Dev for door contact {EndpointId}", contactDriverEndpointId);
+                contactPoolDev.LogicalParentUnid = doorUnid;
+                contactPoolDev.DevPlatform = DevPlatform.Z9Security;
+                contactPoolDev.DevUse = DevUse.SensorDoorContact;
+                await _z9DevRepository.Upsert(contactPoolDev);
+                doorDev.LogicalChildrenUnid.Add(contactPoolDev.Unid);
+                _logger.LogInformation("Assigned Sensor pool z9_dev for door contact {EndpointId}", contactDriverEndpointId);
             }
             else
             {
-                _logger.LogWarning("Door contact input endpoint {ContactEndpointId} not found after retries", contactDriverEndpointId);
+                _logger.LogWarning("Door contact input pool z9_dev {ContactEndpointId} not found after retries", contactDriverEndpointId);
             }
         }
 
-        // If the reader has a REX input configured, create Sensor child
+        // If the reader has a REX input configured, assign Sensor pool dev
         if (config?.RexInputNumber != null)
         {
             var rexDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:I{config.RexInputNumber}";
-            _logger.LogInformation("Looking for REX input endpoint: {RexEndpointId}", rexDriverEndpointId);
+            _logger.LogInformation("Looking for REX input pool z9_dev: {RexEndpointId}", rexDriverEndpointId);
 
-            Endpoint rexEndpoint = null;
-            for (int retry = 0; retry < 20; retry++)
+            var rexPoolDev = await WaitForPoolDev(rexDriverEndpointId);
+            if (rexPoolDev != null)
             {
-                rexEndpoint = await _endpointRepository.GetByDriverEndpointId(rexDriverEndpointId);
-                if (rexEndpoint != null)
-                    break;
-                await Task.Delay(500);
-            }
-
-            if (rexEndpoint != null)
-            {
-                var rexDev = new Dev
-                {
-                    Name = rexEndpoint.Name,
-                    DevType = DevType.Sensor,
-                    DevUse = DevUse.SensorRex,
-                    ExternalId = rexDriverEndpointId,
-                    LogicalParentUnid = doorUnid,
-                };
-                SpCoreProtoUtil.InitRequired(rexDev);
-                var rexUnid = await _z9DevRepository.Insert(rexDev);
-                doorDev.LogicalChildrenUnid.Add(rexUnid);
-                _logger.LogInformation("Created Sensor Dev for REX {EndpointId}", rexDriverEndpointId);
+                rexPoolDev.LogicalParentUnid = doorUnid;
+                rexPoolDev.DevPlatform = DevPlatform.Z9Security;
+                rexPoolDev.DevUse = DevUse.SensorRex;
+                await _z9DevRepository.Upsert(rexPoolDev);
+                doorDev.LogicalChildrenUnid.Add(rexPoolDev.Unid);
+                _logger.LogInformation("Assigned Sensor pool z9_dev for REX {EndpointId}", rexDriverEndpointId);
             }
             else
             {
-                _logger.LogWarning("REX input endpoint {RexEndpointId} not found after retries", rexDriverEndpointId);
+                _logger.LogWarning("REX input pool z9_dev {RexEndpointId} not found after retries", rexDriverEndpointId);
             }
         }
 
@@ -639,6 +581,18 @@ public class StartupWorker : BackgroundService
         {
             await ApplyDoorMode(config.DoorUnid.Value, config.DefaultDoorMode, config);
         }
+    }
+
+    private async Task<Dev> WaitForPoolDev(string driverEndpointId, int maxRetries = 20)
+    {
+        for (int retry = 0; retry < maxRetries; retry++)
+        {
+            var dev = await _z9DevRepository.GetByExternalId(driverEndpointId);
+            if (dev != null)
+                return dev;
+            await Task.Delay(500);
+        }
+        return null;
     }
 
     private void OnDevActionRequested(object sender, DevActionReq req)
@@ -704,15 +658,21 @@ public class StartupWorker : BackgroundService
 
         var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
 
-        var strikeEndpoint = await _endpointRepository.GetByDriverEndpointId(strikeDriverEndpointId);
-
-        if (strikeEndpoint == null)
+        var strikeDev = await _z9DevRepository.GetByExternalId(strikeDriverEndpointId);
+        if (strikeDev == null)
         {
-            _logger.LogWarning("Strike endpoint {EndpointId} not found in database", strikeDriverEndpointId);
+            _logger.LogWarning("Strike z9_dev {EndpointId} not found", strikeDriverEndpointId);
             return;
         }
 
-        var controlPoint = _extensionService.GetControlPoint(strikeEndpoint.ExtensionId, strikeEndpoint.DriverEndpointId);
+        var extensionId = await _z9DevRepository.GetExtensionId(strikeDev);
+        if (!extensionId.HasValue)
+        {
+            _logger.LogWarning("No extension ID found for strike z9_dev {EndpointId}", strikeDriverEndpointId);
+            return;
+        }
+
+        var controlPoint = _extensionService.GetControlPoint(extensionId.Value, strikeDev.ExternalId);
         if (controlPoint == null)
         {
             _logger.LogWarning("No control point found for strike endpoint {EndpointId}", strikeDriverEndpointId);
@@ -796,11 +756,14 @@ public class StartupWorker : BackgroundService
         if (config.StrikeOutputNumber != null)
         {
             var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
-            var strikeEndpoint = await _endpointRepository.GetByDriverEndpointId(strikeDriverEndpointId);
+            var strikeDev = await _z9DevRepository.GetByExternalId(strikeDriverEndpointId);
 
-            if (strikeEndpoint != null)
+            if (strikeDev != null)
             {
-                var controlPoint = _extensionService.GetControlPoint(strikeEndpoint.ExtensionId, strikeEndpoint.DriverEndpointId);
+                var strikeExtensionId = await _z9DevRepository.GetExtensionId(strikeDev);
+                var controlPoint = strikeExtensionId.HasValue
+                    ? _extensionService.GetControlPoint(strikeExtensionId.Value, strikeDev.ExternalId)
+                    : null;
                 if (controlPoint != null)
                 {
                     if (effectiveMode == DoorModeType.StaticStateUnlocked)

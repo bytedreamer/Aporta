@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,14 +9,12 @@ using Aporta.Extensions.Hardware;
 using Aporta.Shared.Messaging;
 using Aporta.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
-using Z9.Protobuf;
 using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Services;
 
 public class OutputService
 {
-    private readonly EndpointRepository _endpointRepository;
     private readonly Z9DevRepository _z9DevRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private readonly ExtensionService _extensionService;
@@ -25,7 +24,6 @@ public class OutputService
     {
         _hubContext = hubContext;
         _extensionService = extensionService;
-        _endpointRepository = new EndpointRepository(dataAccess);
         _z9DevRepository = new Z9DevRepository(dataAccess);
 
         _extensionService.StateChanged += ExtensionServiceOnOutputStateChanged;
@@ -51,28 +49,32 @@ public class OutputService
     public async Task<IEnumerable<Output>> GetAll()
     {
         var devs = await _z9DevRepository.GetAllByDevType(DevType.Actuator);
-        var tasks = devs.Select(async dev => await DevToOutput(dev));
-        return await Task.WhenAll(tasks);
+        // Exclude pool z9_devs (DevPlatform=External) — only return user-assigned outputs
+        var assignedDevs = devs.Where(d =>
+            d.DevPlatformCase != Dev.DevPlatformOneofCase.DevPlatform ||
+            d.DevPlatform != DevPlatform.External);
+        return assignedDevs.Select(DevToOutput);
     }
 
     public async Task<Output> Get(int outputId)
     {
         var dev = await _z9DevRepository.Get(outputId);
-        return dev == null ? null : await DevToOutput(dev);
+        return dev == null ? null : DevToOutput(dev);
     }
 
     public async Task Insert(Output output)
     {
-        var endpoint = await _endpointRepository.Get(output.EndpointId);
-        var dev = new Dev
-        {
-            Name = output.Name,
-            DevType = DevType.Actuator,
-            ExternalId = endpoint.DriverEndpointId,
-        };
-        SpCoreProtoUtil.InitRequired(dev);
-        var id = await _z9DevRepository.Insert(dev);
-        output.Id = id;
+        // EndpointId is now a z9_dev unid (from the pool)
+        var poolDev = await _z9DevRepository.Get(output.EndpointId);
+        if (poolDev == null)
+            throw new InvalidOperationException($"Pool z9_dev {output.EndpointId} not found");
+
+        // Assign: update name, clear DevPlatform to remove from pool
+        poolDev.Name = output.Name;
+        poolDev.DevPlatform = DevPlatform.Z9Security; // Clear the External marker
+        await _z9DevRepository.Upsert(poolDev);
+
+        output.Id = poolDev.Unid;
 
         await _hubContext.Clients.All.SendAsync(Methods.OutputInserted, output.Id);
     }
@@ -86,22 +88,19 @@ public class OutputService
 
     public async Task<IEnumerable<Endpoint>> AvailableControlPoints()
     {
-        var endpoints = await _endpointRepository.GetAll();
-        var actuators = await _z9DevRepository.GetAllByDevType(DevType.Actuator);
-        var actuatorExternalIds = actuators
-            .Where(d => !string.IsNullOrEmpty(d.ExternalId))
-            .Select(d => d.ExternalId)
-            .ToHashSet();
-        return endpoints.Where(endpoint =>
-            endpoint.Type == EndpointType.Output &&
-            !actuatorExternalIds.Contains(endpoint.DriverEndpointId));
+        var availableActuators = await _z9DevRepository.GetAvailableByDevType(DevType.Actuator);
+        var tasks = availableActuators.Select(d => DevToEndpoint(d, EndpointType.Output));
+        return await Task.WhenAll(tasks);
     }
 
     public async Task SetState(int outputId, bool state)
     {
         var dev = await _z9DevRepository.Get(outputId);
-        var endpoint = await _endpointRepository.GetByDriverEndpointId(dev.ExternalId);
-        await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
+        var extensionId = await _z9DevRepository.GetExtensionId(dev);
+        if (!extensionId.HasValue)
+            throw new InvalidOperationException($"No extension ID found for z9_dev {outputId}");
+
+        await _extensionService.GetControlPoint(extensionId.Value, dev.ExternalId).SetState(state);
 
         await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, dev.Unid, state);
     }
@@ -109,24 +108,33 @@ public class OutputService
     public async Task<bool?> GetState(int outputId)
     {
         var dev = await _z9DevRepository.Get(outputId);
-        var endpoint = await _endpointRepository.GetByDriverEndpointId(dev.ExternalId);
-        return await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).GetState();
+        var extensionId = await _z9DevRepository.GetExtensionId(dev);
+        if (!extensionId.HasValue)
+            return null;
+
+        return await _extensionService.GetControlPoint(extensionId.Value, dev.ExternalId).GetState();
     }
 
-    private async Task<Output> DevToOutput(Dev dev)
+    private static Output DevToOutput(Dev dev)
     {
-        var endpointId = 0;
-        if (!string.IsNullOrEmpty(dev.ExternalId))
-        {
-            var endpoint = await _endpointRepository.GetByDriverEndpointId(dev.ExternalId);
-            if (endpoint != null)
-                endpointId = endpoint.Id;
-        }
         return new Output
         {
             Id = dev.Unid,
             Name = dev.Name,
-            EndpointId = endpointId,
+            EndpointId = dev.Unid,
+        };
+    }
+
+    private async Task<Endpoint> DevToEndpoint(Dev dev, EndpointType type)
+    {
+        var extensionId = await _z9DevRepository.GetExtensionId(dev);
+        return new Endpoint
+        {
+            Id = dev.Unid,
+            Name = dev.Name,
+            DriverEndpointId = dev.ExternalId,
+            ExtensionId = extensionId ?? Guid.Empty,
+            Type = type,
         };
     }
 }
