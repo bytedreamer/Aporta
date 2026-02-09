@@ -50,10 +50,8 @@ public class InputService
     public async Task<IEnumerable<Input>> GetAll()
     {
         var devs = await _z9DevRepository.GetAllByDevType(DevType.Sensor);
-        // Exclude pool z9_devs (DevPlatform=External) — only return user-assigned inputs
-        var assignedDevs = devs.Where(d =>
-            d.DevPlatformCase != Dev.DevPlatformOneofCase.DevPlatform ||
-            d.DevPlatform != DevPlatform.External);
+        // Only return user-assigned inputs (Enabled=true)
+        var assignedDevs = devs.Where(d => d.Enabled);
         return assignedDevs.Select(DevToInput);
     }
 
@@ -72,7 +70,7 @@ public class InputService
 
         // Assign: update name, clear DevPlatform to remove from pool
         poolDev.Name = input.Name;
-        poolDev.DevPlatform = DevPlatform.Z9Security; // Clear the External marker
+        poolDev.Enabled = true;
         await _z9DevRepository.Upsert(poolDev);
 
         input.Id = poolDev.Unid;

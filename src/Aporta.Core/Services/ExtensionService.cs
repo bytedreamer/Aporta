@@ -275,8 +275,8 @@ public class ExtensionService(
         {
             Name = extension.Name,
             DevType = DevType.IoController,
-            DevMod = DevMod.IoControllerExternal,
-            DevPlatform = DevPlatform.External,
+            DevMod = DevMod.IoControllerCommunity,
+            DevPlatform = DevPlatform.Community,
             ExternalDevModId = extension.Id.ToString(),
             ExternalDevModText = extension.Name,
             ExternalId = extension.Id.ToString(),
@@ -284,7 +284,7 @@ public class ExtensionService(
         SpCoreProtoUtil.InitRequired(controllerDev);
         await _z9DevRepository.Insert(controllerDev);
 
-        logger.LogInformation("Created IO_CONTROLLER_EXTERNAL z9_dev for driver {Name} (extensionId={ExtensionId})",
+        logger.LogInformation("Created IO_CONTROLLER_COMMUNITY z9_dev for driver {Name} (extensionId={ExtensionId})",
             extension.Name, extension.Id);
     }
 
@@ -317,32 +317,31 @@ public class ExtensionService(
                     return;
                 }
 
-                var existingPoolDevs = (await _z9DevRepository.GetPhysicalChildren(controllerDev.Unid))
-                    .Where(d => d.DevPlatformCase == Dev.DevPlatformOneofCase.DevPlatform &&
-                                d.DevPlatform == DevPlatform.External)
-                    .ToArray();
+                var allPhysicalChildren = (await _z9DevRepository.GetPhysicalChildren(controllerDev.Unid)).ToArray();
+                var existingPoolDevs = allPhysicalChildren.Where(d => !d.Enabled).ToArray();
 
-                var existingExternalIds = existingPoolDevs
+                // Use ALL children's external IDs to avoid creating duplicates for assigned devs
+                var allExternalIds = allPhysicalChildren
                     .Select(d => d.ExternalId)
                     .ToHashSet();
 
                 // Insert new endpoints as pool z9_devs
                 foreach (var endpoint in driver.Endpoints.Where(ep =>
-                    ep.ExtensionId == driver.Id && !existingExternalIds.Contains(ep.Id)))
+                    ep.ExtensionId == driver.Id && !allExternalIds.Contains(ep.Id)))
                 {
                     var devType = endpoint switch
                     {
                         IAccess => DevType.CredReader,
                         IOutput => DevType.Actuator,
                         IInput => DevType.Sensor,
-                        _ => DevType.Reserved0
+                        _ => DevType.IoController
                     };
 
                     var poolDev = new Dev
                     {
                         Name = endpoint.Name,
                         DevType = devType,
-                        DevPlatform = DevPlatform.External,
+                        DevPlatform = DevPlatform.Community,
                         ExternalId = endpoint.Id,
                         PhysicalParentUnid = controllerDev.Unid,
                     };
@@ -350,7 +349,7 @@ public class ExtensionService(
                     await _z9DevRepository.Insert(poolDev);
                 }
 
-                // Update existing pool z9_devs (name changes etc.)
+                // Update existing pool z9_devs (name changes etc.) — only pool, not assigned
                 var driverEndpointIds = driver.Endpoints
                     .Where(ep => ep.ExtensionId == driver.Id)
                     .Select(ep => ep.Id)
@@ -369,7 +368,6 @@ public class ExtensionService(
                 // Delete pool z9_devs for endpoints no longer reported by driver
                 foreach (var poolDev in existingPoolDevs.Where(d => !driverEndpointIds.Contains(d.ExternalId)))
                 {
-                    // Only delete pool entries (DevPlatform=External); assigned devices are left alone
                     await _z9DevRepository.Delete(poolDev.Unid);
                 }
 

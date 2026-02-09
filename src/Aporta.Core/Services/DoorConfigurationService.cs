@@ -45,7 +45,7 @@ public class DoorConfigurationService(
     {
         var allAvailable = (await _z9DevRepository.GetAll())
             .Where(d => d.DevPlatformCase == Dev.DevPlatformOneofCase.DevPlatform &&
-                        d.DevPlatform == DevPlatform.External &&
+                        d.DevPlatform == DevPlatform.Community &&
                         d.DevType != DevType.IoController);
         var tasks = allAvailable.Select(async d =>
         {
@@ -194,7 +194,7 @@ public class DoorConfigurationService(
         if (poolDev == null) return null;
 
         poolDev.LogicalParentUnid = doorUnid;
-        poolDev.DevPlatform = DevPlatform.Z9Security; // Clear the External marker
+        poolDev.Enabled = true;
         if (setDevUse)
         {
             poolDev.DevUse = devUse;

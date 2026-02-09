@@ -49,10 +49,8 @@ public class OutputService
     public async Task<IEnumerable<Output>> GetAll()
     {
         var devs = await _z9DevRepository.GetAllByDevType(DevType.Actuator);
-        // Exclude pool z9_devs (DevPlatform=External) — only return user-assigned outputs
-        var assignedDevs = devs.Where(d =>
-            d.DevPlatformCase != Dev.DevPlatformOneofCase.DevPlatform ||
-            d.DevPlatform != DevPlatform.External);
+        // Only return user-assigned outputs (Enabled=true)
+        var assignedDevs = devs.Where(d => d.Enabled);
         return assignedDevs.Select(DevToOutput);
     }
 
@@ -71,7 +69,7 @@ public class OutputService
 
         // Assign: update name, clear DevPlatform to remove from pool
         poolDev.Name = output.Name;
-        poolDev.DevPlatform = DevPlatform.Z9Security; // Clear the External marker
+        poolDev.Enabled = true;
         await _z9DevRepository.Upsert(poolDev);
 
         output.Id = poolDev.Unid;

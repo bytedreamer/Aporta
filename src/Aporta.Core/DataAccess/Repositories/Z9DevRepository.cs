@@ -58,7 +58,7 @@ public class Z9DevRepository : ProtoJsonRepository<Dev>
     }
 
     /// <summary>
-    /// Gets the IO_CONTROLLER_EXTERNAL z9_dev for the given extension (driver) GUID.
+    /// Gets the IO_CONTROLLER_COMMUNITY z9_dev for the given extension (driver) GUID.
     /// Uses the denormalized external_dev_mod_id column.
     /// </summary>
     public async Task<Dev> GetController(Guid extensionId)
@@ -92,7 +92,7 @@ public class Z9DevRepository : ProtoJsonRepository<Dev>
 
     /// <summary>
     /// Gets available (pool) z9_devs matching the given devType.
-    /// Available = DevPlatform is External (auto-synced from driver, not yet assigned by user).
+    /// Available = DevPlatform is Community and Enabled is false (auto-synced from driver, not yet assigned by user).
     /// </summary>
     public async Task<IEnumerable<Dev>> GetAvailableByDevType(DevType devType)
     {
@@ -100,17 +100,19 @@ public class Z9DevRepository : ProtoJsonRepository<Dev>
         return all.Where(d =>
             d.DevType == devType &&
             d.DevPlatformCase == Dev.DevPlatformOneofCase.DevPlatform &&
-            d.DevPlatform == DevPlatform.External);
+            d.DevPlatform == DevPlatform.Community &&
+            !d.Enabled);
     }
 
     /// <summary>
     /// Gets the extension (driver) GUID for any z9_dev by walking physicalParentUnid
-    /// to its IO_CONTROLLER_EXTERNAL parent.
+    /// to its IO_CONTROLLER_COMMUNITY parent.
+    /// The controller stores the driver GUID in ExternalDevModId.
     /// </summary>
     public async Task<Guid?> GetExtensionId(Dev dev)
     {
         // If this dev IS the controller, return its ExternalDevModId directly
-        if (dev.DevMod == DevMod.IoControllerExternal &&
+        if (dev.DevMod == DevMod.IoControllerCommunity &&
             !string.IsNullOrEmpty(dev.ExternalDevModId))
         {
             return Guid.TryParse(dev.ExternalDevModId, out var id) ? id : null;
@@ -137,7 +139,7 @@ public class Z9DevRepository : ProtoJsonRepository<Dev>
 
         dev.Unid = nextId;
         var json = Formatter.Format(dev);
-        var externalDevModId = string.IsNullOrEmpty(dev.ExternalDevModId) ? null : dev.ExternalDevModId;
+        var externalDevModId = GetExternalDevModId(dev);
 
         await connection.ExecuteAsync(
             "INSERT INTO z9_dev (id, data, external_dev_mod_id) VALUES (@id, @data, @externalDevModId)",
@@ -153,11 +155,20 @@ public class Z9DevRepository : ProtoJsonRepository<Dev>
 
         var id = GetUnid(message);
         var json = Formatter.Format(message);
-        var externalDevModId = string.IsNullOrEmpty(message.ExternalDevModId) ? null : message.ExternalDevModId;
+        var externalDevModId = GetExternalDevModId(message);
 
         await connection.ExecuteAsync(
             @"INSERT INTO z9_dev (id, data, external_dev_mod_id) VALUES (@id, @data, @externalDevModId)
               ON CONFLICT(id) DO UPDATE SET data = @data, external_dev_mod_id = @externalDevModId",
             new { id, data = json, externalDevModId });
+    }
+
+    /// <summary>
+    /// Extracts the external_dev_mod_id for the SQL column.
+    /// Only IO_CONTROLLER_COMMUNITY z9_devs have ExternalDevModId set.
+    /// </summary>
+    private static string GetExternalDevModId(Dev dev)
+    {
+        return string.IsNullOrEmpty(dev.ExternalDevModId) ? null : dev.ExternalDevModId;
     }
 }

@@ -498,7 +498,7 @@ public class StartupWorker : BackgroundService
 
         // Assign the reader pool dev as door child
         readerPoolDev.LogicalParentUnid = doorUnid;
-        readerPoolDev.DevPlatform = DevPlatform.Z9Security;
+        readerPoolDev.Enabled = true;
         await _z9DevRepository.Upsert(readerPoolDev);
         doorDev.LogicalChildrenUnid.Add(readerPoolDev.Unid);
 
@@ -514,7 +514,7 @@ public class StartupWorker : BackgroundService
             if (strikePoolDev != null)
             {
                 strikePoolDev.LogicalParentUnid = doorUnid;
-                strikePoolDev.DevPlatform = DevPlatform.Z9Security;
+                strikePoolDev.Enabled = true;
                 strikePoolDev.DevUse = DevUse.ActuatorDoorStrike;
                 await _z9DevRepository.Upsert(strikePoolDev);
                 doorDev.LogicalChildrenUnid.Add(strikePoolDev.Unid);
@@ -539,7 +539,7 @@ public class StartupWorker : BackgroundService
             if (contactPoolDev != null)
             {
                 contactPoolDev.LogicalParentUnid = doorUnid;
-                contactPoolDev.DevPlatform = DevPlatform.Z9Security;
+                contactPoolDev.Enabled = true;
                 contactPoolDev.DevUse = DevUse.SensorDoorContact;
                 await _z9DevRepository.Upsert(contactPoolDev);
                 doorDev.LogicalChildrenUnid.Add(contactPoolDev.Unid);
@@ -561,7 +561,7 @@ public class StartupWorker : BackgroundService
             if (rexPoolDev != null)
             {
                 rexPoolDev.LogicalParentUnid = doorUnid;
-                rexPoolDev.DevPlatform = DevPlatform.Z9Security;
+                rexPoolDev.Enabled = true;
                 rexPoolDev.DevUse = DevUse.SensorRex;
                 await _z9DevRepository.Upsert(rexPoolDev);
                 doorDev.LogicalChildrenUnid.Add(rexPoolDev.Unid);
