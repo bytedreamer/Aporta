@@ -49,20 +49,6 @@ namespace Aporta.Core.DataAccess.Migrations
                 );
                 CREATE UNIQUE INDEX credential_number_uindex ON credential (json_extract(data, '$.number'));
 
-                -- Person table
-                CREATE TABLE person (
-                    id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
-                );
-
-                -- Credential assignment table (junction table as document)
-                CREATE TABLE credential_assignment (
-                    id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
-                );
-                CREATE INDEX idx_ca_credential ON credential_assignment (json_extract(data, '$.credentialId'));
-                CREATE INDEX idx_ca_person ON credential_assignment (json_extract(data, '$.personId'));
-
                 -- Credential Template table
                 CREATE TABLE cred_template (
                     id INTEGER NOT NULL PRIMARY KEY,
