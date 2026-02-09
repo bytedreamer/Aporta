@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
-using Aporta.Shared.Models;
 using Microsoft.Extensions.Logging;
 using Z9.Protobuf;
 using Z9.Spcore.Proto;
@@ -21,7 +20,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private const int DefaultOsdpTcpPort = 9843;
 
     private readonly ILogger<Z9OpenCommunityProtocolService> _logger;
-    private readonly CredentialRepository _credentialRepository;
 
     // Z9 Open protobuf repositories
     private readonly DataFormatRepository _dataFormatRepository;
@@ -108,7 +106,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
         IDataAccess dataAccess)
     {
         _logger = logger;
-        _credentialRepository = new CredentialRepository(dataAccess);
         _dataFormatRepository = new DataFormatRepository(dataAccess);
         _dataLayoutRepository = new DataLayoutRepository(dataAccess);
         _credTemplateRepository = new CredTemplateRepository(dataAccess);
@@ -268,7 +265,6 @@ public class Z9OpenCommunityProtocolService : IDisposable
         {
             _logger.LogInformation("Deleting credential {Unid}", credDelete);
             _z9CredRepository.Delete(credDelete).GetAwaiter().GetResult();
-            _credentialRepository.Delete(credDelete).GetAwaiter().GetResult();
         }
 
         // Priv deletes
@@ -865,27 +861,16 @@ public class Z9OpenCommunityProtocolService : IDisposable
             _logger.LogWarning(
                 "Credential Unid={Unid} has no card number, deleting from Aporta if it exists", cred.Unid);
             _z9CredRepository.Delete(cred.Unid).GetAwaiter().GetResult();
-            _credentialRepository.Delete(cred.Unid).GetAwaiter().GetResult();
             return;
         }
 
-        var credNum = SpCoreProtoUtil.ToBigInteger(cred.CardPin.CredNum);
-
-        // Store credential number as decimal string — card reads will be decoded to match
-        var credNumString = credNum.ToString();
+        var credNumString = Z9CredRepository.ExtractCredNum(cred);
 
         _logger.LogInformation("Processing credential Unid={Unid} Number={Number} Name={Name} PrivBindings={BindingCount}",
             cred.Unid, credNumString, cred.Name, cred.PrivBindings.Count);
 
-        // Store the full Z9 Cred proto (for privilege checking and name/enabled)
+        // Store the full Z9 Cred proto (cred_num set by overridden Upsert)
         _z9CredRepository.Upsert(cred).GetAwaiter().GetResult();
-
-        var credential = new Credential
-        {
-            Number = credNumString,
-            Enabled = cred.Enabled
-        };
-        _credentialRepository.Upsert(credential, cred.Unid).GetAwaiter().GetResult();
     }
 
     /// <summary>

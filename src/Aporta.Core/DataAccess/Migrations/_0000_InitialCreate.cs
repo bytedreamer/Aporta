@@ -42,13 +42,6 @@ namespace Aporta.Core.DataAccess.Migrations
                     data TEXT NOT NULL
                 );
 
-                -- Credential table
-                CREATE TABLE credential (
-                    id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
-                );
-                CREATE UNIQUE INDEX credential_number_uindex ON credential (json_extract(data, '$.number'));
-
                 -- Credential Template table
                 CREATE TABLE cred_template (
                     id INTEGER NOT NULL PRIMARY KEY,
@@ -112,8 +105,10 @@ namespace Aporta.Core.DataAccess.Migrations
                 -- Z9 Credential table (stores full proto including privBindings)
                 CREATE TABLE z9_cred (
                     id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
+                    data TEXT NOT NULL,
+                    cred_num TEXT
                 );
+                CREATE UNIQUE INDEX z9_cred_cred_num_uindex ON z9_cred(cred_num) WHERE cred_num IS NOT NULL;
 
                 -- Z9 Event table
                 CREATE TABLE z9_evt (

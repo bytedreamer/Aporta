@@ -32,20 +32,6 @@ public class CredentialService
         return await _credentialRepository.Get(credentialId);
     }
 
-    public async Task Insert(Credential credential)
-    {
-        await _credentialRepository.Insert(credential);
-
-        await _hubContext.Clients.All.SendAsync(Methods.CredentialInserted, credential.Id);
-    }
-
-    public async Task Delete(int id)
-    {
-        await _credentialRepository.Delete(id);
-
-        await _hubContext.Clients.All.SendAsync(Methods.CredentialDeleted, id);
-    }
-
     public async Task<IEnumerable<Credential>> GetUnassigned()
     {
         return await _credentialRepository.Unassigned();
@@ -53,36 +39,26 @@ public class CredentialService
 
     public async Task Enroll(int credentialId, int personId)
     {
-        // Get the swipe credential (has Number)
-        var swipeCredential = await _credentialRepository.Get(credentialId);
-        if (swipeCredential == null) return;
-
-        // Get the person credential (may not have a Number yet)
-        var personCredential = await _credentialRepository.Get(personId);
-        if (personCredential == null) return;
-
-        // Get Z9 Creds for both before deleting
+        // Get Z9 Creds for both
         var swipeZ9Cred = await _z9CredRepository.Get(credentialId);
         var personZ9Cred = await _z9CredRepository.Get(personId);
 
-        // Delete the swipe credential first (unique index on Number prevents duplicate)
-        await _z9CredRepository.Delete(credentialId);
-        await _credentialRepository.Delete(credentialId);
+        if (swipeZ9Cred == null || personZ9Cred == null) return;
 
-        // Transfer Number from swipe credential to person credential
-        personCredential.Number = swipeCredential.Number;
-        await _credentialRepository.Update(personCredential);
-
-        // Merge card data from swipe Z9 Cred into person Z9 Cred
-        if (personZ9Cred != null && swipeZ9Cred != null)
+        // Transfer CardPin from swipe to person
+        if (swipeZ9Cred.CardPin != null)
         {
-            if (swipeZ9Cred.CardPin != null)
-            {
-                personZ9Cred.CardPin = swipeZ9Cred.CardPin;
-            }
-            personZ9Cred.PrivBindings.Add(swipeZ9Cred.PrivBindings);
-            await _z9CredRepository.Upsert(personZ9Cred);
+            personZ9Cred.CardPin = swipeZ9Cred.CardPin;
         }
+
+        // Merge PrivBindings
+        personZ9Cred.PrivBindings.Add(swipeZ9Cred.PrivBindings);
+
+        // Delete swipe z9_cred first (frees the unique cred_num)
+        await _z9CredRepository.Delete(credentialId);
+
+        // Upsert person z9_cred (sets cred_num from transferred CardPin)
+        await _z9CredRepository.Upsert(personZ9Cred);
 
         await _hubContext.Clients.All.SendAsync(Methods.PersonUpdated, personId);
     }

@@ -30,18 +30,6 @@ public class CredentialsController
         return await _credentialService.Get(credentialId);
     }
 
-    [HttpPut]
-    public async Task Put([FromBody]Credential credential)
-    {
-        await _credentialService.Insert(credential);
-    }
-    
-    [HttpDelete("{credentialId:int}")]
-    public async Task Delete(int credentialId)
-    {
-        await _credentialService.Delete(credentialId);
-    }
-    
     [HttpGet("assigned")]
     public async Task<IEnumerable<Credential>> GetAssigned()
     {

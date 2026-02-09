@@ -182,19 +182,20 @@ public class Z9OpenCommunityProtocolServiceTests
 
         Assert.That(_z9OpenCommunityProtocolService.LastException, Is.Null);
 
-        // Verify credential was created in DB
-        var credentialRepository = new CredentialRepository(_dataAccess);
-        var credential = credentialRepository.Get(100).GetAwaiter().GetResult();
-        Assert.That(credential, Is.Not.Null);
-        Assert.That(credential.Number, Is.EqualTo("123456"));
-        Assert.That(credential.Enabled, Is.True);
-
-        // Verify Z9 Cred was stored
+        // Verify Z9 Cred was stored with cred_num
         var z9CredRepository = new Z9CredRepository(_dataAccess);
         var z9Cred = z9CredRepository.Get(100).GetAwaiter().GetResult();
         Assert.That(z9Cred, Is.Not.Null);
         Assert.That(z9Cred.Name, Is.EqualTo("John Doe"));
         Assert.That(z9Cred.Enabled, Is.True);
+        Assert.That(Z9CredRepository.ExtractCredNum(z9Cred), Is.EqualTo("123456"));
+
+        // Verify credential can be looked up via CredentialRepository
+        var credentialRepository = new CredentialRepository(_dataAccess);
+        var credential = credentialRepository.Get(100).GetAwaiter().GetResult();
+        Assert.That(credential, Is.Not.Null);
+        Assert.That(credential.Number, Is.EqualTo("123456"));
+        Assert.That(credential.Enabled, Is.True);
     }
 
     [Test]
@@ -235,15 +236,15 @@ public class Z9OpenCommunityProtocolServiceTests
 
         Assert.That(_z9OpenCommunityProtocolService.LastException, Is.Null);
 
-        // Verify credential was NOT created in DB
-        var credentialRepository = new CredentialRepository(_dataAccess);
-        var credential = credentialRepository.Get(200).GetAwaiter().GetResult();
-        Assert.That(credential, Is.Null);
-
-        // Verify Z9 Cred was NOT created
+        // Verify Z9 Cred was NOT created (no card number = deleted)
         var z9CredRepository = new Z9CredRepository(_dataAccess);
         var z9Cred = z9CredRepository.Get(200).GetAwaiter().GetResult();
         Assert.That(z9Cred, Is.Null);
+
+        // Verify credential is not visible via CredentialRepository either
+        var credentialRepository = new CredentialRepository(_dataAccess);
+        var credential = credentialRepository.Get(200).GetAwaiter().GetResult();
+        Assert.That(credential, Is.Null);
     }
 
     [Test]
@@ -287,16 +288,17 @@ public class Z9OpenCommunityProtocolServiceTests
 
         Assert.That(_z9OpenCommunityProtocolService.LastException, Is.Null);
 
-        // Verify credential was created with card number
+        // Verify Z9 Cred was stored with cred_num (no name since cred had blank name)
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+        var z9Cred = z9CredRepository.Get(300).GetAwaiter().GetResult();
+        Assert.That(z9Cred, Is.Not.Null);
+        Assert.That(Z9CredRepository.ExtractCredNum(z9Cred), Is.EqualTo("789012"));
+
+        // Verify credential is visible via CredentialRepository
         var credentialRepository = new CredentialRepository(_dataAccess);
         var credential = credentialRepository.Get(300).GetAwaiter().GetResult();
         Assert.That(credential, Is.Not.Null);
         Assert.That(credential.Number, Is.EqualTo("789012"));
-
-        // Verify Z9 Cred was stored (no name since cred had blank name)
-        var z9CredRepository = new Z9CredRepository(_dataAccess);
-        var z9Cred = z9CredRepository.Get(300).GetAwaiter().GetResult();
-        Assert.That(z9Cred, Is.Not.Null);
     }
 
     [Test]

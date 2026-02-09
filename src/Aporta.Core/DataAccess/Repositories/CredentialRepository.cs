@@ -1,98 +1,87 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
 
 namespace Aporta.Core.DataAccess.Repositories;
 
-public class CredentialRepository : JsonDocumentRepository<Credential>
+/// <summary>
+/// Read-only query helper that projects z9_cred rows into Credential/Person DTOs.
+/// No longer owns a table — all data lives in z9_cred.
+/// </summary>
+public class CredentialRepository
 {
+    private readonly IDataAccess _dataAccess;
+
     public CredentialRepository(IDataAccess dataAccess)
     {
-        DataAccess = dataAccess;
+        _dataAccess = dataAccess;
     }
 
-    protected override IDataAccess DataAccess { get; }
-
-    protected override string TableName => "credential";
-
-    protected override string SqlRowCount => "SELECT COUNT(*) FROM credential";
-
-    protected override void SetId(Credential entity, int id)
+    public async Task<Credential> Get(int id)
     {
-        entity.Id = id;
-    }
-
-    protected override int GetId(Credential entity)
-    {
-        return entity.Id;
-    }
-
-    public new async Task<Credential> Get(int id)
-    {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        var result = await connection.QuerySingleOrDefaultAsync<(int Id, string Data, string CredEnabled)>(
-            @"SELECT c.id, c.data,
-                json_extract(z.data, '$.enabled') as CredEnabled
-              FROM credential c
-              LEFT JOIN z9_cred z ON z.id = c.id
-              WHERE c.id = @id",
+        var result = await connection.QuerySingleOrDefaultAsync<(int Id, string CredNum, string CredEnabled)>(
+            @"SELECT id, cred_num,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred WHERE id = @id",
             new { id });
 
-        if (result.Data == null) return null;
+        if (result.Id == 0 && result.CredNum == null && result.CredEnabled == null) return null;
 
-        var credential = JsonSerializer.Deserialize<Credential>(result.Data, GetJsonOptions());
-        credential.Id = result.Id;
-        credential.Enabled = ParseBool(result.CredEnabled);
-        return credential;
+        return new Credential
+        {
+            Id = result.Id,
+            Number = result.CredNum,
+            Enabled = ParseBool(result.CredEnabled)
+        };
     }
 
-    public new async Task<IEnumerable<Credential>> GetAll()
+    public async Task<IEnumerable<Credential>> GetAll()
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        var results = await connection.QueryAsync<(int Id, string Data, string CredEnabled)>(
-            @"SELECT c.id, c.data,
-                json_extract(z.data, '$.enabled') as CredEnabled
-              FROM credential c
-              LEFT JOIN z9_cred z ON z.id = c.id");
+        var results = await connection.QueryAsync<(int Id, string CredNum, string CredEnabled)>(
+            @"SELECT id, cred_num,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred");
 
-        return results.Select(r =>
+        return results.Select(r => new Credential
         {
-            var credential = JsonSerializer.Deserialize<Credential>(r.Data, GetJsonOptions());
-            credential.Id = r.Id;
-            credential.Enabled = ParseBool(r.CredEnabled);
-            return credential;
+            Id = r.Id,
+            Number = r.CredNum,
+            Enabled = ParseBool(r.CredEnabled)
         });
     }
 
     public async Task<AssignedCredential> AssignedCredential(string cardNumber)
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        var result = await connection.QuerySingleOrDefaultAsync<(int Id, string Data, string CredName, string CredEnabled)>(
-            @"SELECT c.id, c.data,
-                json_extract(z.data, '$.name') as CredName,
-                json_extract(z.data, '$.enabled') as CredEnabled
-              FROM credential c
-              LEFT JOIN z9_cred z ON z.id = c.id
-              WHERE json_extract(c.data, '$.number') = @number",
+        var result = await connection.QuerySingleOrDefaultAsync<(int Id, string CredNum, string CredName, string CredEnabled)>(
+            @"SELECT id, cred_num,
+                json_extract(data, '$.name') as CredName,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred
+              WHERE cred_num = @number",
             new { number = cardNumber });
 
-        if (result.Data == null)
+        if (result.Id == 0 && result.CredNum == null)
         {
             return null;
         }
 
-        var credential = JsonSerializer.Deserialize<AssignedCredential>(result.Data, GetJsonOptions());
-        credential.Id = result.Id;
+        var credential = new AssignedCredential
+        {
+            Id = result.Id,
+            Number = result.CredNum
+        };
 
         if (!string.IsNullOrWhiteSpace(result.CredName))
         {
@@ -110,57 +99,53 @@ public class CredentialRepository : JsonDocumentRepository<Credential>
 
     public async Task<IEnumerable<Credential>> Assigned()
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        var results = await connection.QueryAsync<(int Id, string Data, string CredEnabled)>(
-            @"SELECT c.id, c.data,
-                json_extract(z.data, '$.enabled') as CredEnabled
-              FROM credential c
-              INNER JOIN z9_cred z ON z.id = c.id
-              WHERE json_extract(z.data, '$.name') IS NOT NULL
-                AND json_extract(c.data, '$.number') IS NOT NULL
-                AND json_extract(c.data, '$.number') != ''");
+        var results = await connection.QueryAsync<(int Id, string CredNum, string CredEnabled)>(
+            @"SELECT id, cred_num,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred
+              WHERE json_extract(data, '$.name') IS NOT NULL
+                AND cred_num IS NOT NULL
+                AND cred_num != ''");
 
-        return results.Select(r =>
+        return results.Select(r => new Credential
         {
-            var credential = JsonSerializer.Deserialize<Credential>(r.Data, GetJsonOptions());
-            credential.Id = r.Id;
-            credential.Enabled = ParseBool(r.CredEnabled);
-            return credential;
+            Id = r.Id,
+            Number = r.CredNum,
+            Enabled = ParseBool(r.CredEnabled)
         });
     }
 
     public async Task<IEnumerable<Credential>> Unassigned()
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        var results = await connection.QueryAsync<(int Id, string Data)>(
-            @"SELECT c.id, c.data FROM credential c
-              LEFT JOIN z9_cred z ON z.id = c.id
-              WHERE json_extract(z.data, '$.name') IS NULL");
+        var results = await connection.QueryAsync<(int Id, string CredNum)>(
+            @"SELECT id, cred_num FROM z9_cred
+              WHERE json_extract(data, '$.name') IS NULL
+                AND cred_num IS NOT NULL");
 
-        return results.Select(r =>
+        return results.Select(r => new Credential
         {
-            var credential = JsonSerializer.Deserialize<Credential>(r.Data, GetJsonOptions());
-            credential.Id = r.Id;
-            return credential;
+            Id = r.Id,
+            Number = r.CredNum
         });
     }
 
     public async Task<IEnumerable<Person>> Named()
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
         var results = await connection.QueryAsync<(int Id, string CredName, string CredEnabled)>(
-            @"SELECT c.id,
-                json_extract(z.data, '$.name') as CredName,
-                json_extract(z.data, '$.enabled') as CredEnabled
-              FROM credential c
-              INNER JOIN z9_cred z ON z.id = c.id
-              WHERE json_extract(z.data, '$.name') IS NOT NULL");
+            @"SELECT id,
+                json_extract(data, '$.name') as CredName,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred
+              WHERE json_extract(data, '$.name') IS NOT NULL");
 
         return results.Select(r =>
         {

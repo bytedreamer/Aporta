@@ -26,6 +26,7 @@ public class PeopleService
         _credTemplateRepository = new CredTemplateRepository(dataAccess);
     }
 
+
     public async Task<IEnumerable<Person>> GetAll()
     {
         return await _credentialRepository.Named();
@@ -42,8 +43,8 @@ public class PeopleService
 
     public async Task Insert(Person person)
     {
-        // Create an empty credential (no card number yet)
-        var credentialId = await _credentialRepository.Insert(new Credential());
+        // Get next available ID
+        var credentialId = await _z9CredRepository.NextId();
 
         // Ensure default cred template exists
         await EnsureDefaultCredTemplate();
@@ -70,7 +71,6 @@ public class PeopleService
     public async Task Delete(int personId)
     {
         await _z9CredRepository.Delete(personId);
-        await _credentialRepository.Delete(personId);
 
         await _hubContext.Clients.All.SendAsync(Methods.PersonDeleted, personId);
     }
