@@ -18,12 +18,14 @@ public class OutputService
     private readonly Z9DevRepository _z9DevRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private readonly ExtensionService _extensionService;
+    private readonly DevStateService _devStateService;
 
     public OutputService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
-        ExtensionService extensionService)
+        ExtensionService extensionService, DevStateService devStateService)
     {
         _hubContext = hubContext;
         _extensionService = extensionService;
+        _devStateService = devStateService;
         _z9DevRepository = new Z9DevRepository(dataAccess);
 
         _extensionService.StateChanged += ExtensionServiceOnOutputStateChanged;
@@ -38,6 +40,9 @@ public class OutputService
             if (dev != null && dev.DevType == DevType.Actuator)
             {
                 await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, dev.Unid, eventArgs.State);
+
+                _devStateService.UpdateAspect(dev.Unid, DevAspect.Primary,
+                    s => s.ActivityState = eventArgs.State ? ActivityState.Active : ActivityState.Inactive);
             }
         }
         catch
@@ -101,6 +106,9 @@ public class OutputService
         await _extensionService.GetControlPoint(extensionId.Value, dev.ExternalId).SetState(state);
 
         await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, dev.Unid, state);
+
+        _devStateService.UpdateAspect(dev.Unid, DevAspect.Primary,
+            s => s.ActivityState = state ? ActivityState.Active : ActivityState.Inactive);
     }
 
     public async Task<bool?> GetState(int outputId)

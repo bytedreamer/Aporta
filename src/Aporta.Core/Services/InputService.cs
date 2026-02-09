@@ -18,12 +18,14 @@ public class InputService
     private readonly Z9DevRepository _z9DevRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
     private readonly ExtensionService _extensionService;
+    private readonly DevStateService _devStateService;
 
     public InputService(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext,
-        ExtensionService extensionService)
+        ExtensionService extensionService, DevStateService devStateService)
     {
         _hubContext = hubContext;
         _extensionService = extensionService;
+        _devStateService = devStateService;
         _z9DevRepository = new Z9DevRepository(dataAccess);
 
         _extensionService.StateChanged += ExtensionServiceOnStateChanged;
@@ -39,6 +41,9 @@ public class InputService
             {
                 await _hubContext.Clients.All.SendAsync(Methods.InputStateChanged, dev.Unid,
                     eventArgs.State);
+
+                _devStateService.UpdateAspect(dev.Unid, DevAspect.Primary,
+                    s => s.ActivityState = eventArgs.State ? ActivityState.Active : ActivityState.Inactive);
             }
         }
         catch

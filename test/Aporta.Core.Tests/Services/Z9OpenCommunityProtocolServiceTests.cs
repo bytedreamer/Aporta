@@ -35,7 +35,8 @@ public class Z9OpenCommunityProtocolServiceTests
 
         _z9OpenCommunityProtocolService = new Z9OpenCommunityProtocolService(
             NullLogger<Z9OpenCommunityProtocolService>.Instance,
-            _dataAccess);
+            _dataAccess,
+            new DevStateService());
         _z9OpenCommunityProtocolService.Start("127.0.0.1", hostPort);
     }
 

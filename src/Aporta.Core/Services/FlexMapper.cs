@@ -1030,6 +1030,66 @@ public static class FlexMapper
         return proto;
     }
 
+    // --- DevStateRecord ---
+
+    public static FlexDevStateRecord ToFlex(DevStateRecord proto)
+    {
+        var flex = new FlexDevStateRecord
+        {
+            Unid = proto.UnidCase == DevStateRecord.UnidOneofCase.Unid ? proto.Unid : null,
+            Dev = MakeObjRef("dev", proto.DevUnid),
+        };
+
+        if (proto.DevState != null)
+        {
+            flex.DevState = new FlexDevState();
+            foreach (var entry in proto.DevState.DevAspectStates)
+            {
+                var flexEntry = new FlexDevAspectStateEntry
+                {
+                    Key = entry.KeyCase == DevState.Types.DevAspect_DevAspectState_Entry.KeyOneofCase.Key ? (int)entry.Key : null,
+                };
+                if (entry.ValueCase == DevState.Types.DevAspect_DevAspectState_Entry.ValueOneofCase.Value && entry.Value != null)
+                {
+                    flexEntry.Value = ToFlexDevAspectState(entry.Value);
+                }
+                flex.DevState.DevAspectStates.Add(flexEntry);
+            }
+        }
+
+        return flex;
+    }
+
+    private static FlexDevAspectState ToFlexDevAspectState(DevAspectState s)
+    {
+        var flex = new FlexDevAspectState
+        {
+            Unid = s.UnidCase == DevAspectState.UnidOneofCase.Unid ? s.Unid : null,
+            DevAspect = (int)s.DevAspect,
+            HwTime = DateTimeDataToIso(s.HwTime),
+            DbTime = DateTimeDataToIso(s.DbTime),
+        };
+
+        if (s.CommStateCase == DevAspectState.CommStateOneofCase.CommState)
+            flex.CommState = (int)s.CommState;
+        if (s.CommStateStaleCase == DevAspectState.CommStateStaleOneofCase.CommStateStale)
+            flex.CommStateStale = s.CommStateStale;
+        if (s.ActivityStateCase == DevAspectState.ActivityStateOneofCase.ActivityState)
+            flex.ActivityState = (int)s.ActivityState;
+        if (s.ActivityStateStaleCase == DevAspectState.ActivityStateStaleOneofCase.ActivityStateStale)
+            flex.ActivityStateStale = s.ActivityStateStale;
+        if (s.DoorMode != null)
+            flex.DoorMode = ToFlexDoorMode(s.DoorMode);
+        if (s.DoorModeStaleCase == DevAspectState.DoorModeStaleOneofCase.DoorModeStale)
+            flex.DoorModeStale = s.DoorModeStale;
+        if (s.ExternalStateCase == DevAspectState.ExternalStateOneofCase.ExternalState)
+            flex.ExternalState = s.ExternalState;
+        if (s.ExternalStateStaleCase == DevAspectState.ExternalStateStaleOneofCase.ExternalStateStale)
+            flex.ExternalStateStale = s.ExternalStateStale;
+
+        return flex;
+    }
+
     // --- EncryptionKey ---
 
     public static FlexEncryptionKey ToFlex(EncryptionKey proto)

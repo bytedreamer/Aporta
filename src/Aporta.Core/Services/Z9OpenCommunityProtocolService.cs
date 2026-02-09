@@ -86,6 +86,9 @@ public class Z9OpenCommunityProtocolService : IDisposable
         public int? ExtendedHeldTimeMs { get; set; }
         public DoorMode DefaultDoorMode { get; set; }
     }
+    private readonly DevStateService _devStateService;
+    private volatile bool _continuousDevStateRecord;
+
     private Thread _thread;
     private volatile bool _stopping;
     private TcpClient _client;
@@ -103,9 +106,11 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
     public Z9OpenCommunityProtocolService(
         ILogger<Z9OpenCommunityProtocolService> logger,
-        IDataAccess dataAccess)
+        IDataAccess dataAccess,
+        DevStateService devStateService)
     {
         _logger = logger;
+        _devStateService = devStateService;
         _dataFormatRepository = new DataFormatRepository(dataAccess);
         _dataLayoutRepository = new DataLayoutRepository(dataAccess);
         _credTemplateRepository = new CredTemplateRepository(dataAccess);
@@ -117,6 +122,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
         _z9CredRepository = new Z9CredRepository(dataAccess);
         _z9EvtRepository = new Z9EvtRepository(dataAccess);
         _z9DevRepository = new Z9DevRepository(dataAccess);
+
+        _devStateService.DevAspectStateChanged += OnDevAspectStateChanged;
     }
 
     public void Start(string host, int port, string id = null)
@@ -219,6 +226,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 IsIdentified = true;
                 _logger.LogInformation("Z9/Open Community host identified");
                 // Don't re-send - we already sent ours as the initiating side
+                SendAllDevStateRecords();
                 break;
 
             case SpCoreMessage.Types.Type.DbChange:
@@ -241,6 +249,10 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 break;
 
             case SpCoreMessage.Types.Type.EvtControl:
+                break;
+
+            case SpCoreMessage.Types.Type.DevStateRecordControl:
+                HandleDevStateRecordControl(message.DevStateRecordControl);
                 break;
 
             default:
@@ -1388,5 +1400,51 @@ public class Z9OpenCommunityProtocolService : IDisposable
         {
             _mos?.Write(message);
         }
+    }
+
+    private void HandleDevStateRecordControl(DevStateRecordControl control)
+    {
+        if (control == null) return;
+
+        var flowControl = control.DevStateRecordFlowControl;
+        _logger.LogInformation("DevStateRecordControl: {FlowControl}", flowControl);
+
+        switch (flowControl)
+        {
+            case DevStateRecordFlowControl.SendOneBatch:
+                SendAllDevStateRecords();
+                break;
+            case DevStateRecordFlowControl.StartContinuous:
+                _continuousDevStateRecord = true;
+                SendAllDevStateRecords();
+                break;
+            case DevStateRecordFlowControl.StopContinuous:
+                _continuousDevStateRecord = false;
+                break;
+        }
+    }
+
+    private void SendAllDevStateRecords()
+    {
+        var records = _devStateService.GetAllDevStateRecords();
+        if (records.Count == 0) return;
+
+        var message = new SpCoreMessage { Type = SpCoreMessage.Types.Type.DevStateRecord };
+        message.DevStateRecord.AddRange(records);
+
+        _logger.LogInformation("Sending {Count} DevStateRecords", records.Count);
+        WriteMessage(message);
+    }
+
+    private void OnDevAspectStateChanged(object sender, DevAspectStateChangedEventArgs e)
+    {
+        if (!_continuousDevStateRecord || !IsConnected) return;
+
+        var record = _devStateService.GetDevStateRecord(e.DevUnid);
+        if (record == null) return;
+
+        var message = new SpCoreMessage { Type = SpCoreMessage.Types.Type.DevStateRecord };
+        message.DevStateRecord.Add(record);
+        WriteMessage(message);
     }
 }

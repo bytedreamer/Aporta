@@ -70,7 +70,7 @@ public class OutputServiceTests
         // Arrange
         var outputService = new OutputService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
-            _extensionService);
+            _extensionService, new DevStateService());
 
         var available = (await outputService.AvailableControlPoints()).ToArray();
         Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available actuator endpoints");

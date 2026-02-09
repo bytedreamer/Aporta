@@ -33,6 +33,7 @@ public class StartupWorker : BackgroundService
     private readonly ExtensionService _extensionService;
     private readonly AccessService _accessService;
     private readonly Z9OpenCommunityProtocolService _z9OpenCommunityProtocolService;
+    private readonly DevStateService _devStateService;
     private readonly Z9DevRepository _z9DevRepository;
     private readonly HashSet<string> _configuredOsdpBuses = new();
     private readonly Dictionary<int, bool> _doorStrikeActive = new();
@@ -46,6 +47,7 @@ public class StartupWorker : BackgroundService
         ExtensionService extensionService,
         AccessService accessService,
         Z9OpenCommunityProtocolService z9OpenCommunityProtocolService,
+        DevStateService devStateService,
         IConfiguration configuration,
         ILogger<StartupWorker> logger, IHostApplicationLifetime applicationLifetime)
     {
@@ -53,6 +55,7 @@ public class StartupWorker : BackgroundService
         _extensionService = extensionService;
         _accessService = accessService;
         _z9OpenCommunityProtocolService = z9OpenCommunityProtocolService;
+        _devStateService = devStateService;
         _configuration = configuration;
         _logger = logger;
         _applicationLifetime = applicationLifetime;
@@ -458,6 +461,9 @@ public class StartupWorker : BackgroundService
         }
 
         _z9OpenCommunityProtocolService.SendCredReaderOnlineEvent(config, e.IsOnline);
+
+        _devStateService.UpdateAspect(config.Unid, DevAspect.Primary,
+            s => s.CommState = e.IsOnline ? CommState.Online : CommState.Offline);
     }
 
     /// <summary>
@@ -752,6 +758,9 @@ public class StartupWorker : BackgroundService
 
         _logger.LogInformation("Door unid={DoorUnid} mode changed to {Mode}", doorUnid, effectiveMode);
 
+        _devStateService.UpdateAspect(doorUnid, DevAspect.Primary,
+            s => s.DoorMode = doorMode.Clone());
+
         // Actuate strike based on mode
         if (config.StrikeOutputNumber != null)
         {
@@ -859,7 +868,11 @@ public class StartupWorker : BackgroundService
         if (dev.DevType == DevType.Actuator && dev.DevUseCase == Dev.DevUseOneofCase.DevUse && dev.DevUse == DevUse.ActuatorDoorStrike)
         {
             if (doorUnid > 0)
+            {
                 _doorStrikeActive[doorUnid] = state;
+                _devStateService.UpdateAspect(doorUnid, DevAspect.DoorUnlocked,
+                    s => s.ActivityState = state ? ActivityState.Active : ActivityState.Inactive);
+            }
             var evtCode = state ? EvtCode.DoorUnlocked : EvtCode.DoorLocked;
             var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
             if (config2 != null)
@@ -877,6 +890,8 @@ public class StartupWorker : BackgroundService
             if (!state) // Door opened
             {
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorOpened);
+                _devStateService.UpdateAspect(doorUnid, DevAspect.DoorOpen,
+                    s => s.ActivityState = ActivityState.Active);
 
                 _doorStrikeActive.TryGetValue(doorUnid, out var strikeActive);
                 if (!strikeActive)
@@ -884,6 +899,8 @@ public class StartupWorker : BackgroundService
                     _logger.LogWarning("Door forced open: door unid={DoorUnid}", doorUnid);
                     _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorForced);
                     _doorForced[doorUnid] = true;
+                    _devStateService.UpdateAspect(doorUnid, DevAspect.DoorForced,
+                        s => s.ActivityState = ActivityState.Active);
                 }
 
                 StartDoorHeldTimer(doorUnid, dev.Name, config2);
@@ -893,12 +910,16 @@ public class StartupWorker : BackgroundService
                 CancelDoorHeldTimer(doorUnid);
 
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorClosed);
+                _devStateService.UpdateAspect(doorUnid, DevAspect.DoorOpen,
+                    s => s.ActivityState = ActivityState.Inactive);
 
                 if (_doorForced.TryGetValue(doorUnid, out var wasForced) && wasForced)
                 {
                     _logger.LogInformation("Door forced cleared: door unid={DoorUnid}", doorUnid);
                     _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorNotForced);
                     _doorForced[doorUnid] = false;
+                    _devStateService.UpdateAspect(doorUnid, DevAspect.DoorForced,
+                        s => s.ActivityState = ActivityState.Inactive);
                 }
 
                 if (_doorHeld.TryGetValue(doorUnid, out var wasHeld) && wasHeld)
@@ -906,6 +927,8 @@ public class StartupWorker : BackgroundService
                     _logger.LogInformation("Door held cleared: door unid={DoorUnid}", doorUnid);
                     _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorNotHeld);
                     _doorHeld[doorUnid] = false;
+                    _devStateService.UpdateAspect(doorUnid, DevAspect.DoorHeld,
+                        s => s.ActivityState = ActivityState.Inactive);
                 }
             }
             return;
@@ -996,6 +1019,8 @@ public class StartupWorker : BackgroundService
                     doorName, heldTimeMs, useExtended);
                 _doorHeld[doorId] = true;
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.DoorHeld);
+                _devStateService.UpdateAspect(doorId, DevAspect.DoorHeld,
+                    s => s.ActivityState = ActivityState.Active);
             }
             catch (TaskCanceledException)
             {

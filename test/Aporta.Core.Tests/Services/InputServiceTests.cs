@@ -76,7 +76,7 @@ public class InputServiceTests
         // Arrange
         var inputService = new InputService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
-            _extensionService);
+            _extensionService, new DevStateService());
 
         var available = (await inputService.AvailableMonitorPoints()).ToArray();
         Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available sensor endpoints");
@@ -107,7 +107,7 @@ public class InputServiceTests
     {
         // Arrange
         var hubContext = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
-        var inputService = new InputService(_dataAccess, hubContext.IHubContextMock.Object, _extensionService);
+        var inputService = new InputService(_dataAccess, hubContext.IHubContextMock.Object, _extensionService, new DevStateService());
 
         var available = (await inputService.AvailableMonitorPoints()).ToArray();
         Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available sensor endpoints");
