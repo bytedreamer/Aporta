@@ -15,8 +15,6 @@ namespace Aporta.Core.Services;
 
 public class InputService
 {
-    private readonly InputRepository _inputRepository;
-    private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
     private readonly Z9DevRepository _z9DevRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
@@ -27,8 +25,6 @@ public class InputService
     {
         _hubContext = hubContext;
         _extensionService = extensionService;
-        _doorRepository = new DoorRepository(dataAccess);
-        _inputRepository = new InputRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
         _z9DevRepository = new Z9DevRepository(dataAccess);
 
@@ -39,10 +35,13 @@ public class InputService
     {
         try
         {
-            var input = await _inputRepository.GetForDriverId(eventArgs.Endpoint.Id);
+            var dev = await _z9DevRepository.GetForDriverId(eventArgs.Endpoint.Id);
 
-            await _hubContext.Clients.All.SendAsync(Methods.InputStateChanged, input.Id,
-                eventArgs.State);
+            if (dev != null && dev.DevType == DevType.Sensor)
+            {
+                await _hubContext.Clients.All.SendAsync(Methods.InputStateChanged, dev.Unid,
+                    eventArgs.State);
+            }
         }
         catch
         {
@@ -52,33 +51,35 @@ public class InputService
 
     public async Task<IEnumerable<Input>> GetAll()
     {
-        return await _inputRepository.GetAll();
+        var devs = await _z9DevRepository.GetAllByDevType(DevType.Sensor);
+        var tasks = devs.Select(async dev => await DevToInput(dev));
+        return await Task.WhenAll(tasks);
     }
-        
+
     public async Task<Input> Get(int inputId)
     {
-        return await _inputRepository.Get(inputId);
+        var dev = await _z9DevRepository.Get(inputId);
+        return dev == null ? null : await DevToInput(dev);
     }
 
     public async Task Insert(Input input)
     {
-        await _inputRepository.Insert(input);
-
+        var endpoint = await _endpointRepository.Get(input.EndpointId);
         var dev = new Dev
         {
-            Unid = input.Id,
             Name = input.Name,
             DevType = DevType.Sensor,
+            ExternalId = endpoint.DriverEndpointId,
         };
         SpCoreProtoUtil.InitRequired(dev);
-        await _z9DevRepository.Upsert(dev);
+        var id = await _z9DevRepository.Insert(dev);
+        input.Id = id;
 
         await _hubContext.Clients.All.SendAsync(Methods.InputInserted, input.Id);
     }
 
     public async Task Delete(int id)
     {
-        await _inputRepository.Delete(id);
         await _z9DevRepository.Delete(id);
 
         await _hubContext.Clients.All.SendAsync(Methods.InputDeleted, id);
@@ -87,19 +88,37 @@ public class InputService
     public async Task<IEnumerable<Endpoint>> AvailableMonitorPoints()
     {
         var endpoints = await _endpointRepository.GetAll();
-        var inputs = await _inputRepository.GetAll();
-        var doors = (await _doorRepository.GetAll()).ToArray();
+        var sensors = await _z9DevRepository.GetAllByDevType(DevType.Sensor);
+        var sensorExternalIds = sensors
+            .Where(d => !string.IsNullOrEmpty(d.ExternalId))
+            .Select(d => d.ExternalId)
+            .ToHashSet();
         return endpoints.Where(endpoint =>
             endpoint.Type == EndpointType.Input &&
-            !inputs.Select(input => input.EndpointId).Contains(endpoint.Id) && 
-            !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id) &&
-            !doors.Select(door => door.RequestToExitEndpointId).Contains(endpoint.Id));
+            !sensorExternalIds.Contains(endpoint.DriverEndpointId));
     }
 
     public async Task<bool?> GetState(int inputId)
     {
-        var input = await _inputRepository.Get(inputId);
-        var endpoint = await _endpointRepository.Get(input.EndpointId);
-        return await _extensionService.GetMonitorPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).GetState();
+        var dev = await _z9DevRepository.Get(inputId);
+        var endpoint = await _endpointRepository.GetByDriverEndpointId(dev.ExternalId);
+        return await _extensionService.GetMonitorPoint(endpoint.ExtensionId, dev.ExternalId).GetState();
+    }
+
+    private async Task<Input> DevToInput(Dev dev)
+    {
+        var endpointId = 0;
+        if (!string.IsNullOrEmpty(dev.ExternalId))
+        {
+            var endpoint = await _endpointRepository.GetByDriverEndpointId(dev.ExternalId);
+            if (endpoint != null)
+                endpointId = endpoint.Id;
+        }
+        return new Input
+        {
+            Id = dev.Unid,
+            Name = dev.Name,
+            EndpointId = endpointId,
+        };
     }
 }

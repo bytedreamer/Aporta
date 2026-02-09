@@ -54,8 +54,8 @@ public class InputServiceTests
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSource.Token);
         }
-            
-        if(cancellationTokenSource.Token.IsCancellationRequested) 
+
+        if(cancellationTokenSource.Token.IsCancellationRequested)
         {
             Assert.Fail("Timeout waiting for endpoints to be inserted");
         }
@@ -65,7 +65,7 @@ public class InputServiceTests
     public void TearDown()
     {
         _extensionService.Shutdown();
-            
+
         _persistConnection?.Close();
         _persistConnection?.Dispose();
     }
@@ -83,10 +83,9 @@ public class InputServiceTests
             new Input {Name = "TestInput2", EndpointId = 5}
         };
 
-        var inputRepository = new InputRepository(_dataAccess);
         foreach (var input in inputs)
         {
-            await inputRepository.Insert(input);
+            await inputService.Insert(input);
         }
 
         // Act
@@ -111,10 +110,9 @@ public class InputServiceTests
             new Input {Name = "TestInput2", EndpointId = 5}
         };
 
-        var inputRepository = new InputRepository(_dataAccess);
         foreach (var input in inputs)
         {
-            await inputRepository.Insert(input);
+            await inputService.Insert(input);
         }
 
         // Act
@@ -125,7 +123,7 @@ public class InputServiceTests
         Assert.That(async () => await inputService.GetState(inputs[1].Id),
             Is.True.After(1000, 100));
         hubContext.ClientsAllMock.Verify(clientProxy =>
-            clientProxy.SendCoreAsync(Methods.InputStateChanged, new object[] {2, true},
+            clientProxy.SendCoreAsync(Methods.InputStateChanged, new object[] {inputs[1].Id, true},
                 It.IsAny<CancellationToken>()));
     }
 
@@ -133,7 +131,7 @@ public class InputServiceTests
     {
         await using var pipeClient =
             new NamedPipeClientStream(".", "Aporta.TestDriverMonitorPoint", PipeDirection.Out, PipeOptions.Asynchronous);
-            
+
         await pipeClient.ConnectAsync();
         await using var writer = new StreamWriter(pipeClient);
         writer.AutoFlush = true;

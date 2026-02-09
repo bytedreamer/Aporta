@@ -62,6 +62,23 @@ public class EndpointRepository : JsonDocumentRepository<Endpoint>
         entity.Id = id;
     }
 
+    public async Task<Endpoint> GetByDriverEndpointId(string driverEndpointId)
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        var result = await connection.QueryFirstOrDefaultAsync<(int Id, string Data)>(
+            @"SELECT id, data FROM endpoint
+              WHERE json_extract(data, '$.driverEndpointId') = @driverEndpointId",
+            new { driverEndpointId });
+
+        if (result.Data == null) return null;
+
+        var endpoint = JsonSerializer.Deserialize<Endpoint>(result.Data, GetJsonOptions());
+        endpoint.Id = result.Id;
+        return endpoint;
+    }
+
     protected override int GetId(Endpoint entity)
     {
         return entity.Id;

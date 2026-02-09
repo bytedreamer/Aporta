@@ -33,8 +33,8 @@ public class StartupWorker : BackgroundService
     private readonly ExtensionService _extensionService;
     private readonly AccessService _accessService;
     private readonly Z9OpenCommunityProtocolService _z9OpenCommunityProtocolService;
-    private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
+    private readonly Z9DevRepository _z9DevRepository;
     private readonly HashSet<string> _configuredOsdpBuses = new();
     private readonly Dictionary<int, bool> _doorStrikeActive = new();
     private readonly Dictionary<int, bool> _doorForced = new();
@@ -57,8 +57,8 @@ public class StartupWorker : BackgroundService
         _configuration = configuration;
         _logger = logger;
         _applicationLifetime = applicationLifetime;
-        _doorRepository = new DoorRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
+        _z9DevRepository = new Z9DevRepository(dataAccess);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -497,58 +497,62 @@ public class StartupWorker : BackgroundService
 
     private async Task EnsureDoorExistsForReader(string driverEndpointId, string readerName)
     {
-        // Look up the endpoint by DriverEndpointId to get its database ID
-        // The endpoint may not be persisted immediately, so retry a few times
-        Aporta.Shared.Models.Endpoint readerEndpoint = null;
+        // Check if CredReader Dev with this ExternalId already exists — door already exists
+        Dev existingCredReader = null;
         for (int retry = 0; retry < 10; retry++)
         {
-            var endpoints = await _endpointRepository.GetAll();
-            readerEndpoint = endpoints.FirstOrDefault(ep => ep.DriverEndpointId == driverEndpointId);
-            if (readerEndpoint != null)
+            existingCredReader = await _z9DevRepository.GetByExternalId(driverEndpointId);
+            if (existingCredReader != null)
                 break;
+
+            // Endpoint may not be persisted immediately, check if it exists yet
+            var endpoint = await _endpointRepository.GetByDriverEndpointId(driverEndpointId);
+            if (endpoint != null)
+                break; // Endpoint exists but no dev yet — proceed to create
+
             await Task.Delay(500);  // Wait for endpoint to be persisted
         }
 
-        if (readerEndpoint == null)
+        if (existingCredReader != null && existingCredReader.DevType == DevType.CredReader)
         {
-            _logger.LogWarning("Cannot create door: endpoint not found for DriverEndpointId {Id} after retries", driverEndpointId);
+            _logger.LogDebug("CredReader Dev already exists for endpoint {EndpointId}, door exists",
+                driverEndpointId);
             return;
         }
 
-        var doors = await _doorRepository.GetAll();
-
-        // Check if any door already uses this reader as InAccess or OutAccess
-        var existingDoor = doors.FirstOrDefault(d =>
-            d.InAccessEndpointId == readerEndpoint.Id ||
-            d.OutAccessEndpointId == readerEndpoint.Id);
-
-        if (existingDoor != null)
-        {
-            _logger.LogDebug("Door '{DoorName}' already exists for reader endpoint {EndpointId}",
-                existingDoor.Name, readerEndpoint.Id);
-            return;
-        }
-
-        // Create a new door with this reader as the in-access point
-        var door = new Aporta.Shared.Models.Door
+        // Create Door Dev tree
+        var doorDev = new Dev
         {
             Name = $"Door - {readerName}",
-            InAccessEndpointId = readerEndpoint.Id,
+            DevType = DevType.Door,
         };
+        SpCoreProtoUtil.InitRequired(doorDev);
+        var doorUnid = await _z9DevRepository.Insert(doorDev);
+
+        // Create CredReader child
+        var credReaderDev = new Dev
+        {
+            Name = readerName,
+            DevType = DevType.CredReader,
+            ExternalId = driverEndpointId,
+            LogicalParentUnid = doorUnid,
+        };
+        SpCoreProtoUtil.InitRequired(credReaderDev);
+        var credReaderUnid = await _z9DevRepository.Insert(credReaderDev);
+        doorDev.LogicalChildrenUnid.Add(credReaderUnid);
 
         var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
 
-        // If the reader has a strike output configured, wire it up
+        // If the reader has a strike output configured, create Actuator child
         if (config?.StrikeOutputNumber != null)
         {
             var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
             _logger.LogInformation("Looking for strike output endpoint: {StrikeEndpointId}", strikeDriverEndpointId);
 
-            Aporta.Shared.Models.Endpoint strikeEndpoint = null;
+            Endpoint strikeEndpoint = null;
             for (int retry = 0; retry < 20; retry++)
             {
-                var allEndpoints = await _endpointRepository.GetAll();
-                strikeEndpoint = allEndpoints.FirstOrDefault(ep => ep.DriverEndpointId == strikeDriverEndpointId);
+                strikeEndpoint = await _endpointRepository.GetByDriverEndpointId(strikeDriverEndpointId);
                 if (strikeEndpoint != null)
                     break;
                 await Task.Delay(500);
@@ -556,9 +560,18 @@ public class StartupWorker : BackgroundService
 
             if (strikeEndpoint != null)
             {
-                door.DoorStrikeEndpointId = strikeEndpoint.Id;
-                _logger.LogInformation("Assigned door strike endpoint {StrikeEndpointId} to door '{DoorName}'",
-                    strikeEndpoint.Id, door.Name);
+                var strikeDev = new Dev
+                {
+                    Name = strikeEndpoint.Name,
+                    DevType = DevType.Actuator,
+                    DevUse = DevUse.ActuatorDoorStrike,
+                    ExternalId = strikeDriverEndpointId,
+                    LogicalParentUnid = doorUnid,
+                };
+                SpCoreProtoUtil.InitRequired(strikeDev);
+                var strikeUnid = await _z9DevRepository.Insert(strikeDev);
+                doorDev.LogicalChildrenUnid.Add(strikeUnid);
+                _logger.LogInformation("Created Actuator Dev for door strike {EndpointId}", strikeDriverEndpointId);
             }
             else
             {
@@ -566,22 +579,19 @@ public class StartupWorker : BackgroundService
             }
         }
 
-        // Insert door now so access processing can proceed while we wire optional contact endpoint
-        await _doorRepository.Insert(door);
-        _logger.LogInformation("Created door '{DoorName}' for reader endpoint {EndpointId} (strike={StrikeId})",
-            door.Name, readerEndpoint.Id, door.DoorStrikeEndpointId);
+        _logger.LogInformation("Created door '{DoorName}' (unid={DoorUnid}) for reader endpoint {EndpointId}",
+            doorDev.Name, doorUnid, driverEndpointId);
 
-        // If the reader has a door contact input configured, wire it up (may take time if endpoint hasn't appeared yet)
+        // If the reader has a door contact input configured, create Sensor child
         if (config?.DoorContactInputNumber != null)
         {
             var contactDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:I{config.DoorContactInputNumber}";
             _logger.LogInformation("Looking for door contact input endpoint: {ContactEndpointId}", contactDriverEndpointId);
 
-            Aporta.Shared.Models.Endpoint contactEndpoint = null;
+            Endpoint contactEndpoint = null;
             for (int retry = 0; retry < 20; retry++)
             {
-                var allEndpoints = await _endpointRepository.GetAll();
-                contactEndpoint = allEndpoints.FirstOrDefault(ep => ep.DriverEndpointId == contactDriverEndpointId);
+                contactEndpoint = await _endpointRepository.GetByDriverEndpointId(contactDriverEndpointId);
                 if (contactEndpoint != null)
                     break;
                 await Task.Delay(500);
@@ -589,10 +599,18 @@ public class StartupWorker : BackgroundService
 
             if (contactEndpoint != null)
             {
-                door.DoorContactEndpointId = contactEndpoint.Id;
-                await _doorRepository.Update(door);
-                _logger.LogInformation("Assigned door contact endpoint {ContactEndpointId} to door '{DoorName}'",
-                    contactEndpoint.Id, door.Name);
+                var contactDev = new Dev
+                {
+                    Name = contactEndpoint.Name,
+                    DevType = DevType.Sensor,
+                    DevUse = DevUse.SensorDoorContact,
+                    ExternalId = contactDriverEndpointId,
+                    LogicalParentUnid = doorUnid,
+                };
+                SpCoreProtoUtil.InitRequired(contactDev);
+                var contactUnid = await _z9DevRepository.Insert(contactDev);
+                doorDev.LogicalChildrenUnid.Add(contactUnid);
+                _logger.LogInformation("Created Sensor Dev for door contact {EndpointId}", contactDriverEndpointId);
             }
             else
             {
@@ -600,17 +618,16 @@ public class StartupWorker : BackgroundService
             }
         }
 
-        // If the reader has a REX input configured, wire it up
+        // If the reader has a REX input configured, create Sensor child
         if (config?.RexInputNumber != null)
         {
             var rexDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:I{config.RexInputNumber}";
             _logger.LogInformation("Looking for REX input endpoint: {RexEndpointId}", rexDriverEndpointId);
 
-            Aporta.Shared.Models.Endpoint rexEndpoint = null;
+            Endpoint rexEndpoint = null;
             for (int retry = 0; retry < 20; retry++)
             {
-                var allEndpoints = await _endpointRepository.GetAll();
-                rexEndpoint = allEndpoints.FirstOrDefault(ep => ep.DriverEndpointId == rexDriverEndpointId);
+                rexEndpoint = await _endpointRepository.GetByDriverEndpointId(rexDriverEndpointId);
                 if (rexEndpoint != null)
                     break;
                 await Task.Delay(500);
@@ -618,16 +635,27 @@ public class StartupWorker : BackgroundService
 
             if (rexEndpoint != null)
             {
-                door.RequestToExitEndpointId = rexEndpoint.Id;
-                await _doorRepository.Update(door);
-                _logger.LogInformation("Assigned REX endpoint {RexEndpointId} to door '{DoorName}'",
-                    rexEndpoint.Id, door.Name);
+                var rexDev = new Dev
+                {
+                    Name = rexEndpoint.Name,
+                    DevType = DevType.Sensor,
+                    DevUse = DevUse.SensorRex,
+                    ExternalId = rexDriverEndpointId,
+                    LogicalParentUnid = doorUnid,
+                };
+                SpCoreProtoUtil.InitRequired(rexDev);
+                var rexUnid = await _z9DevRepository.Insert(rexDev);
+                doorDev.LogicalChildrenUnid.Add(rexUnid);
+                _logger.LogInformation("Created Sensor Dev for REX {EndpointId}", rexDriverEndpointId);
             }
             else
             {
                 _logger.LogWarning("REX input endpoint {RexEndpointId} not found after retries", rexDriverEndpointId);
             }
         }
+
+        // Update Door Dev with children
+        await _z9DevRepository.Upsert(doorDev);
 
         // Apply default door mode if configured
         if (config?.DefaultDoorMode != null && config.DoorUnid.HasValue)
@@ -699,8 +727,7 @@ public class StartupWorker : BackgroundService
 
         var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
 
-        var endpoints = await _endpointRepository.GetAll();
-        var strikeEndpoint = endpoints.FirstOrDefault(ep => ep.DriverEndpointId == strikeDriverEndpointId);
+        var strikeEndpoint = await _endpointRepository.GetByDriverEndpointId(strikeDriverEndpointId);
 
         if (strikeEndpoint == null)
         {
@@ -792,8 +819,7 @@ public class StartupWorker : BackgroundService
         if (config.StrikeOutputNumber != null)
         {
             var strikeDriverEndpointId = $"{config.Host}:{config.TcpPort}:{config.OsdpAddress}:O{config.StrikeOutputNumber}";
-            var endpoints = await _endpointRepository.GetAll();
-            var strikeEndpoint = endpoints.FirstOrDefault(ep => ep.DriverEndpointId == strikeDriverEndpointId);
+            var strikeEndpoint = await _endpointRepository.GetByDriverEndpointId(strikeDriverEndpointId);
 
             if (strikeEndpoint != null)
             {
@@ -850,26 +876,26 @@ public class StartupWorker : BackgroundService
 
     private async Task HandleStateChanged(string driverEndpointId, bool state)
     {
-        // Look up the Aporta endpoint by driver endpoint ID
-        var endpoints = await _endpointRepository.GetAll();
-        var endpoint = endpoints.FirstOrDefault(ep => ep.DriverEndpointId == driverEndpointId);
-        if (endpoint == null)
+        // Look up the Dev by ExternalId (DriverEndpointId)
+        var dev = await _z9DevRepository.GetByExternalId(driverEndpointId);
+        if (dev == null)
             return;
 
-        var doors = await _doorRepository.GetAll();
+        // Get the door unid (parent) for state tracking
+        var doorUnid = dev.LogicalParentUnidCase == Dev.LogicalParentUnidOneofCase.LogicalParentUnid
+            ? dev.LogicalParentUnid : 0;
 
-        // Check if this is a REX input
-        var rexDoor = doors.FirstOrDefault(d => d.RequestToExitEndpointId == endpoint.Id);
-        if (rexDoor != null && state)
+        // Check if this is a REX sensor
+        if (dev.DevType == DevType.Sensor && dev.DevUseCase == Dev.DevUseOneofCase.DevUse && dev.DevUse == DevUse.SensorRex && state)
         {
             var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
             if (config != null)
             {
-                _logger.LogInformation("REX activated for door '{DoorName}'", rexDoor.Name);
+                _logger.LogInformation("REX activated for door unid={DoorUnid}", doorUnid);
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.ExitRequested);
 
                 // Determine REX behavior based on door mode
-                var currentMode = config.DoorUnid.HasValue && _doorCurrentMode.TryGetValue(config.DoorUnid.Value, out var mode)
+                var currentMode = doorUnid > 0 && _doorCurrentMode.TryGetValue(doorUnid, out var mode)
                     ? mode : (DoorModeType?)null;
 
                 if (currentMode == DoorModeType.StaticStateUnlocked)
@@ -879,7 +905,7 @@ public class StartupWorker : BackgroundService
                 else if (currentMode == DoorModeType.StaticStateLocked)
                 {
                     // Door is locked — do not unlock on REX
-                    _logger.LogInformation("REX ignored for door '{DoorName}' — door is in locked mode", rexDoor.Name);
+                    _logger.LogInformation("REX ignored for door unid={DoorUnid} — door is in locked mode", doorUnid);
                 }
                 else if (config.ActivateStrikeOnRex && config.DoorUnid.HasValue)
                 {
@@ -889,11 +915,11 @@ public class StartupWorker : BackgroundService
             return;
         }
 
-        // Check strike endpoint — track state for forced-open detection
-        var strikeDoor = doors.FirstOrDefault(d => d.DoorStrikeEndpointId == endpoint.Id);
-        if (strikeDoor != null)
+        // Check if this is a door strike actuator — track state for forced-open detection
+        if (dev.DevType == DevType.Actuator && dev.DevUseCase == Dev.DevUseOneofCase.DevUse && dev.DevUse == DevUse.ActuatorDoorStrike)
         {
-            _doorStrikeActive[strikeDoor.Id] = state;
+            if (doorUnid > 0)
+                _doorStrikeActive[doorUnid] = state;
             var evtCode = state ? EvtCode.DoorUnlocked : EvtCode.DoorLocked;
             var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
             if (config2 != null)
@@ -901,9 +927,8 @@ public class StartupWorker : BackgroundService
             return;
         }
 
-        // Check contact endpoint — detect forced open
-        var contactDoor = doors.FirstOrDefault(d => d.DoorContactEndpointId == endpoint.Id);
-        if (contactDoor != null)
+        // Check if this is a door contact sensor
+        if (dev.DevType == DevType.Sensor && dev.DevUseCase == Dev.DevUseOneofCase.DevUse && dev.DevUse == DevUse.SensorDoorContact)
         {
             var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
             if (config2 == null)
@@ -913,34 +938,34 @@ public class StartupWorker : BackgroundService
             {
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorOpened);
 
-                _doorStrikeActive.TryGetValue(contactDoor.Id, out var strikeActive);
+                _doorStrikeActive.TryGetValue(doorUnid, out var strikeActive);
                 if (!strikeActive)
                 {
-                    _logger.LogWarning("Door forced open: '{DoorName}'", contactDoor.Name);
+                    _logger.LogWarning("Door forced open: door unid={DoorUnid}", doorUnid);
                     _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorForced);
-                    _doorForced[contactDoor.Id] = true;
+                    _doorForced[doorUnid] = true;
                 }
 
-                StartDoorHeldTimer(contactDoor.Id, contactDoor.Name, config2);
+                StartDoorHeldTimer(doorUnid, dev.Name, config2);
             }
             else // Door closed
             {
-                CancelDoorHeldTimer(contactDoor.Id);
+                CancelDoorHeldTimer(doorUnid);
 
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorClosed);
 
-                if (_doorForced.TryGetValue(contactDoor.Id, out var wasForced) && wasForced)
+                if (_doorForced.TryGetValue(doorUnid, out var wasForced) && wasForced)
                 {
-                    _logger.LogInformation("Door forced cleared: '{DoorName}'", contactDoor.Name);
+                    _logger.LogInformation("Door forced cleared: door unid={DoorUnid}", doorUnid);
                     _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorNotForced);
-                    _doorForced[contactDoor.Id] = false;
+                    _doorForced[doorUnid] = false;
                 }
 
-                if (_doorHeld.TryGetValue(contactDoor.Id, out var wasHeld) && wasHeld)
+                if (_doorHeld.TryGetValue(doorUnid, out var wasHeld) && wasHeld)
                 {
-                    _logger.LogInformation("Door held cleared: '{DoorName}'", contactDoor.Name);
+                    _logger.LogInformation("Door held cleared: door unid={DoorUnid}", doorUnid);
                     _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, EvtCode.DoorNotHeld);
-                    _doorHeld[contactDoor.Id] = false;
+                    _doorHeld[doorUnid] = false;
                 }
             }
             return;

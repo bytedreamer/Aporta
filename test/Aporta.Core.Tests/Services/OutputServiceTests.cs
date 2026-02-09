@@ -48,8 +48,8 @@ public class OutputServiceTests
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSource.Token);
         }
-            
-        if(cancellationTokenSource.Token.IsCancellationRequested) 
+
+        if(cancellationTokenSource.Token.IsCancellationRequested)
         {
             Assert.Fail("Timeout waiting for endpoints to be inserted");
         }
@@ -59,7 +59,7 @@ public class OutputServiceTests
     public void TearDown()
     {
         _extensionService.Shutdown();
-            
+
         _persistConnection?.Close();
         _persistConnection?.Dispose();
     }
@@ -71,16 +71,15 @@ public class OutputServiceTests
         var outputService = new OutputService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
             _extensionService);
-        
+
         var outputs = new[]
         {
             new Output {Name = "TestOutput1", EndpointId = 2},
             new Output {Name = "TestOutput2", EndpointId = 3}
         };
-        var outputRepository = new OutputRepository(_dataAccess);
         foreach (var output in outputs)
         {
-            await outputRepository.Insert(output);
+            await outputService.Insert(output);
         }
 
         // Act

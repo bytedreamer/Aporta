@@ -18,10 +18,7 @@ public class SqLiteDataAccess : IDataAccess
 
     private readonly IMigration[] _migrations =
     {
-        new _0000_InitialCreate(),
-        new _0001_AddZ9OpenTables(),
-        new _0002_AddZ9CredTable(),
-        new _0003_AddZ9EvtTable()
+        new _0000_InitialCreate()
     };
 
     /// <summary>

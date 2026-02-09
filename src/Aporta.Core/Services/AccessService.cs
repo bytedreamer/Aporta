@@ -16,6 +16,8 @@ using Microsoft.Extensions.Logging;
 using Z9.Protobuf;
 using Z9.Spcore.Proto;
 
+using Door = Aporta.Shared.Models.Door;
+
 namespace Aporta.Core.Services;
 
 /// <summary>
@@ -35,8 +37,8 @@ public class AccessService
 {
     private readonly ExtensionService _extensionService;
     private readonly ILogger<AccessService> _logger;
-    private readonly DoorRepository _doorRepository;
     private readonly EndpointRepository _endpointRepository;
+    private readonly Z9DevRepository _z9DevRepository;
     private readonly CredentialRepository _credentialRepository;
     private readonly Z9EvtRepository _z9EvtRepository;
     private readonly Z9CredRepository _z9CredRepository;
@@ -46,6 +48,7 @@ public class AccessService
     private readonly HolRepository _holRepository;
     private readonly ConcurrentDictionary<string, Task> _processAccessCredential = new();
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
+    private readonly DoorConfigurationService _doorConfigurationService;
     private Func<string, int?> _getDoorUnidForEndpoint;
     private Func<string, (int?, int?)> _getStrikeTimesForEndpoint;
     private Func<string, DoorModeType?> _getDoorModeForEndpoint;
@@ -62,11 +65,12 @@ public class AccessService
     /// Represents a service for accessing and managing system access.
     /// </summary>
     public AccessService(IDataAccess dataAccess, ExtensionService extensionService,
-        IHubContext<DataChangeNotificationHub> hubContext, ILogger<AccessService> logger)
+        IHubContext<DataChangeNotificationHub> hubContext, ILogger<AccessService> logger,
+        DoorConfigurationService doorConfigurationService)
     {
-        _doorRepository = new DoorRepository(dataAccess);
         _credentialRepository = new CredentialRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
+        _z9DevRepository = new Z9DevRepository(dataAccess);
         _z9EvtRepository = new Z9EvtRepository(dataAccess);
         _z9CredRepository = new Z9CredRepository(dataAccess);
         _credTemplateRepository = new CredTemplateRepository(dataAccess);
@@ -76,6 +80,7 @@ public class AccessService
         _extensionService = extensionService;
         _hubContext = hubContext;
         _logger = logger;
+        _doorConfigurationService = doorConfigurationService;
     }
 
     /// <summary>
@@ -228,7 +233,7 @@ public class AccessService
         }
     }
 
-    private async Task<(bool granted, bool useExtendedTime)> IsAccessGranted(string matchingCardData, string pinData, DoorModeType? doorMode, Aporta.Shared.Models.Door matchingDoor, Endpoint accessPoint)
+    private async Task<(bool granted, bool useExtendedTime)> IsAccessGranted(string matchingCardData, string pinData, DoorModeType? doorMode, Door matchingDoor, Endpoint accessPoint)
     {
         // Guard: need at least a card or a PIN
         if (matchingCardData == null && pinData == null)
@@ -653,7 +658,7 @@ public class AccessService
     /// Checks if the credential has privilege to access the door.
     /// Returns null if access is granted, or the EventReason for denial.
     /// </summary>
-    private async Task<EventReason?> CheckAccessPrivilege(int credentialUnid, Aporta.Shared.Models.Door door, string endpointId)
+    private async Task<EventReason?> CheckAccessPrivilege(int credentialUnid, Door door, string endpointId)
     {
         // Look up the Z9 Door unid for this endpoint
         int? z9DoorUnid = _getDoorUnidForEndpoint?.Invoke(endpointId);
@@ -865,20 +870,31 @@ public class AccessService
         return inSched;
     }
 
-    private async Task<Aporta.Shared.Models.Door> MatchingDoor(string accessPointId, Endpoint[] endpoints)
+    private async Task<Door> MatchingDoor(string accessPointId, Endpoint[] endpoints)
     {
-        var doors = await _doorRepository.GetAll();
+        // Find CredReader Dev by ExternalId = accessPointId (DriverEndpointId)
+        var credReaderDev = await _z9DevRepository.GetByExternalId(accessPointId);
+        if (credReaderDev == null || credReaderDev.DevType != DevType.CredReader)
+            return null;
 
-        var matchingDoor = doors.FirstOrDefault(door =>
-            MatchingEndpointId(endpoints, accessPointId, door.InAccessEndpointId) ||
-            MatchingEndpointId(endpoints, accessPointId, door.OutAccessEndpointId));
-        return matchingDoor;
-    }
-        
-    private static bool MatchingEndpointId(IEnumerable<Endpoint> endpoints, string accessPointId, int? endpointId)
-    {
-        if (endpointId == null) return false;
-        return endpointId == endpoints.FirstOrDefault(endpoint => endpoint.DriverEndpointId == accessPointId)?.Id;
+        if (credReaderDev.LogicalParentUnidCase != Dev.LogicalParentUnidOneofCase.LogicalParentUnid)
+            return null;
+
+        var parentDev = await _z9DevRepository.Get(credReaderDev.LogicalParentUnid);
+        if (parentDev == null || parentDev.DevType != DevType.Door)
+            return null;
+
+        // If the parent is an exit Door (has its own parent that's also a Door), go up one level
+        if (parentDev.LogicalParentUnidCase == Dev.LogicalParentUnidOneofCase.LogicalParentUnid)
+        {
+            var grandparentDev = await _z9DevRepository.Get(parentDev.LogicalParentUnid);
+            if (grandparentDev != null && grandparentDev.DevType == DevType.Door)
+            {
+                parentDev = grandparentDev;
+            }
+        }
+
+        return await _doorConfigurationService.BuildDoorDto(parentDev);
     }
 
     private static Endpoint MatchingDoorStrike(int? doorStrikeEndpointId, IEnumerable<Endpoint> endpoints)

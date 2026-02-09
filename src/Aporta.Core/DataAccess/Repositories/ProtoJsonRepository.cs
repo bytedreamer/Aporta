@@ -12,8 +12,8 @@ namespace Aporta.Core.DataAccess.Repositories;
 /// </summary>
 public abstract class ProtoJsonRepository<T> where T : IMessage<T>, new()
 {
-    private static readonly JsonFormatter Formatter = new(JsonFormatter.Settings.Default);
-    private static readonly JsonParser Parser = new(JsonParser.Settings.Default);
+    protected static readonly JsonFormatter Formatter = new(JsonFormatter.Settings.Default);
+    protected static readonly JsonParser Parser = new(JsonParser.Settings.Default);
 
     protected abstract IDataAccess DataAccess { get; }
     protected abstract string TableName { get; }

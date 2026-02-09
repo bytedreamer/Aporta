@@ -36,24 +36,6 @@ namespace Aporta.Core.DataAccess.Migrations
                     data TEXT NOT NULL
                 );
 
-                -- Output table
-                CREATE TABLE output (
-                    id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
-                );
-
-                -- Input table
-                CREATE TABLE input (
-                    id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
-                );
-
-                -- Door table
-                CREATE TABLE door (
-                    id INTEGER NOT NULL PRIMARY KEY,
-                    data TEXT NOT NULL
-                );
-
                 -- Global setting table (string primary key)
                 CREATE TABLE global_setting (
                     name TEXT NOT NULL PRIMARY KEY,
@@ -80,6 +62,78 @@ namespace Aporta.Core.DataAccess.Migrations
                 );
                 CREATE INDEX idx_ca_credential ON credential_assignment (json_extract(data, '$.credentialId'));
                 CREATE INDEX idx_ca_person ON credential_assignment (json_extract(data, '$.personId'));
+
+                -- Credential Template table
+                CREATE TABLE cred_template (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Data Layout table
+                CREATE TABLE data_layout (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Data Format table
+                CREATE TABLE data_format (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Privilege table
+                CREATE TABLE priv (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Schedule table
+                CREATE TABLE sched (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Holiday table
+                CREATE TABLE hol (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Holiday Calendar table
+                CREATE TABLE hol_cal (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Holiday Type table
+                CREATE TABLE hol_type (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Z9 Device table (stores full Dev proto messages)
+                CREATE TABLE z9_dev (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Encryption Key table
+                CREATE TABLE encryption_key (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Z9 Credential table (stores full proto including privBindings)
+                CREATE TABLE z9_cred (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Z9 Event table
+                CREATE TABLE z9_evt (
+                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    data TEXT NOT NULL
+                );
 
 ",
                 transaction: transaction);

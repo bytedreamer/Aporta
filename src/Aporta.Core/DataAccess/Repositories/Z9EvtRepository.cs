@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
-using Google.Protobuf;
 using Z9.Spcore.Proto;
 
 namespace Aporta.Core.DataAccess.Repositories;
@@ -14,9 +13,6 @@ namespace Aporta.Core.DataAccess.Repositories;
 /// </summary>
 public class Z9EvtRepository : ProtoJsonRepository<Evt>
 {
-    private static readonly JsonFormatter Formatter = new(JsonFormatter.Settings.Default);
-    private static readonly JsonParser Parser = new(JsonParser.Settings.Default);
-
     private readonly IDataAccess _dataAccess;
 
     public Z9EvtRepository(IDataAccess dataAccess)

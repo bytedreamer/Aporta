@@ -15,8 +15,6 @@ namespace Aporta.Core.Services;
 
 public class OutputService
 {
-    private readonly DoorRepository _doorRepository;
-    private readonly OutputRepository _outputRepository;
     private readonly EndpointRepository _endpointRepository;
     private readonly Z9DevRepository _z9DevRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
@@ -27,8 +25,6 @@ public class OutputService
     {
         _hubContext = hubContext;
         _extensionService = extensionService;
-        _doorRepository = new DoorRepository(dataAccess);
-        _outputRepository = new OutputRepository(dataAccess);
         _endpointRepository = new EndpointRepository(dataAccess);
         _z9DevRepository = new Z9DevRepository(dataAccess);
 
@@ -39,9 +35,12 @@ public class OutputService
     {
         try
         {
-            var output = await _outputRepository.GetForDriverId(eventArgs.Endpoint.Id);
+            var dev = await _z9DevRepository.GetForDriverId(eventArgs.Endpoint.Id);
 
-            await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, eventArgs.State);
+            if (dev != null && dev.DevType == DevType.Actuator)
+            {
+                await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, dev.Unid, eventArgs.State);
+            }
         }
         catch
         {
@@ -51,33 +50,35 @@ public class OutputService
 
     public async Task<IEnumerable<Output>> GetAll()
     {
-        return await _outputRepository.GetAll();
+        var devs = await _z9DevRepository.GetAllByDevType(DevType.Actuator);
+        var tasks = devs.Select(async dev => await DevToOutput(dev));
+        return await Task.WhenAll(tasks);
     }
-        
+
     public async Task<Output> Get(int outputId)
     {
-        return await _outputRepository.Get(outputId);
+        var dev = await _z9DevRepository.Get(outputId);
+        return dev == null ? null : await DevToOutput(dev);
     }
 
     public async Task Insert(Output output)
     {
-        await _outputRepository.Insert(output);
-
+        var endpoint = await _endpointRepository.Get(output.EndpointId);
         var dev = new Dev
         {
-            Unid = output.Id,
             Name = output.Name,
             DevType = DevType.Actuator,
+            ExternalId = endpoint.DriverEndpointId,
         };
         SpCoreProtoUtil.InitRequired(dev);
-        await _z9DevRepository.Upsert(dev);
+        var id = await _z9DevRepository.Insert(dev);
+        output.Id = id;
 
         await _hubContext.Clients.All.SendAsync(Methods.OutputInserted, output.Id);
     }
 
     public async Task Delete(int id)
     {
-        await _outputRepository.Delete(id);
         await _z9DevRepository.Delete(id);
 
         await _hubContext.Clients.All.SendAsync(Methods.OutputDeleted, id);
@@ -86,27 +87,46 @@ public class OutputService
     public async Task<IEnumerable<Endpoint>> AvailableControlPoints()
     {
         var endpoints = await _endpointRepository.GetAll();
-        var doors = await _doorRepository.GetAll();
-        var outputs = await _outputRepository.GetAll();
+        var actuators = await _z9DevRepository.GetAllByDevType(DevType.Actuator);
+        var actuatorExternalIds = actuators
+            .Where(d => !string.IsNullOrEmpty(d.ExternalId))
+            .Select(d => d.ExternalId)
+            .ToHashSet();
         return endpoints.Where(endpoint =>
             endpoint.Type == EndpointType.Output &&
-            !outputs.Select(output => output.EndpointId).Contains(endpoint.Id) &&
-            !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id));
+            !actuatorExternalIds.Contains(endpoint.DriverEndpointId));
     }
 
     public async Task SetState(int outputId, bool state)
     {
-        var output = await _outputRepository.Get(outputId);
-        var endpoint = await _endpointRepository.Get(output.EndpointId);
+        var dev = await _z9DevRepository.Get(outputId);
+        var endpoint = await _endpointRepository.GetByDriverEndpointId(dev.ExternalId);
         await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).SetState(state);
-            
-        await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, output.Id, state);
+
+        await _hubContext.Clients.All.SendAsync(Methods.OutputStateChanged, dev.Unid, state);
     }
 
     public async Task<bool?> GetState(int outputId)
     {
-        var output = await _outputRepository.Get(outputId);
-        var endpoint = await _endpointRepository.Get(output.EndpointId);
+        var dev = await _z9DevRepository.Get(outputId);
+        var endpoint = await _endpointRepository.GetByDriverEndpointId(dev.ExternalId);
         return await _extensionService.GetControlPoint(endpoint.ExtensionId, endpoint.DriverEndpointId).GetState();
+    }
+
+    private async Task<Output> DevToOutput(Dev dev)
+    {
+        var endpointId = 0;
+        if (!string.IsNullOrEmpty(dev.ExternalId))
+        {
+            var endpoint = await _endpointRepository.GetByDriverEndpointId(dev.ExternalId);
+            if (endpoint != null)
+                endpointId = endpoint.Id;
+        }
+        return new Output
+        {
+            Id = dev.Unid,
+            Name = dev.Name,
+            EndpointId = endpointId,
+        };
     }
 }

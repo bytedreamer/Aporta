@@ -37,7 +37,7 @@ public class ExtensionService(
 
     private readonly ExtensionRepository _extensionRepository = new(dataAccess);
     private readonly EndpointRepository _endpointRepository = new(dataAccess);
-    private readonly DoorRepository _doorRepository = new(dataAccess);
+    private readonly Z9DevRepository _z9DevRepository = new(dataAccess);
     private readonly List<ExtensionHost> _extensions = new();
     private readonly object _extensionLock = new ();
 
@@ -283,15 +283,12 @@ public class ExtensionService(
 
                     await _endpointRepository.Update(updateEndpoint);
                 }
-                var allEndPoints = (await _endpointRepository.GetAll()).ToArray();
-                var doors = (await _doorRepository.GetAll()).ToArray();
                 foreach (var endpoint in EndpointsToBeDeleted(driver, existingEndpoints))
                 {
-                    if (IsEndPointAvailableForDelete(endpoint, doors, allEndPoints))
+                    if (await IsEndPointAvailableForDelete(endpoint))
                     {
                         await _endpointRepository.Delete(endpoint.Id);
                     }
-                    
                 }
 
                 await SaveCurrentConfiguration(MatchingExtensionHost(driver.Id));
@@ -304,24 +301,11 @@ public class ExtensionService(
     }
 
 
-    private bool IsEndPointAvailableForDelete(Endpoint endpointToDelete, Door[] doors, IEnumerable<Endpoint> endpoints)
+    private async Task<bool> IsEndPointAvailableForDelete(Endpoint endpointToDelete)
     {
-        var availableEndPoints = endpoints.Where(endpoint =>
-            //Find readers not assigned to a door
-            (endpoint.Type == EndpointType.Reader &&
-            !doors.Select(door => door.InAccessEndpointId).Contains(endpoint.Id) &&
-            !doors.Select(door => door.OutAccessEndpointId).Contains(endpoint.Id))            
-            ||
-            //Find inputs not assigned to a door
-            (endpoint.Type == EndpointType.Input &&
-            !doors.Select(door => door.DoorContactEndpointId).Contains(endpoint.Id))            
-            ||
-            //Find outputs not assigned to a door
-            (endpoint.Type == EndpointType.Output &&
-            !doors.Select(door => door.DoorStrikeEndpointId).Contains(endpoint.Id))
-            );
-
-        return availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == endpointToDelete.DriverEndpointId) > 0;
+        // Check if any z9_dev references this endpoint's DriverEndpointId
+        var dev = await _z9DevRepository.GetByExternalId(endpointToDelete.DriverEndpointId);
+        return dev == null;
     }
 
     private void DriverOnAccessCredentialReceived(object sender, AccessCredentialReceivedEventArgs eventArgs)
