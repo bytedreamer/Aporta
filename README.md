@@ -66,6 +66,10 @@ Aporta doesn't intend to recreate what is already available by existing physical
     - Door held open detection with DoorHeld/DoorNotHeld events
     - Extended held time support via credential extDoorTime flag
 
+## API Architecture ##
+
+The web UI communicates with the server through the Flex API (`/flex/*` endpoints). The Extensions and Driver Configuration pages still use the original REST API (`/api/Extensions`), which is maintained as-is for now.
+
 ## TODO ##
 
 ### Aporta
