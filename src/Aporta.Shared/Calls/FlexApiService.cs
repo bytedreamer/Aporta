@@ -49,6 +49,21 @@ public class FlexApiService
         _sessionToken = result?.SessionToken;
     }
 
+    public async Task<FlexInstanceResponse<FlexCred>> SaveCredAsync(FlexCred cred)
+    {
+        return await FlexPostAsync<FlexInstanceResponse<FlexCred>>("flex/cred/save", cred);
+    }
+
+    public async Task<FlexVoid> DeleteCredAsync(int unid)
+    {
+        return await FlexPostAsync<FlexVoid>($"flex/cred/delete/{unid}");
+    }
+
+    public async Task<FlexVoid> EnrollCredAsync(int credentialId, int personId)
+    {
+        return await FlexPostAsync<FlexVoid>($"flex/cred/{credentialId}/enroll/{personId}");
+    }
+
     private async Task<T> FlexGetAsync<T>(string url)
     {
         await EnsureAuthenticated();
@@ -65,6 +80,33 @@ public class FlexApiService
 
             request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("sessionToken", _sessionToken);
+            response = await _httpClient.SendAsync(request);
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<T>();
+    }
+
+    private async Task<T> FlexPostAsync<T>(string url, object body = null)
+    {
+        await EnsureAuthenticated();
+
+        var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Headers.Add("sessionToken", _sessionToken);
+        if (body != null)
+            request.Content = JsonContent.Create(body);
+
+        var response = await _httpClient.SendAsync(request);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            _sessionToken = null;
+            await EnsureAuthenticated();
+
+            request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Add("sessionToken", _sessionToken);
+            if (body != null)
+                request.Content = JsonContent.Create(body);
             response = await _httpClient.SendAsync(request);
         }
 

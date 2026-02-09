@@ -51,7 +51,7 @@ public class Z9CredRepository : ProtoJsonRepository<Cred>
 
     /// <summary>
     /// Returns the next available ID (MAX(id) + 1, or 1 if empty).
-    /// Used by PeopleService for person creation.
+    /// Used by FlexCredController for person creation.
     /// </summary>
     public async Task<int> NextId()
     {

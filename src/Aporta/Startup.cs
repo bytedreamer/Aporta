@@ -41,14 +41,11 @@ public class Startup
         services.AddSingleton<IDataAccess, SqLiteDataAccess>();
 
         services.AddSingleton<AccessService, AccessService>();
-        services.AddSingleton<CredentialService, CredentialService>();
         services.AddSingleton<DoorConfigurationService, DoorConfigurationService>();
-        services.AddSingleton<EventService, EventService>();
         services.AddSingleton<ExtensionService, ExtensionService>();
         services.AddSingleton<GlobalSettingService, GlobalSettingService>();
         services.AddSingleton<InputService, InputService>();
         services.AddSingleton<OutputService, OutputService>();
-        services.AddSingleton<PeopleService, PeopleService>();
         services.AddSingleton<Z9OpenCommunityProtocolService, Z9OpenCommunityProtocolService>();
         services.AddSingleton<DevStateService, DevStateService>();
         services.AddSingleton<FlexSessionService, FlexSessionService>();

@@ -14,6 +14,15 @@ public class EventData
     public string? CardNumber { get; init; }
 }
 
+public enum EventType
+{
+    [Description("Access Granted")]
+    AccessGranted,
+
+    [Description("Access Denied")]
+    AccessDenied
+}
+
 public enum EventReason
 {
     [Description("None")]
