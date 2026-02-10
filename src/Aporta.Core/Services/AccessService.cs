@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
@@ -309,8 +310,6 @@ public class AccessService
 
             if (assignedCredential == null)
             {
-                // Insert RAW_CRED_READ event with raw bits — credential will be created
-                // later from this event during enrollment
                 await InsertRawCredReadEvt(matchingCardData, accessPoint.DriverEndpointId);
             }
 
@@ -599,6 +598,25 @@ public class AccessService
         if (evtSubCode.HasValue)
         {
             evt.EvtSubCode = evtSubCode.Value;
+        }
+
+        if (eventData.Endpoint?.Id > 0)
+        {
+            evt.EvtDevRef = new EvtDevRef
+            {
+                Unid = eventData.Endpoint.Id,
+                Name = eventData.Endpoint.Name,
+                DevType = DevType.CredReader
+            };
+        }
+
+        if (eventData.Person != null)
+        {
+            evt.EvtCredRef = new EvtCredRef
+            {
+                Unid = eventData.Person.Id,
+                Name = $"{eventData.Person.LastName}, {eventData.Person.FirstName}"
+            };
         }
 
         return await _z9EvtRepository.Insert(evt);

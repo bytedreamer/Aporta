@@ -81,4 +81,47 @@ public class Z9EvtRepository : ProtoJsonRepository<Evt>
             TotalItems = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM z9_evt")
         };
     }
+
+    /// <summary>
+    /// Returns unconsumed RAW_CRED_READ events, most recent first.
+    /// </summary>
+    public async Task<IEnumerable<Evt>> GetUnconsumedRawReads()
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        var results = await connection.QueryAsync<(int id, string data)>(
+            @"SELECT id, data FROM z9_evt
+              WHERE json_extract(data, '$.evtCode') = @evtCode
+                AND (json_extract(data, '$.consumed') IS NULL
+                  OR json_extract(data, '$.consumed') = false)
+              ORDER BY id DESC",
+            new { evtCode = "EvtCode_RAW_CRED_READ" });
+
+        return results.Select(row =>
+        {
+            var evt = Parser.Parse<Evt>(row.data);
+            evt.Unid = row.id;
+            return evt;
+        });
+    }
+
+    /// <summary>
+    /// Marks an event as consumed by updating the proto JSON.
+    /// </summary>
+    public async Task MarkConsumed(int id)
+    {
+        var evt = await Get(id);
+        if (evt == null) return;
+
+        evt.Consumed = true;
+
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        var json = Formatter.Format(evt);
+        await connection.ExecuteAsync(
+            "UPDATE z9_evt SET data = @data WHERE id = @id",
+            new { id, data = json });
+    }
 }

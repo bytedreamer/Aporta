@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -18,12 +19,16 @@ public class FlexCredController : FlexCrudControllerBase<Cred, FlexCred>
 {
     private readonly Z9CredRepository _repository;
     private readonly CredTemplateRepository _credTemplateRepository;
+    private readonly Z9EvtRepository _evtRepository;
+    private readonly Z9DevRepository _devRepository;
     private readonly IHubContext<DataChangeNotificationHub> _hubContext;
 
     public FlexCredController(IDataAccess dataAccess, IHubContext<DataChangeNotificationHub> hubContext)
     {
         _repository = new Z9CredRepository(dataAccess);
         _credTemplateRepository = new CredTemplateRepository(dataAccess);
+        _evtRepository = new Z9EvtRepository(dataAccess);
+        _devRepository = new Z9DevRepository(dataAccess);
         _hubContext = hubContext;
     }
 
@@ -80,6 +85,57 @@ public class FlexCredController : FlexCrudControllerBase<Cred, FlexCred>
 
         await _repository.Delete(credentialId);
         await _repository.Upsert(personZ9Cred);
+
+        await _hubContext.Clients.All.SendAsync(Methods.PersonUpdated, personId);
+
+        return Ok(new FlexVoid());
+    }
+
+    [HttpPost("{personId:int}/enroll-from-read/{evtId:int}")]
+    public async Task<IActionResult> EnrollFromRead(int personId, int evtId)
+    {
+        var personZ9Cred = await _repository.Get(personId);
+        if (personZ9Cred == null)
+            return NotFound("Person credential not found");
+
+        var evt = await _evtRepository.Get(evtId);
+        if (evt == null || evt.EvtCode != EvtCode.RawCredRead)
+            return NotFound("Raw read event not found");
+
+        var cardData = evt.Data;
+        if (string.IsNullOrEmpty(cardData))
+            return BadRequest("Raw read event has no card data");
+
+        personZ9Cred.CardPin = new CardPin
+        {
+            CredNum = SpCoreProtoUtil.ToBigIntegerData(BigInteger.Parse(cardData))
+        };
+
+        if (evt.EvtDevRef?.UnidCase == EvtDevRef.UnidOneofCase.Unid)
+        {
+            var readerDev = await _devRepository.Get(evt.EvtDevRef.Unid);
+            if (readerDev?.LogicalParentUnidCase == Dev.LogicalParentUnidOneofCase.LogicalParentUnid)
+            {
+                var doorDevUnid = readerDev.LogicalParentUnid;
+                var parentDev = await _devRepository.Get(doorDevUnid);
+                if (parentDev?.LogicalParentUnidCase == Dev.LogicalParentUnidOneofCase.LogicalParentUnid)
+                {
+                    var grandparent = await _devRepository.Get(parentDev.LogicalParentUnid);
+                    if (grandparent?.DevType == DevType.Door)
+                        doorDevUnid = grandparent.Unid;
+                }
+
+                personZ9Cred.PrivBindings.Add(new CredPrivBinding
+                {
+                    DevAsDoorAccessPrivUnid = doorDevUnid
+                });
+            }
+        }
+
+        SpCoreProtoUtil.InitRequired(personZ9Cred);
+        await _repository.Upsert(personZ9Cred);
+
+        await _evtRepository.MarkConsumed(evtId);
 
         await _hubContext.Clients.All.SendAsync(Methods.PersonUpdated, personId);
 

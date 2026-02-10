@@ -66,6 +66,16 @@ public class FlexApiService
         return await FlexPostAsync<FlexVoid>($"cred/{credentialId}/enroll/{personId}");
     }
 
+    public async Task<FlexListResponse<FlexEvt>> GetRawReadsAsync()
+    {
+        return await FlexGetAsync<FlexListResponse<FlexEvt>>("evt/raw-reads");
+    }
+
+    public async Task<FlexVoid> EnrollCredFromReadAsync(int personId, int evtId)
+    {
+        return await FlexPostAsync<FlexVoid>($"cred/{personId}/enroll-from-read/{evtId}");
+    }
+
     public async Task<FlexListResponse<FlexDev>> GetDoorListAsync(int offset, int max)
     {
         return await FlexGetAsync<FlexListResponse<FlexDev>>($"door/list?offset={offset}&max={max}");

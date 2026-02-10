@@ -11,6 +11,7 @@ public static class FlexEvtCodeHelper
             11 => "Controller Offline",
             15 => "Credential Reader Online",
             16 => "Credential Reader Offline",
+            17 => "Card Read",
             48 => "Access Granted",
             49 => "Access Denied",
             52 => "Door Forced",

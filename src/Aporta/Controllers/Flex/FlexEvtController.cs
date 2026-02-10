@@ -36,6 +36,20 @@ public class FlexEvtController : ControllerBase
         });
     }
 
+    [HttpGet("raw-reads")]
+    public async Task<IActionResult> RawReads()
+    {
+        var rawReads = await _repository.GetUnconsumedRawReads();
+
+        return Ok(new FlexListResponse<FlexEvt>
+        {
+            Offset = 0,
+            Max = 100,
+            Count = rawReads.Count(),
+            InstanceList = rawReads.Select(FlexMapper.ToFlex).ToList(),
+        });
+    }
+
     [HttpGet("show/{id}")]
     public async Task<IActionResult> Show(string id)
     {
