@@ -1387,6 +1387,97 @@ public class Z9OpenCommunityProtocolService : IDisposable
     }
 
     /// <summary>
+    /// Sends a TAMPER or TAMPER_NORMAL event to Z9.
+    /// </summary>
+    public void SendTamperEvent(OsdpReaderConfig config, bool isTamper)
+    {
+        if (config == null)
+        {
+            _logger.LogWarning("Cannot send tamper event: config is null");
+            return;
+        }
+
+        var evtCode = isTamper ? EvtCode.Tamper : EvtCode.TamperNormal;
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var evt = new Evt
+        {
+            EvtCode = evtCode,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            EvtDevRef = new EvtDevRef
+            {
+                Unid = config.Unid,
+                Name = config.Name,
+                DevType = DevType.CredReader
+            }
+        };
+
+        _z9EvtRepository.Insert(evt).GetAwaiter().GetResult();
+
+        if (!IsConnected)
+        {
+            _logger.LogWarning("Cannot send tamper event: not connected");
+            return;
+        }
+
+        var message = new SpCoreMessage { Type = SpCoreMessage.Types.Type.Evt };
+        message.Evt.Add(evt);
+
+        _logger.LogInformation("Sending {EvtCode} event for reader {Name} (unid={Unid})",
+            evtCode, config.Name, config.Unid);
+
+        WriteMessage(message);
+    }
+
+    /// <summary>
+    /// Sends a CRED_READER_POWER_CYCLE event to Z9.
+    /// </summary>
+    public void SendCredReaderPowerCycleEvent(OsdpReaderConfig config)
+    {
+        if (config == null)
+        {
+            _logger.LogWarning("Cannot send power cycle event: config is null");
+            return;
+        }
+
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var evt = new Evt
+        {
+            EvtCode = EvtCode.CredReaderPowerCycle,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            EvtDevRef = new EvtDevRef
+            {
+                Unid = config.Unid,
+                Name = config.Name,
+                DevType = DevType.CredReader
+            }
+        };
+
+        _z9EvtRepository.Insert(evt).GetAwaiter().GetResult();
+
+        if (!IsConnected)
+        {
+            _logger.LogWarning("Cannot send power cycle event: not connected");
+            return;
+        }
+
+        var message = new SpCoreMessage { Type = SpCoreMessage.Types.Type.Evt };
+        message.Evt.Add(evt);
+
+        _logger.LogInformation("Sending CRED_READER_POWER_CYCLE event for reader {Name} (unid={Unid})",
+            config.Name, config.Unid);
+
+        WriteMessage(message);
+    }
+
+    /// <summary>
     /// Sends a door state event (unlocked/locked/opened/closed) to Z9.
     /// </summary>
     /// <param name="config">The OSDP reader configuration (to look up door info).</param>

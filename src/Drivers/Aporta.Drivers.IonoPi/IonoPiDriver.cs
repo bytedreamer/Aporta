@@ -85,6 +85,7 @@ public class IonoPiDriver : IHardwareDriver
     public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
     public event EventHandler<StateChangedEventArgs> StateChanged;
     public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
+    public event EventHandler<LocalStatusChangedEventArgs> LocalStatusChanged;
 
     protected virtual void OnUpdatedEndpoints()
     {

@@ -172,6 +172,8 @@ public class ExtensionService(
 
     public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
 
+    public event EventHandler<LocalStatusChangedEventArgs> LocalStatusChanged;
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private async Task DiscoverExtensions()
     {
@@ -252,6 +254,7 @@ public class ExtensionService(
             extension.Driver.AccessCredentialReceived += DriverOnAccessCredentialReceived;
             extension.Driver.StateChanged += DriverOnStateChanged;
             extension.Driver.OnlineStatusChanged += DriverOnOnlineStatusChanged;
+            extension.Driver.LocalStatusChanged += DriverOnLocalStatusChanged;
 
             extension.Driver.Load(extension.Configuration, dataEncryption, loggerFactory);
             extension.Configuration = extension.Driver.CurrentConfiguration();
@@ -395,6 +398,11 @@ public class ExtensionService(
         OnlineStatusChanged?.Invoke(this, eventArgs);
     }
 
+    private void DriverOnLocalStatusChanged(object sender, LocalStatusChangedEventArgs eventArgs)
+    {
+        LocalStatusChanged?.Invoke(this, eventArgs);
+    }
+
     private async Task SaveCurrentConfiguration(ExtensionHost extension)
     {
         try
@@ -439,6 +447,7 @@ public class ExtensionService(
             extension.Driver.AccessCredentialReceived -= DriverOnAccessCredentialReceived;
             extension.Driver.StateChanged -= DriverOnStateChanged;
             extension.Driver.OnlineStatusChanged -= DriverOnOnlineStatusChanged;
+            extension.Driver.LocalStatusChanged -= DriverOnLocalStatusChanged;
 
             extension.Host.Unload();
             extension.Loaded = false;

@@ -126,6 +126,9 @@ public class StartupWorker : BackgroundService
                 // Subscribe to device online status changes to forward via community protocol
                 _extensionService.OnlineStatusChanged += OnOnlineStatusChanged;
 
+                // Subscribe to local status changes (tamper, power cycle) from OSDP readers
+                _extensionService.LocalStatusChanged += OnLocalStatusChanged;
+
                 // Subscribe to access decisions to forward via community protocol
                 _accessService.AccessDecisionMade += OnAccessDecisionMade;
 
@@ -165,6 +168,7 @@ public class StartupWorker : BackgroundService
             _accessService.AccessDecisionMade -= OnAccessDecisionMade;
             _extensionService.StateChanged -= OnStateChanged;
             _z9OpenCommunityProtocolService.DevActionRequested -= OnDevActionRequested;
+            _extensionService.LocalStatusChanged -= OnLocalStatusChanged;
             _extensionService.OnlineStatusChanged -= OnOnlineStatusChanged;
             _z9OpenCommunityProtocolService.OsdpConfigurationReceived -= OnOsdpConfigurationReceived;
             _z9OpenCommunityProtocolService.Stop();
@@ -309,6 +313,9 @@ public class StartupWorker : BackgroundService
 
         // Subscribe to online status changes for auto Door creation
         _extensionService.OnlineStatusChanged += OnOnlineStatusChanged;
+
+        // Subscribe to local status changes (tamper, power cycle) from OSDP readers
+        _extensionService.LocalStatusChanged += OnLocalStatusChanged;
 
         // Subscribe to state changes for door contact/REX/strike tracking
         _extensionService.StateChanged += OnStateChanged;
@@ -464,6 +471,35 @@ public class StartupWorker : BackgroundService
 
         _devStateService.UpdateAspect(config.Unid, DevAspect.Primary,
             s => s.CommState = e.IsOnline ? CommState.Online : CommState.Offline);
+    }
+
+    private void OnLocalStatusChanged(object sender, LocalStatusChangedEventArgs e)
+    {
+        var endpointId = e.Endpoint?.Id;
+        if (string.IsNullOrEmpty(endpointId) || !IsReaderEndpoint(endpointId))
+            return;
+
+        var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(endpointId);
+        if (config == null)
+        {
+            _logger.LogDebug("No Z9 config found for endpoint {EndpointId}, skipping local status event", endpointId);
+            return;
+        }
+
+        if (e.TamperState != null)
+        {
+            _logger.LogInformation("Reader {Name} tamper state: {TamperState}",
+                config.Name, e.TamperState.Value ? "TAMPER" : "NORMAL");
+            _z9OpenCommunityProtocolService.SendTamperEvent(config, e.TamperState.Value);
+            _devStateService.UpdateAspect(config.Unid, DevAspect.Primary,
+                s => s.TamperState = e.TamperState.Value ? TamperState.Tamper : TamperState.Normal);
+        }
+
+        if (e.PowerCycleDetected)
+        {
+            _logger.LogInformation("Reader {Name} power cycle detected", config.Name);
+            _z9OpenCommunityProtocolService.SendCredReaderPowerCycleEvent(config);
+        }
     }
 
     /// <summary>

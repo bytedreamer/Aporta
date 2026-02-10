@@ -182,9 +182,12 @@ public class IonoPiMaxDriver : IHardwareDriver
 
     /// <inheritdoc />
     public event EventHandler<OnlineStatusChangedEventArgs>? OnlineStatusChanged;
-        
+
     protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs eventArgs)
     {
         OnlineStatusChanged?.Invoke(this, eventArgs);
     }
+
+    /// <inheritdoc />
+    public event EventHandler<LocalStatusChangedEventArgs>? LocalStatusChanged;
 }

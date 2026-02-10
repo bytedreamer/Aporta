@@ -37,6 +37,7 @@ public class OSDPDriver : IHardwareDriver
     private readonly ConcurrentDictionary<int, PKOCDevice> _pkocDevices = new();
     private readonly ConcurrentDictionary<string, IOsdpConnection> _connections = new();
     private readonly ConcurrentDictionary<(Guid connectionId, byte address), (string pin, CancellationTokenSource cts)> _pendingPins = new();
+    private readonly ConcurrentDictionary<(Guid connectionId, byte address), (bool tamper, bool power)> _lastLocalStatus = new();
     private const int PinBufferTimeoutMs = 5000;
 
     private ControlPanel _panel;
@@ -64,7 +65,8 @@ public class OSDPDriver : IHardwareDriver
         _panel.InputStatusReportReplyReceived += PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived += PanelOnOutputStatusReportReplyReceived;
         _panel.NakReplyReceived += PanelOnNakReplyReceived;
-        
+        _panel.LocalStatusReportReplyReceived += PanelOnLocalStatusReportReplyReceived;
+
         _pkocPanel.CardPresented += PkocPanelOnCardPresented;
 
         ExtractConfiguration(configuration);
@@ -167,6 +169,9 @@ public class OSDPDriver : IHardwareDriver
                         return;
                     }
                     _logger.LogInformation("ProcessDeviceCapabilities succeeded");
+
+                    // Query initial local status (tamper / power cycle)
+                    await QueryInitialLocalStatus(eventArgs.ConnectionId, eventArgs.Address, matchingBus.PortName);
 
                     matchingDevice.IsConnected = true;
 
@@ -645,7 +650,8 @@ public class OSDPDriver : IHardwareDriver
         _panel.InputStatusReportReplyReceived -= PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived -= PanelOnOutputStatusReportReplyReceived;
         _panel.NakReplyReceived -= PanelOnNakReplyReceived;
-        
+        _panel.LocalStatusReportReplyReceived -= PanelOnLocalStatusReportReplyReceived;
+
         _pkocPanel.CardPresented -= PkocPanelOnCardPresented;
     }
 
@@ -693,6 +699,7 @@ public class OSDPDriver : IHardwareDriver
     public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
     public event EventHandler<StateChangedEventArgs> StateChanged;
     public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
+    public event EventHandler<LocalStatusChangedEventArgs> LocalStatusChanged;
 
     private string AddBus(string parameters)
     {
@@ -951,5 +958,94 @@ public class OSDPDriver : IHardwareDriver
             _logger.LogInformation("Endpoint {EndpointId} is now {Status}", endpoint.Id, isOnline ? "online" : "offline");
             OnOnlineStatusChanged(new OnlineStatusChangedEventArgs(endpoint, isOnline));
         }
+    }
+
+    private void PanelOnLocalStatusReportReplyReceived(object sender,
+        ControlPanel.LocalStatusReportReplyEventArgs eventArgs)
+    {
+        Task.Run(() =>
+        {
+            try
+            {
+                var key = (eventArgs.ConnectionId, eventArgs.Address);
+                var currentTamper = eventArgs.LocalStatus.Tamper;
+                var currentPower = eventArgs.LocalStatus.PowerFailure;
+
+                var previous = _lastLocalStatus.TryGetValue(key, out var prev) ? prev : (tamper: false, power: false);
+
+                var tamperChanged = previous.tamper != currentTamper;
+                var powerCycleDetected = !previous.power && currentPower;
+
+                _lastLocalStatus[key] = (currentTamper, currentPower);
+
+                if (!tamperChanged && !powerCycleDetected) return;
+
+                var readerEndpoint = FindReaderEndpoint(eventArgs.ConnectionId, eventArgs.Address);
+                if (readerEndpoint == null)
+                {
+                    _logger.LogDebug("No reader endpoint found for LocalStatus at address {Address}", eventArgs.Address);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "LocalStatus change on {EndpointName}: tamperChanged={TamperChanged} (tamper={Tamper}), powerCycleDetected={PowerCycleDetected}",
+                    readerEndpoint.Name, tamperChanged, currentTamper, powerCycleDetected);
+
+                LocalStatusChanged?.Invoke(this, new LocalStatusChangedEventArgs(
+                    readerEndpoint,
+                    tamperChanged ? currentTamper : null,
+                    powerCycleDetected));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in PanelOnLocalStatusReportReplyReceived");
+            }
+        });
+    }
+
+    private async Task QueryInitialLocalStatus(Guid connectionId, byte address, string portName)
+    {
+        try
+        {
+            var localStatus = await _panel.LocalStatus(connectionId, address).ConfigureAwait(false);
+            if (localStatus == null) return;
+
+            var key = (connectionId, address);
+            _lastLocalStatus[key] = (localStatus.Tamper, localStatus.PowerFailure);
+
+            var tamperActive = localStatus.Tamper;
+            // Power flag is expected to be true on first connect (reader just started)
+            var powerCycleDetected = localStatus.PowerFailure;
+
+            if (!tamperActive && !powerCycleDetected) return;
+
+            var readerEndpoint = FindReaderEndpoint(connectionId, address);
+            if (readerEndpoint == null) return;
+
+            _logger.LogInformation(
+                "Initial LocalStatus for {EndpointName}: tamper={Tamper}, powerCycle={PowerCycle}",
+                readerEndpoint.Name, tamperActive, powerCycleDetected);
+
+            LocalStatusChanged?.Invoke(this, new LocalStatusChangedEventArgs(
+                readerEndpoint,
+                tamperActive ? true : null,
+                powerCycleDetected));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to query initial local status for address {Address}", address);
+        }
+    }
+
+    private IEndpoint FindReaderEndpoint(Guid connectionId, byte address)
+    {
+        return _endpoints.FirstOrDefault(e =>
+        {
+            var (portName, addr) = ParseEndpointId(e.Id);
+            return _portMapping.TryGetValue(portName, out var connId) &&
+                   connId == connectionId &&
+                   addr == address.ToString() &&
+                   e.Id.EndsWith($":R0");
+        });
     }
 }

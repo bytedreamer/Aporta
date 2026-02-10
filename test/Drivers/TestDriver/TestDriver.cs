@@ -119,6 +119,8 @@ public class TestDriver : IHardwareDriver
 
     public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
 
+    public event EventHandler<LocalStatusChangedEventArgs> LocalStatusChanged;
+
     protected virtual void OnUpdatedEndpoints()
     {
         UpdatedEndpoints?.Invoke(this, EventArgs.Empty);
