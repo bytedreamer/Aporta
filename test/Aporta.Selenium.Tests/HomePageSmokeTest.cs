@@ -130,8 +130,37 @@ public class HomePageSmokeTest
 
         _driver!.Navigate().GoToUrl(BaseUrl);
 
-        // Wait for Blazor WASM to fully load and render
-        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(30));
+        // Wait for Blazor WASM to fully load and render the login screen
+        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(60));
+        wait.Until(d =>
+        {
+            try
+            {
+                var body = d.FindElement(By.TagName("body"));
+                return body.Text.Contains("Aporta Login");
+            }
+            catch (NoSuchElementException)
+            {
+                return false;
+            }
+        });
+
+        // Log in through the UI
+        var inputs = _driver.FindElements(By.CssSelector("input"));
+        inputs[0].SendKeys("admin");
+        inputs[1].SendKeys("pass");
+
+        var buttons = _driver.FindElements(By.TagName("button"));
+        foreach (var button in buttons)
+        {
+            if (button.Displayed && button.Text.Contains("Login"))
+            {
+                button.Click();
+                break;
+            }
+        }
+
+        // Wait for home page to load after login
         wait.Until(d =>
         {
             try

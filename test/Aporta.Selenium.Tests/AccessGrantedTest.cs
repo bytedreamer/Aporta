@@ -114,6 +114,27 @@ public class AccessGrantedTest
             try
             {
                 var body = d.FindElement(By.TagName("body"));
+                return body.Text.Contains("Aporta Login");
+            }
+            catch (NoSuchElementException)
+            {
+                return false;
+            }
+        });
+
+        TakeScreenshot("00_login_screen", "Login screen presented before authentication");
+
+        // Log in through the UI
+        var inputs = _driver.FindElements(By.CssSelector("input"));
+        inputs[0].SendKeys("admin");
+        inputs[1].SendKeys("pass");
+        ClickButtonContaining("Login");
+
+        warmupWait.Until(d =>
+        {
+            try
+            {
+                var body = d.FindElement(By.TagName("body"));
                 return body.Text.Contains("Welcome to Aporta");
             }
             catch (NoSuchElementException)
@@ -121,6 +142,8 @@ public class AccessGrantedTest
                 return false;
             }
         });
+
+        TakeScreenshot("00_logged_in", "Home page loads after successful authentication");
     }
 
     [OneTimeTearDown]

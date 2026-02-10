@@ -13,10 +13,36 @@ public class FlexApiService
 {
     private readonly HttpClient _httpClient;
     private string _sessionToken;
+    private string _username;
+    private string _password;
 
     public FlexApiService(HttpClient httpClient)
     {
         _httpClient = httpClient;
+    }
+
+    public bool IsAuthenticated => !string.IsNullOrEmpty(_sessionToken);
+
+    public async Task<FlexAuthenticateResult> LoginAsync(string username, string password)
+    {
+        var request = new FlexAuthenticateRequest { Username = username, Password = password };
+        var response = await _httpClient.PostAsJsonAsync("authenticate", request);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<FlexAuthenticateResult>();
+        if (result?.Authenticated == true)
+        {
+            _sessionToken = result.SessionToken;
+            _username = username;
+            _password = password;
+        }
+        return result;
+    }
+
+    public void Logout()
+    {
+        _sessionToken = null;
+        _username = null;
+        _password = null;
     }
 
     public async Task<FlexListResponse<FlexEvt>> GetEvtListAsync(int offset, int max)
@@ -43,8 +69,10 @@ public class FlexApiService
     {
         if (!string.IsNullOrEmpty(_sessionToken))
             return;
+        if (string.IsNullOrEmpty(_username))
+            throw new InvalidOperationException("Not authenticated");
 
-        var request = new FlexAuthenticateRequest { Username = "admin", Password = "pass" };
+        var request = new FlexAuthenticateRequest { Username = _username, Password = _password };
         var response = await _httpClient.PostAsJsonAsync("authenticate", request);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<FlexAuthenticateResult>();

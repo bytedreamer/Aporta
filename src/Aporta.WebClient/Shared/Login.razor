@@ -1,0 +1,64 @@
+@using Aporta.Shared.Calls
+@inject IJSRuntime JS
+
+<div style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+    <Card Style="width: 400px;">
+        <CardHeader>
+            <CardTitle>Aporta Login</CardTitle>
+        </CardHeader>
+        <CardBody>
+            <Field>
+                <FieldLabel>Username</FieldLabel>
+                <TextEdit @bind-Text="_username" Placeholder="Username" />
+            </Field>
+            <Field>
+                <FieldLabel>Password</FieldLabel>
+                <TextEdit @bind-Text="_password" Role="TextRole.Password" Placeholder="Password"
+                          KeyDown="@OnKeyDown" />
+            </Field>
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <Paragraph TextColor="TextColor.Danger">@_errorMessage</Paragraph>
+            }
+            <Button Color="Color.Primary" Block Clicked="@DoLogin" Loading="@_loading">Login</Button>
+        </CardBody>
+    </Card>
+</div>
+
+@code {
+    [Inject] private FlexApiService FlexApi { get; set; }
+    [Parameter] public EventCallback OnLoginSuccess { get; set; }
+
+    private string _username = "";
+    private string _password = "";
+    private string _errorMessage;
+    private bool _loading;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await DoLogin();
+    }
+
+    private async Task DoLogin()
+    {
+        _errorMessage = null;
+        _loading = true;
+        try
+        {
+            var result = await FlexApi.LoginAsync(_username, _password);
+            if (result?.Authenticated == true)
+            {
+                await JS.InvokeVoidAsync("sessionStorage.setItem", "aporta_username", _username);
+                await JS.InvokeVoidAsync("sessionStorage.setItem", "aporta_password", _password);
+                await OnLoginSuccess.InvokeAsync();
+            }
+            else
+                _errorMessage = "Invalid username or password";
+        }
+        catch
+        {
+            _errorMessage = "Unable to connect to server";
+        }
+        _loading = false;
+    }
+}
