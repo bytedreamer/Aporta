@@ -100,7 +100,7 @@ The web UI communicates with the server through the Z9/Flex Community Profile AP
 ### Z9/Open Community Profile
 - DbChange: Handle device deletions (devDelete, devDeleteAll) — currently silently ignored, causing stale devices to accumulate
 - EvtControl: Implement event flow control (StartContinuous, ConsumeUpTo) for generic delivery of events persisted while offline
-- Events: CONTROLLER_ONLINE / CONTROLLER_OFFLINE — distinguish controller restart from connection drop
+- Events: CONTROLLER_ONLINE / CONTROLLER_OFFLINE — for IO_CONTROLLER_SUB subcontrollers (requires subcontroller device model first)
 - Events: Power/battery (POWER_PRIMARY/OFF_PRIMARY/NONE, BATTERY_OK/LOW/FAIL/CRITICAL) — requires power monitoring hardware
 
 ## Installation ##
