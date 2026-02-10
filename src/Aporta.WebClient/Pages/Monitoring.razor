@@ -40,10 +40,10 @@ else
                             @(ParseFlexTime(evt.HwTime))
                         </TableRowHeader>
                         <TableRowCell>
-                            @(FlexEvtCodeHelper.GetEvtCodeText(evt.EvtCode))
+                            @evt.EvtCodeText
                         </TableRowCell>
                         <TableRowCell>
-                            @(FlexEvtCodeHelper.GetEvtSubCodeText(evt.EvtSubCode))
+                            @evt.EvtSubCodeText
                         </TableRowCell>
                         <TableRowCell>
                             @evt.EvtDevRef?.Name

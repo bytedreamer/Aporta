@@ -19,6 +19,9 @@ public class FlexEvt
     [JsonPropertyName("evtCode")]
     public int? EvtCode { get; set; }
 
+    [JsonPropertyName("evtCodeText")]
+    public string EvtCodeText { get; set; }
+
     [JsonPropertyName("externalEvtCodeText")]
     public string ExternalEvtCodeText { get; set; }
 
@@ -27,6 +30,9 @@ public class FlexEvt
 
     [JsonPropertyName("evtSubCode")]
     public int? EvtSubCode { get; set; }
+
+    [JsonPropertyName("evtSubCodeText")]
+    public string EvtSubCodeText { get; set; }
 
     [JsonPropertyName("externalSubCodeText")]
     public string ExternalSubCodeText { get; set; }
