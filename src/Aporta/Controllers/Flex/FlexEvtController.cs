@@ -10,7 +10,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/evt")]
+[Route("evt")]
 public class FlexEvtController : ControllerBase
 {
     private readonly Z9EvtRepository _repository;

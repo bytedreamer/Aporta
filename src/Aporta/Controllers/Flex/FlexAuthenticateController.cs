@@ -14,14 +14,14 @@ public class FlexAuthenticateController : ControllerBase
         _sessionService = sessionService;
     }
 
-    [HttpPost("flex/authenticate")]
+    [HttpPost("authenticate")]
     public IActionResult Authenticate([FromBody] FlexAuthenticateRequest request)
     {
         var result = _sessionService.Authenticate(request.Username, request.Password);
         return Ok(result);
     }
 
-    [HttpGet("flex/terminate")]
+    [HttpGet("terminate")]
     public IActionResult Terminate()
     {
         var token = Request.Headers["sessionToken"].ToString();

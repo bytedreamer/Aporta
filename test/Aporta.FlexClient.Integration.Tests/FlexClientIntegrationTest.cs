@@ -13,7 +13,7 @@ namespace Aporta.FlexClient.Integration.Tests;
 [TestFixture]
 public class FlexClientIntegrationTest
 {
-    private const string BaseUrl = "https://localhost:5001/flex";
+    private const string BaseUrl = "https://localhost:5001";
     private const int AportaStartupTimeoutSeconds = 60;
 
     private static readonly string AportaPath =

@@ -8,7 +8,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/dataFormat")]
+[Route("dataFormat")]
 public class FlexDataFormatController : FlexCrudControllerBase<DataFormat, FlexDataFormat>
 {
     private readonly DataFormatRepository _repository;

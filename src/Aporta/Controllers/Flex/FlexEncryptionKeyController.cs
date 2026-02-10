@@ -8,7 +8,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/encryptionKey")]
+[Route("encryptionKey")]
 public class FlexEncryptionKeyController : FlexCrudControllerBase<EncryptionKey, FlexEncryptionKey>
 {
     private readonly EncryptionKeyRepository _repository;

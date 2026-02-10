@@ -10,7 +10,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/basicDataLayout")]
+[Route("basicDataLayout")]
 public class FlexBasicDataLayoutController : FlexCrudControllerBase<DataLayout, FlexDataLayout>
 {
     private readonly DataLayoutRepository _repository;

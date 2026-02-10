@@ -13,7 +13,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/cred")]
+[Route("cred")]
 public class FlexCredController : FlexCrudControllerBase<Cred, FlexCred>
 {
     private readonly Z9CredRepository _repository;

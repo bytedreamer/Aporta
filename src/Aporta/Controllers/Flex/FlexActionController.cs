@@ -16,7 +16,7 @@ public class FlexActionController : ControllerBase
         _protocolService = protocolService;
     }
 
-    [HttpGet("flex/json/doorModeChange")]
+    [HttpGet("json/doorModeChange")]
     public IActionResult DoorModeChange([FromQuery] int? unid, [FromQuery] string uuid, [FromQuery] string tag, [FromQuery] string value)
     {
         var doorUnid = unid ?? 0;
@@ -50,7 +50,7 @@ public class FlexActionController : ControllerBase
         return Ok(new FlexVoid());
     }
 
-    [HttpGet("flex/json/doorMomentaryUnlock")]
+    [HttpGet("json/doorMomentaryUnlock")]
     public IActionResult DoorMomentaryUnlock([FromQuery] int? unid, [FromQuery] string uuid, [FromQuery] string tag, [FromQuery] bool? extDoorTime)
     {
         var doorUnid = unid ?? 0;

@@ -14,7 +14,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/dev")]
+[Route("dev")]
 public class FlexDevController : FlexCrudControllerBase<Dev, FlexDev>
 {
     private readonly Z9DevRepository _repository;
@@ -71,7 +71,7 @@ public abstract class FlexDevTypeControllerBase : FlexCrudControllerBase<Dev, Fl
 }
 
 [ApiController]
-[Route("flex/door")]
+[Route("door")]
 public class FlexDoorController : FlexDevTypeControllerBase
 {
     private readonly Z9DevRepository _repository;
@@ -156,7 +156,7 @@ public class FlexDoorController : FlexDevTypeControllerBase
 }
 
 [ApiController]
-[Route("flex/credReader")]
+[Route("credReader")]
 public class FlexCredReaderController : FlexDevTypeControllerBase
 {
     public FlexCredReaderController(IDataAccess dataAccess) : base(dataAccess) { }
@@ -164,7 +164,7 @@ public class FlexCredReaderController : FlexDevTypeControllerBase
 }
 
 [ApiController]
-[Route("flex/controller")]
+[Route("controller")]
 public class FlexControllerController : FlexDevTypeControllerBase
 {
     public FlexControllerController(IDataAccess dataAccess) : base(dataAccess) { }
@@ -172,7 +172,7 @@ public class FlexControllerController : FlexDevTypeControllerBase
 }
 
 [ApiController]
-[Route("flex/sensor")]
+[Route("sensor")]
 public class FlexSensorController : FlexDevTypeControllerBase
 {
     private readonly Z9DevRepository _repository;
@@ -264,7 +264,7 @@ public class FlexSensorController : FlexDevTypeControllerBase
 }
 
 [ApiController]
-[Route("flex/actuator")]
+[Route("actuator")]
 public class FlexActuatorController : FlexDevTypeControllerBase
 {
     private readonly Z9DevRepository _repository;
@@ -380,7 +380,7 @@ public class FlexActuatorController : FlexDevTypeControllerBase
 }
 
 [ApiController]
-[Route("flex/nodeDev")]
+[Route("nodeDev")]
 public class FlexNodeDevController : FlexDevTypeControllerBase
 {
     public FlexNodeDevController(IDataAccess dataAccess) : base(dataAccess) { }

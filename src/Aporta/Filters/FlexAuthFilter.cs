@@ -15,14 +15,15 @@ public class FlexAuthFilter : IActionFilter
 
     public void OnActionExecuting(ActionExecutingContext context)
     {
-        var path = context.HttpContext.Request.Path.Value;
+        var controllerType = context.Controller.GetType();
 
-        // Skip auth check for authenticate endpoint
-        if (path != null && path.StartsWith("/flex/authenticate"))
+        // Only apply to Flex controllers (namespace Aporta.Controllers.Flex)
+        if (controllerType.Namespace == null ||
+            !controllerType.Namespace.StartsWith("Aporta.Controllers.Flex"))
             return;
 
-        // Only apply to /flex/ routes
-        if (path == null || !path.StartsWith("/flex/"))
+        // Skip auth check for authenticate/terminate controller
+        if (controllerType.Name == "FlexAuthenticateController")
             return;
 
         var token = context.HttpContext.Request.Headers["sessionToken"].ToString();

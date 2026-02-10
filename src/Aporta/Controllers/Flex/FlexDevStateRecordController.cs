@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/devStateRecord")]
+[Route("devStateRecord")]
 public class FlexDevStateRecordController : ControllerBase
 {
     private readonly DevStateService _devStateService;

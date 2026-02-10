@@ -14,7 +14,7 @@ namespace Aporta.Controllers.Flex;
 /// This controller filters DataFormats to only those with binary format extensions.
 /// </summary>
 [ApiController]
-[Route("flex/binaryFormat")]
+[Route("binaryFormat")]
 public class FlexBinaryFormatController : FlexCrudControllerBase<DataFormat, FlexDataFormat>
 {
     private readonly DataFormatRepository _repository;

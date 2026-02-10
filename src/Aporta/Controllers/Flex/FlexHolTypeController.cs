@@ -8,7 +8,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/holType")]
+[Route("holType")]
 public class FlexHolTypeController : FlexCrudControllerBase<HolType, FlexHolType>
 {
     private readonly HolTypeRepository _repository;

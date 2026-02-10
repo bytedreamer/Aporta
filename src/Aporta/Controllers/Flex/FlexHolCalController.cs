@@ -8,7 +8,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/holCal")]
+[Route("holCal")]
 public class FlexHolCalController : FlexCrudControllerBase<HolCal, FlexHolCal>
 {
     private readonly HolCalRepository _repository;

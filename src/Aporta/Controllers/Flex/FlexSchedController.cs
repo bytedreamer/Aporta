@@ -8,7 +8,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/sched")]
+[Route("sched")]
 public class FlexSchedController : FlexCrudControllerBase<Sched, FlexSched>
 {
     private readonly SchedRepository _repository;

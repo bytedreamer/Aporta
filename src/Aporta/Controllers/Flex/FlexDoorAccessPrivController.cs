@@ -8,7 +8,7 @@ using Z9.Spcore.Proto;
 namespace Aporta.Controllers.Flex;
 
 [ApiController]
-[Route("flex/doorAccessPriv")]
+[Route("doorAccessPriv")]
 public class FlexDoorAccessPrivController : FlexCrudControllerBase<Priv, FlexPriv>
 {
     private readonly PrivRepository _repository;

@@ -81,7 +81,7 @@ Aporta supports the Z9/Flex Community Profile as a JSON/REST API, intended for u
 
 ## API Architecture ##
 
-The web UI communicates with the server through the Z9/Flex Community Profile API (`/flex/*` endpoints). The Extensions and Driver Configuration pages still use the original REST API (`/api/Extensions`), which is maintained as-is for now.
+The web UI communicates with the server through the Z9/Flex Community Profile API (e.g., `/cred/list`, `/door/list`). The Extensions and Driver Configuration pages still use the original REST API (`/api/Extensions`), which is maintained as-is for now.
 
 ## TODO ##
 
