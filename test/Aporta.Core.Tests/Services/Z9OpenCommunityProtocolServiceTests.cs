@@ -80,6 +80,24 @@ public class Z9OpenCommunityProtocolServiceTests
         mos.Write(message);
     }
 
+    /// <summary>
+    /// Completes the identification handshake and consumes the CONTROLLER_STARTUP event.
+    /// </summary>
+    private static SpCoreMessage CompleteIdentification(SpCoreMessageInputStream mis, SpCoreMessageOutputStream mos)
+    {
+        SendIdentification(mos);
+        var identResponse = mis.Read();
+        Assert.That(identResponse.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
+
+        // Consume CONTROLLER_STARTUP event sent after identification
+        var startupEvt = mis.Read();
+        Assert.That(startupEvt.Type, Is.EqualTo(SpCoreMessage.Types.Type.Evt));
+        Assert.That(startupEvt.Evt.Count, Is.EqualTo(1));
+        Assert.That(startupEvt.Evt[0].EvtCode, Is.EqualTo(EvtCode.ControllerStartup));
+
+        return identResponse;
+    }
+
     [Test]
     public void Identification_PanelConnects_BothSidesIdentify()
     {
@@ -87,11 +105,8 @@ public class Z9OpenCommunityProtocolServiceTests
 
         try
         {
-            SendIdentification(mos);
-
-            var response = mis.Read();
+            var response = CompleteIdentification(mis, mos);
             Assert.That(response, Is.Not.Null);
-            Assert.That(response.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
             Assert.That(response.Identification.Id, Is.EqualTo("aporta-panel"));
 
             Thread.Sleep(100);
@@ -113,9 +128,7 @@ public class Z9OpenCommunityProtocolServiceTests
 
         try
         {
-            SendIdentification(mos);
-            var identResponse = mis.Read();
-            Assert.That(identResponse.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
+            CompleteIdentification(mis, mos);
 
             var dbChange = new DbChange();
             dbChange.Sched.Add(new Sched { Unid = 1, Name = "Test Schedule" });
@@ -148,9 +161,7 @@ public class Z9OpenCommunityProtocolServiceTests
 
         try
         {
-            SendIdentification(mos);
-            var identResponse = mis.Read();
-            Assert.That(identResponse.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
+            CompleteIdentification(mis, mos);
 
             var dbChange = new DbChange();
             dbChange.Cred.Add(new Cred
@@ -206,9 +217,7 @@ public class Z9OpenCommunityProtocolServiceTests
 
         try
         {
-            SendIdentification(mos);
-            var identResponse = mis.Read();
-            Assert.That(identResponse.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
+            CompleteIdentification(mis, mos);
 
             var dbChange = new DbChange();
             dbChange.Cred.Add(new Cred
@@ -255,9 +264,7 @@ public class Z9OpenCommunityProtocolServiceTests
 
         try
         {
-            SendIdentification(mos);
-            var identResponse = mis.Read();
-            Assert.That(identResponse.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
+            CompleteIdentification(mis, mos);
 
             var dbChange = new DbChange();
             dbChange.Cred.Add(new Cred
@@ -309,9 +316,7 @@ public class Z9OpenCommunityProtocolServiceTests
 
         try
         {
-            SendIdentification(mos);
-            var identResponse = mis.Read();
-            Assert.That(identResponse.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
+            CompleteIdentification(mis, mos);
 
             var devActionMsg = new SpCoreMessage
             {
@@ -346,9 +351,7 @@ public class Z9OpenCommunityProtocolServiceTests
 
         try
         {
-            SendIdentification(mos);
-            var identResponse = mis.Read();
-            Assert.That(identResponse.Type, Is.EqualTo(SpCoreMessage.Types.Type.Identification));
+            CompleteIdentification(mis, mos);
 
             Thread.Sleep(100);
             Assert.That(_z9OpenCommunityProtocolService.IsConnected, Is.True);

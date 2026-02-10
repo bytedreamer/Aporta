@@ -96,6 +96,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private SpCoreMessageOutputStream _mos;
     private readonly object _writeLock = new();
     private string _id = "aporta-panel";
+    private Evt _controllerStartupEvt;
 
     public bool IsConnected { get; private set; }
     public bool IsIdentified { get; private set; }
@@ -131,6 +132,8 @@ public class Z9OpenCommunityProtocolService : IDisposable
         _stopping = false;
         if (!string.IsNullOrWhiteSpace(id))
             _id = id;
+
+        PersistControllerStartupEvent();
 
         _logger.LogInformation("Z9/Open Community protocol service connecting to {Host}:{Port} id={Id}", host, port, _id);
 
@@ -227,6 +230,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 _logger.LogInformation("Z9/Open Community host identified");
                 // Don't re-send - we already sent ours as the initiating side
                 SendAllDevStateRecords(alwaysRespond: false);
+                SendControllerStartupEvent();
                 break;
 
             case SpCoreMessage.Types.Type.DbChange:
@@ -1197,6 +1201,60 @@ public class Z9OpenCommunityProtocolService : IDisposable
         {
             return _endpointToConfig.TryGetValue(endpointIdPrefix, out var config) ? config : null;
         }
+    }
+
+    /// <summary>
+    /// Persists a CONTROLLER_STARTUP event to the event DB on application startup,
+    /// before any connection is established. The event will be delivered to the host
+    /// when it connects and starts pulling events.
+    /// </summary>
+    private void PersistControllerStartupEvent()
+    {
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var evt = new Evt
+        {
+            EvtCode = EvtCode.ControllerStartup,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            EvtDevRef = new EvtDevRef
+            {
+                Name = _id,
+                DevType = DevType.IoController,
+                DevMod = DevMod.IoControllerCommunity
+            }
+        };
+
+        // Use top-level controller Dev from DB if available (provides Z9-assigned unid/name)
+        var controllers = _z9DevRepository.GetAllByDevType(DevType.IoController).GetAwaiter().GetResult();
+        var controller = controllers.FirstOrDefault(c => c.DevMod == DevMod.IoControllerCommunity);
+        if (controller != null)
+        {
+            evt.EvtDevRef.Unid = controller.Unid;
+            evt.EvtDevRef.Name = controller.Name;
+        }
+
+        _z9EvtRepository.Insert(evt).GetAwaiter().GetResult();
+        _controllerStartupEvt = evt;
+        _logger.LogInformation("Persisted CONTROLLER_STARTUP event (unid={Unid})", evt.Unid);
+    }
+
+    /// <summary>
+    /// Sends the CONTROLLER_STARTUP event over the wire when the host connection is established.
+    /// Called once per startup cycle from the Identification handler.
+    /// </summary>
+    private void SendControllerStartupEvent()
+    {
+        var evt = _controllerStartupEvt;
+        if (evt == null) return;
+        _controllerStartupEvt = null;
+
+        var message = new SpCoreMessage { Type = SpCoreMessage.Types.Type.Evt };
+        message.Evt.Add(evt);
+        _logger.LogInformation("Sending CONTROLLER_STARTUP event (unid={Unid})", evt.Unid);
+        WriteMessage(message);
     }
 
     /// <summary>
