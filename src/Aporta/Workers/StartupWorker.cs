@@ -612,7 +612,7 @@ public class StartupWorker : BackgroundService
             {
                 try
                 {
-                    await HandleDoorMomentaryUnlock(doorUnid);
+                    await HandleDoorMomentaryUnlock(doorUnid, isHostInitiated: true);
                 }
                 catch (Exception ex)
                 {
@@ -644,7 +644,7 @@ public class StartupWorker : BackgroundService
         }
     }
 
-    private async Task HandleDoorMomentaryUnlock(int doorUnid)
+    private async Task HandleDoorMomentaryUnlock(int doorUnid, bool isHostInitiated = false)
     {
         // Find the reader config whose DoorUnid matches
         var config = _z9OpenCommunityProtocolService.OsdpReaderConfigs
@@ -691,6 +691,12 @@ public class StartupWorker : BackgroundService
         var strikeTimeMs = config.StrikeTimeMs ?? 3000;
 
         await controlPoint.SetState(true);
+
+        if (isHostInitiated)
+        {
+            _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.MomentaryUnlock);
+        }
+
         await Task.Delay(TimeSpan.FromMilliseconds(strikeTimeMs));
         await controlPoint.SetState(false);
 
