@@ -80,6 +80,8 @@ Aporta supports the Z9/Flex Community Profile as a JSON/REST API, intended for u
     - MOMENTARY_UNLOCK audit trail when host initiates a momentary unlock action
     - TAMPER / TAMPER_NORMAL events with dev state tracking when OSDP reader reports tamper
     - CRED_READER_POWER_CYCLE event when OSDP reader reports power cycle
+    - RAW_CRED_READ event in primary mode for credential enrollment
+    - SCHED_ACTIVE / SCHED_INACTIVE events with per-minute schedule evaluation
 
 ## API Architecture ##
 
@@ -99,8 +101,6 @@ The web UI communicates with the server through the Z9/Flex Community Profile AP
 - DbChange: Handle device deletions (devDelete, devDeleteAll) — currently silently ignored, causing stale devices to accumulate
 - EvtControl: Implement event flow control (StartContinuous, ConsumeUpTo) for generic delivery of events persisted while offline
 - Events: CONTROLLER_ONLINE / CONTROLLER_OFFLINE — distinguish controller restart from connection drop
-- Events: RAW_CRED_READ — audit trail of all card swipes regardless of access decision
-- Events: SCHED_ACTIVE / SCHED_INACTIVE — requires schedule evaluation engine on the controller
 - Events: Power/battery (POWER_PRIMARY/OFF_PRIMARY/NONE, BATTERY_OK/LOW/FAIL/CRITICAL) — requires power monitoring hardware
 
 ## Installation ##

@@ -150,6 +150,7 @@ public class StartupWorker : BackgroundService
                 if (isPrimaryConfigMode)
                 {
                     await ConfigurePrimaryMode(primaryConfigPath);
+                    _z9OpenCommunityProtocolService.StartScheduleEvaluation();
                 }
             }
         }
@@ -165,6 +166,7 @@ public class StartupWorker : BackgroundService
         {
             _logger.LogWarning("Application is shutting down");
             CancelAllDoorHeldTimers();
+            _z9OpenCommunityProtocolService.StopScheduleEvaluation();
             _accessService.AccessDecisionMade -= OnAccessDecisionMade;
             _extensionService.StateChanged -= OnStateChanged;
             _z9OpenCommunityProtocolService.DevActionRequested -= OnDevActionRequested;

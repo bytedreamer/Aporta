@@ -89,6 +89,10 @@ public class Z9OpenCommunityProtocolService : IDisposable
     private readonly DevStateService _devStateService;
     private volatile bool _continuousDevStateRecord;
 
+    // Schedule evaluation state
+    private readonly Dictionary<int, bool> _schedActiveState = new(); // unid -> was active
+    private Timer _schedTimer;
+
     private Thread _thread;
     private volatile bool _stopping;
     private TcpClient _client;
@@ -139,10 +143,13 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
         _thread = new Thread(() => Run(host, port)) { IsBackground = true, Name = "Z9OpenCommunityProtocolService" };
         _thread.Start();
+
+        StartScheduleEvaluation();
     }
 
     public void Stop()
     {
+        StopScheduleEvaluation();
         _stopping = true;
         _client?.Close();
         _thread?.Join(TimeSpan.FromSeconds(5));
@@ -152,6 +159,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
 
     public void Dispose()
     {
+        StopScheduleEvaluation();
         Stop();
     }
 
@@ -1541,6 +1549,118 @@ public class Z9OpenCommunityProtocolService : IDisposable
             evtCode, doorName, doorUnid);
 
         WriteMessage(message);
+    }
+
+    /// <summary>
+    /// Sends a SCHED_ACTIVE or SCHED_INACTIVE event.
+    /// </summary>
+    private void SendSchedEvent(Sched sched, bool isActive)
+    {
+        var evtCode = isActive ? EvtCode.SchedActive : EvtCode.SchedInactive;
+        var nowMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var evt = new Evt
+        {
+            EvtCode = evtCode,
+            HwTime = new DateTimeData { Millis = nowMillis },
+            DbTime = new DateTimeData { Millis = nowMillis },
+            Consumed = false,
+            Priority = 0,
+            EvtSchedRef = new EvtSchedRef
+            {
+                Unid = sched.Unid,
+                Name = sched.Name ?? $"Schedule {sched.Unid}",
+                Invert = false
+            }
+        };
+
+        _z9EvtRepository.Insert(evt).GetAwaiter().GetResult();
+
+        if (!IsConnected)
+        {
+            _logger.LogDebug("Schedule event persisted but not sent (not connected): {EvtCode} for schedule {Name} (unid={Unid})",
+                evtCode, sched.Name, sched.Unid);
+            return;
+        }
+
+        var message = new SpCoreMessage { Type = SpCoreMessage.Types.Type.Evt };
+        message.Evt.Add(evt);
+
+        _logger.LogInformation("Sending {EvtCode} event for schedule {Name} (unid={Unid})",
+            evtCode, sched.Name, sched.Unid);
+
+        WriteMessage(message);
+    }
+
+    /// <summary>
+    /// Starts the per-minute schedule evaluation timer, aligned to the top of the next minute.
+    /// </summary>
+    public void StartScheduleEvaluation()
+    {
+        if (_schedTimer != null)
+            return;
+
+        var now = DateTime.Now;
+        var nextMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0).AddMinutes(1);
+        var delayMs = (long)(nextMinute - now).TotalMilliseconds;
+        if (delayMs < 0)
+            delayMs = 0;
+
+        _logger.LogInformation("Starting schedule evaluation timer (first tick in {DelayMs}ms)", delayMs);
+
+        _schedTimer = new Timer(_ => EvaluateSchedules(), null, delayMs, 60_000);
+    }
+
+    /// <summary>
+    /// Stops the schedule evaluation timer.
+    /// </summary>
+    public void StopScheduleEvaluation()
+    {
+        var timer = _schedTimer;
+        if (timer != null)
+        {
+            _schedTimer = null;
+            timer.Dispose();
+            _logger.LogInformation("Schedule evaluation timer stopped");
+        }
+    }
+
+    private void EvaluateSchedules()
+    {
+        try
+        {
+            var schedules = _schedRepository.GetAll().GetAwaiter().GetResult();
+            var holidays = _holRepository.GetAll().GetAwaiter().GetResult();
+            var now = DateTime.Now;
+
+            foreach (var sched in schedules)
+            {
+                var isActive = SchedEvaluator.InSched(now, sched, holidays);
+
+                if (_schedActiveState.TryGetValue(sched.Unid, out var wasActive))
+                {
+                    // State exists — only fire on transition
+                    if (isActive != wasActive)
+                    {
+                        _schedActiveState[sched.Unid] = isActive;
+                        SendSchedEvent(sched, isActive);
+                    }
+                }
+                else
+                {
+                    // First evaluation — store state, fire only if active
+                    _schedActiveState[sched.Unid] = isActive;
+                    if (isActive)
+                    {
+                        SendSchedEvent(sched, true);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error evaluating schedules");
+        }
     }
 
     private void WriteMessage(SpCoreMessage message)
