@@ -592,8 +592,7 @@ public class AccessGrantedTest
         if (_driver == null) return;
 
         Directory.CreateDirectory(ScreenshotDir);
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        var fileName = $"{name}_{timestamp}.png";
+        var fileName = $"{name}.png";
         var filePath = Path.Combine(ScreenshotDir, fileName);
         var screenshot = _driver.GetScreenshot();
         screenshot.SaveAsFile(filePath);
@@ -608,7 +607,7 @@ public class AccessGrantedTest
 
         var mdPath = Path.Combine(ScreenshotDir, "AccessGrantedTest.md");
         using var writer = new StreamWriter(mdPath);
-        writer.WriteLine("# Access Granted End-to-End Test");
+        writer.WriteLine("# Aporta Access Granted End-to-End UI Test");
         writer.WriteLine();
         writer.WriteLine($"*Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}*");
         writer.WriteLine();

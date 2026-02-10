@@ -159,8 +159,7 @@ public class HomePageSmokeTest
         if (_driver == null) return;
 
         Directory.CreateDirectory(ScreenshotDir);
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        var filePath = Path.Combine(ScreenshotDir, $"{name}_{timestamp}.png");
+        var filePath = Path.Combine(ScreenshotDir, $"{name}.png");
         var screenshot = _driver.GetScreenshot();
         screenshot.SaveAsFile(filePath);
         TestContext.Progress.WriteLine($"Screenshot saved: {filePath}");
