@@ -840,6 +840,9 @@ public class StartupWorker : BackgroundService
             var config = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
             if (config != null)
             {
+                // Use the canonical door unid from OSDP config (matches what SpCoreDriver knows)
+                if (config.DoorUnid.HasValue)
+                    doorUnid = config.DoorUnid.Value;
                 _logger.LogInformation("REX activated for door unid={DoorUnid}", doorUnid);
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config, EvtCode.ExitRequested);
 
@@ -867,6 +870,10 @@ public class StartupWorker : BackgroundService
         // Check if this is a door strike actuator — track state for forced-open detection
         if (dev.DevType == DevType.Actuator && dev.DevUseCase == Dev.DevUseOneofCase.DevUse && dev.DevUse == DevUse.ActuatorDoorStrike)
         {
+            var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
+            // Use the canonical door unid from OSDP config (matches what SpCoreDriver knows)
+            if (config2?.DoorUnid != null)
+                doorUnid = config2.DoorUnid.Value;
             if (doorUnid > 0)
             {
                 _doorStrikeActive[doorUnid] = state;
@@ -874,7 +881,6 @@ public class StartupWorker : BackgroundService
                     s => s.ActivityState = state ? ActivityState.Active : ActivityState.Inactive);
             }
             var evtCode = state ? EvtCode.DoorUnlocked : EvtCode.DoorLocked;
-            var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
             if (config2 != null)
                 _z9OpenCommunityProtocolService.SendDoorStateEvent(config2, evtCode);
             return;
@@ -886,6 +892,9 @@ public class StartupWorker : BackgroundService
             var config2 = _z9OpenCommunityProtocolService.GetConfigForEndpoint(driverEndpointId);
             if (config2 == null)
                 return;
+            // Use the canonical door unid from OSDP config (matches what SpCoreDriver knows)
+            if (config2.DoorUnid.HasValue)
+                doorUnid = config2.DoorUnid.Value;
 
             if (!state) // Door opened
             {

@@ -61,12 +61,25 @@ public class DevStateService
 
     public DevStateRecord GetDevStateRecord(int devUnid)
     {
-        return _stateRecords.TryGetValue(devUnid, out var record) ? record : null;
+        if (!_stateRecords.TryGetValue(devUnid, out var record))
+            return null;
+        lock (record)
+        {
+            return record.Clone();
+        }
     }
 
     public List<DevStateRecord> GetAllDevStateRecords()
     {
-        return _stateRecords.Values.ToList();
+        var result = new List<DevStateRecord>();
+        foreach (var record in _stateRecords.Values)
+        {
+            lock (record)
+            {
+                result.Add(record.Clone());
+            }
+        }
+        return result;
     }
 
     public void RemoveDevStateRecord(int devUnid)

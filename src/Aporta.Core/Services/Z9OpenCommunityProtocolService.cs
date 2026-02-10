@@ -226,7 +226,7 @@ public class Z9OpenCommunityProtocolService : IDisposable
                 IsIdentified = true;
                 _logger.LogInformation("Z9/Open Community host identified");
                 // Don't re-send - we already sent ours as the initiating side
-                SendAllDevStateRecords();
+                SendAllDevStateRecords(alwaysRespond: false);
                 break;
 
             case SpCoreMessage.Types.Type.DbChange:
@@ -1424,10 +1424,10 @@ public class Z9OpenCommunityProtocolService : IDisposable
         }
     }
 
-    private void SendAllDevStateRecords()
+    private void SendAllDevStateRecords(bool alwaysRespond = true)
     {
         var records = _devStateService.GetAllDevStateRecords();
-        if (records.Count == 0) return;
+        if (!alwaysRespond && records.Count == 0) return;
 
         var message = new SpCoreMessage { Type = SpCoreMessage.Types.Type.DevStateRecord };
         message.DevStateRecord.AddRange(records);
