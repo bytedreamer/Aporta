@@ -523,7 +523,7 @@ public class AccessGrantedTest
         // Check Mon through Fri — Blazorise renders Check as hidden input + visible label,
         // so click the labels (custom-control-label) instead of the inputs
         var checkboxLabels = intervalCard.FindElements(By.CssSelector("label.custom-control-label"));
-        Assert.That(checkboxLabels.Count, Is.EqualTo(7), "Expected 7 day-of-week checkbox labels");
+        Assert.That(checkboxLabels.Count, Is.GreaterThanOrEqualTo(7), "Expected at least 7 day-of-week checkbox labels");
         for (var i = 0; i < 5; i++)
         {
             checkboxLabels[i].Click();
@@ -597,7 +597,7 @@ public class AccessGrantedTest
         var notTodayIndex = (todayIndex + 1) % 7;
 
         var checkboxLabels = intervalCard.FindElements(By.CssSelector("label.custom-control-label"));
-        Assert.That(checkboxLabels.Count, Is.EqualTo(7), "Expected 7 day-of-week checkbox labels");
+        Assert.That(checkboxLabels.Count, Is.GreaterThanOrEqualTo(7), "Expected at least 7 day-of-week checkbox labels");
         checkboxLabels[notTodayIndex].Click();
 
         // Enter all-day time range
@@ -840,6 +840,354 @@ public class AccessGrantedTest
 
         TakeScreenshot("22_card_format_created", "Standard 26-Bit card format created — 26 bits, 4 elements visible in the table");
         TestContext.Progress.WriteLine("Card format 'Standard 26-Bit' added successfully");
+    }
+
+    [Test, Order(15)]
+    public void AddHoliday()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/holidays");
+
+        WaitForBodyText("Add Holiday");
+
+        TakeScreenshot("30_holidays_page_empty", "Holidays page before any holidays have been created");
+
+        ClickButtonContaining("Add Holiday");
+        WaitForModal();
+
+        var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+
+        // Enter holiday name
+        var nameInput = modal.FindElement(By.CssSelector("input[type='text']"));
+        nameInput.Clear();
+        nameInput.SendKeys("Christmas");
+        nameInput.SendKeys(Keys.Tab);
+
+        // Enter date — DateEdit renders as input[type='date']
+        // Use JavaScript to set the value directly; SendKeys on date inputs is unreliable across browsers
+        var dateInput = modal.FindElement(By.CssSelector("input[type='date']"));
+        var christmasDate = $"{DateTime.Now.Year}-12-25";
+        ((IJavaScriptExecutor)_driver).ExecuteScript(
+            "var el = arguments[0]; var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; nativeSetter.call(el, arguments[1]); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));",
+            dateInput, christmasDate);
+        dateInput.SendKeys(Keys.Tab);
+
+        // Check "Repeats Annually" — first checkbox label in the modal
+        var checkboxLabels = modal.FindElements(By.CssSelector("label.custom-control-label"));
+        Assert.That(checkboxLabels.Count, Is.GreaterThanOrEqualTo(1), "Expected at least 1 checkbox label");
+        checkboxLabels[0].Click();
+
+        TakeScreenshot("31_holiday_modal_filled", "Add Holiday modal with Christmas — Dec 25, Repeats Annually");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        // Wait for the holiday to appear in the table
+        WaitForBodyText("Christmas");
+
+        var holidayRow = FindTableRowContaining("Christmas");
+        Assert.That(holidayRow.Text, Does.Contain("Dec 25"),
+            "Holiday row should show formatted date");
+        Assert.That(holidayRow.Text, Does.Contain("Annually"),
+            "Holiday row should show 'Annually' for repeating holiday");
+
+        TakeScreenshot("32_holiday_created", "Christmas holiday created — Dec 25, Annually visible in the holidays table");
+        TestContext.Progress.WriteLine("Holiday 'Christmas' added successfully");
+    }
+
+    [Test, Order(16)]
+    public void CreateTodayScheduleAndReassign()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        // --- Create "Today All Day" schedule ---
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/schedules");
+        WaitForBodyText("Add Schedule");
+
+        ClickButtonContaining("Add Schedule");
+        WaitForModal();
+
+        var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+        var nameInput = modal.FindElement(By.CssSelector("input"));
+        nameInput.Clear();
+        nameInput.SendKeys("Today All Day");
+        nameInput.SendKeys(Keys.Tab);
+
+        // Add a time interval
+        var addIntervalButton = modal.FindElements(By.TagName("button"))
+            .First(b => b.Displayed && b.Text.Contains("Add Time Interval"));
+        addIntervalButton.Click();
+
+        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
+        wait.Until(d =>
+        {
+            var m = d.FindElement(By.CssSelector("div.modal.show"));
+            return m.FindElements(By.CssSelector(".card .card-body")).Count > 0;
+        });
+
+        var intervalCard = modal.FindElement(By.CssSelector(".card .card-body"));
+
+        // Check only today's day-of-week
+        var today = DateTime.Now.DayOfWeek;
+        var todayIndex = today == DayOfWeek.Sunday ? 6 : (int)today - 1;
+
+        var checkboxLabels = intervalCard.FindElements(By.CssSelector("label.custom-control-label"));
+        Assert.That(checkboxLabels.Count, Is.GreaterThanOrEqualTo(7), "Expected at least 7 checkbox labels (days + holidays)");
+        checkboxLabels[todayIndex].Click();
+
+        // Enter all-day time range
+        var timeInputs = intervalCard.FindElements(By.CssSelector("input[type='text']"));
+        Assert.That(timeInputs.Count, Is.GreaterThanOrEqualTo(2), "Expected at least 2 time inputs");
+        timeInputs[0].Clear();
+        timeInputs[0].SendKeys("00:00");
+        timeInputs[1].Clear();
+        timeInputs[1].SendKeys("23:59");
+
+        // Holidays checkbox is NOT checked (default)
+
+        TakeScreenshot("40_today_schedule_modal", "Add 'Today All Day' schedule — active today, holidays unchecked");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        WaitForBodyText("Today All Day");
+
+        TakeScreenshot("41_today_schedule_created", "'Today All Day' schedule created");
+
+        // --- Reassign credential from "Not Today" to "Today All Day" ---
+        _driver.Navigate().GoToUrl($"{BaseUrl}/configuration/credentials");
+
+        wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(30));
+        wait.Until(d =>
+        {
+            var body = d.FindElement(By.TagName("body"));
+            return body.Text.Contains("Test") && body.Text.Contains("Person");
+        });
+
+        var personRow = FindTableRowContaining("Person");
+        var actionToggle = personRow.FindElement(By.CssSelector("button.dropdown-toggle"));
+        actionToggle.Click();
+
+        WaitForVisibleDropdown();
+        ClickDropdownItem("Edit Access");
+
+        WaitForModal();
+
+        modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+        var selects = modal.FindElements(By.CssSelector("select"));
+        Assert.That(selects.Count, Is.GreaterThanOrEqualTo(2),
+            "Expected at least 2 selects (door + schedule) in Edit Access modal");
+
+        var schedSelect = new SelectElement(selects[1]);
+        SelectOptionContainingText(schedSelect, "Today All Day");
+
+        TakeScreenshot("42_edit_access_today", "Edit Access modal — changing schedule to 'Today All Day'");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        wait.Until(d =>
+        {
+            var body = d.FindElement(By.TagName("body"));
+            return body.Text.Contains("Successfully updated door access");
+        });
+
+        // --- Swipe badge and verify Access Granted ---
+        _driver.Navigate().GoToUrl($"{BaseUrl}/configuration/driver/{VirtualDriverGuid}");
+
+        WaitForBodyText("Test Reader");
+        var readerRow = _driver.FindElement(By.Id("Reader:Test Reader"));
+
+        actionToggle = readerRow.FindElement(By.CssSelector("button.dropdown-toggle"));
+        actionToggle.Click();
+
+        WaitForVisibleDropdown();
+        ClickDropdownItem("Swipe Badge");
+
+        WaitForModal();
+
+        var badgeInput = _driver.FindElement(By.Id("SwipeBadgeTextEdit"));
+        badgeInput.Clear();
+        badgeInput.SendKeys("12345");
+        badgeInput.SendKeys(Keys.Tab);
+
+        ClickModalButton("Swipe the badge");
+        WaitForModalClose();
+
+        Thread.Sleep(2000);
+
+        // Verify Access Granted on monitoring page
+        _driver.Navigate().GoToUrl($"{BaseUrl}/monitoring");
+        WaitForBodyText("Access Granted");
+
+        // Check the first row is Access Granted
+        var firstRow = _driver.FindElement(By.CssSelector("tbody tr"));
+        Assert.That(firstRow.Text, Does.Contain("Access Granted"),
+            "First monitoring row should show 'Access Granted' after swipe with 'Today All Day' schedule");
+
+        TakeScreenshot("43_access_granted_today_schedule", "Monitoring shows Access Granted — 'Today All Day' schedule is active");
+        TestContext.Progress.WriteLine("'Today All Day' schedule created, credential reassigned, Access Granted verified");
+    }
+
+    [Test, Order(17)]
+    public void CreateTodayHolidayAndVerifyDenied()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        // --- Add a holiday for today ---
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/holidays");
+
+        WaitForBodyText("Add Holiday");
+
+        ClickButtonContaining("Add Holiday");
+        WaitForModal();
+
+        var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+
+        var nameInput = modal.FindElement(By.CssSelector("input[type='text']"));
+        nameInput.Clear();
+        nameInput.SendKeys("Today Holiday");
+        nameInput.SendKeys(Keys.Tab);
+
+        // Set date to today
+        var dateInput = modal.FindElement(By.CssSelector("input[type='date']"));
+        var todayDate = DateTime.Now.ToString("yyyy-MM-dd");
+        ((IJavaScriptExecutor)_driver).ExecuteScript(
+            "var el = arguments[0]; var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; nativeSetter.call(el, arguments[1]); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));",
+            dateInput, todayDate);
+        dateInput.SendKeys(Keys.Tab);
+
+        // Do NOT check "Repeats Annually" — leave it as a one-time holiday
+
+        TakeScreenshot("44_today_holiday_modal", "Add 'Today Holiday' — date is today, no repeat");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        WaitForBodyText("Today Holiday");
+
+        TakeScreenshot("45_today_holiday_created", "'Today Holiday' created — today is now a holiday");
+
+        // --- Swipe badge and verify Access Denied ---
+        _driver.Navigate().GoToUrl($"{BaseUrl}/configuration/driver/{VirtualDriverGuid}");
+
+        WaitForBodyText("Test Reader");
+        var readerRow = _driver.FindElement(By.Id("Reader:Test Reader"));
+
+        var actionToggle = readerRow.FindElement(By.CssSelector("button.dropdown-toggle"));
+        actionToggle.Click();
+
+        WaitForVisibleDropdown();
+        ClickDropdownItem("Swipe Badge");
+
+        WaitForModal();
+
+        var badgeInput = _driver.FindElement(By.Id("SwipeBadgeTextEdit"));
+        badgeInput.Clear();
+        badgeInput.SendKeys("12345");
+        badgeInput.SendKeys(Keys.Tab);
+
+        ClickModalButton("Swipe the badge");
+        WaitForModalClose();
+
+        Thread.Sleep(2000);
+
+        // Verify Access Denied on monitoring page
+        _driver.Navigate().GoToUrl($"{BaseUrl}/monitoring");
+        WaitForBodyText("Access Denied");
+
+        // Check the first row is Access Denied
+        var firstRow = _driver.FindElement(By.CssSelector("tbody tr"));
+        Assert.That(firstRow.Text, Does.Contain("Access Denied"),
+            "First monitoring row should show 'Access Denied' — today is a holiday and schedule doesn't include holidays");
+
+        TakeScreenshot("46_access_denied_holiday", "Monitoring shows Access Denied — today is a holiday, schedule has holidays=false");
+        TestContext.Progress.WriteLine("Today Holiday created, Access Denied verified (schedule doesn't include holidays)");
+    }
+
+    [Test, Order(18)]
+    public void EnableHolidaysOnScheduleAndVerifyGranted()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        // --- Enable Holidays on "Today All Day" schedule ---
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/schedules");
+
+        WaitForBodyText("Today All Day");
+
+        // Find the "Today All Day" row and click Edit
+        var scheduleRow = FindTableRowContaining("Today All Day");
+        var editButton = scheduleRow.FindElement(By.CssSelector("button"));
+        editButton.Click();
+
+        WaitForModal();
+
+        var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+
+        // Find the interval card and check the Holidays checkbox
+        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
+        wait.Until(d =>
+        {
+            var m = d.FindElement(By.CssSelector("div.modal.show"));
+            return m.FindElements(By.CssSelector(".card .card-body")).Count > 0;
+        });
+
+        var intervalCard = modal.FindElement(By.CssSelector(".card .card-body"));
+
+        // The Holidays checkbox is the last label.custom-control-label in the card (after the 7 day checkboxes)
+        var checkboxLabels = intervalCard.FindElements(By.CssSelector("label.custom-control-label"));
+        Assert.That(checkboxLabels.Count, Is.GreaterThanOrEqualTo(8),
+            "Expected at least 8 checkbox labels (7 days + Holidays)");
+        var holidaysLabel = checkboxLabels.First(l => l.Text.Contains("Holiday"));
+        ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", holidaysLabel);
+        Thread.Sleep(500); // Let Blazor re-render
+
+        TakeScreenshot("47_enable_holidays_on_schedule", "Edit 'Today All Day' schedule — checking Holidays checkbox");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        // Wait for the save API call to complete (snackbar confirms it)
+        WaitForBodyText("Successfully updated schedule");
+
+        TakeScreenshot("48_holidays_enabled_saved", "'Today All Day' schedule saved with Holidays enabled");
+
+        // --- Swipe badge and verify Access Granted ---
+        _driver.Navigate().GoToUrl($"{BaseUrl}/configuration/driver/{VirtualDriverGuid}");
+
+        WaitForBodyText("Test Reader");
+        var readerRow = _driver.FindElement(By.Id("Reader:Test Reader"));
+
+        var actionToggle = readerRow.FindElement(By.CssSelector("button.dropdown-toggle"));
+        actionToggle.Click();
+
+        WaitForVisibleDropdown();
+        ClickDropdownItem("Swipe Badge");
+
+        WaitForModal();
+
+        var badgeInput = _driver.FindElement(By.Id("SwipeBadgeTextEdit"));
+        badgeInput.Clear();
+        badgeInput.SendKeys("12345");
+        badgeInput.SendKeys(Keys.Tab);
+
+        ClickModalButton("Swipe the badge");
+        WaitForModalClose();
+
+        Thread.Sleep(2000);
+
+        // Verify Access Granted on monitoring page
+        _driver.Navigate().GoToUrl($"{BaseUrl}/monitoring");
+        WaitForBodyText("Access Granted");
+
+        // Check the first row is Access Granted
+        var firstRow = _driver.FindElement(By.CssSelector("tbody tr"));
+        Assert.That(firstRow.Text, Does.Contain("Access Granted"),
+            "First monitoring row should show 'Access Granted' — schedule now includes holidays");
+
+        TakeScreenshot("49_access_granted_holidays_enabled", "Monitoring shows Access Granted — schedule includes holidays, access is restored");
+        TestContext.Progress.WriteLine("Holidays enabled on schedule, Access Granted verified");
     }
 
     // --- Card Format Test Helpers ---

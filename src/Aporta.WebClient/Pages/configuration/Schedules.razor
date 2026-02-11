@@ -131,6 +131,13 @@ else
                                     </Button>
                                 </Column>
                             </Row>
+                            <Row>
+                                <Column>
+                                    <Field>
+                                        <Check TValue="bool" Checked="@element.Holidays" CheckedChanged="@(val => element.Holidays = val)" Inline="true">Holidays</Check>
+                                    </Field>
+                                </Column>
+                            </Row>
                         </CardBody>
                     </Card>
                 }
@@ -212,7 +219,8 @@ else
                 Unid = e.Unid,
                 Days = Enumerable.Range(0, 7).Select(d => e.SchedDays?.Contains(d) == true).ToArray(),
                 Start = StripSeconds(e.Start),
-                Stop = StripSeconds(e.Stop)
+                Stop = StripSeconds(e.Stop),
+                Holidays = e.Holidays == true
             }).ToList();
         await _editModal.Show();
     }
@@ -231,7 +239,7 @@ else
             SchedDays = Enumerable.Range(0, 7).Where(d => e.Days[d]).ToList(),
             Start = AppendSeconds(e.Start),
             Stop = AppendSeconds(e.Stop),
-            Holidays = false,
+            Holidays = e.Holidays,
             PlusDays = 0,
             HolTypes = new List<FlexObjRef>()
         }).ToList();
@@ -358,5 +366,6 @@ else
         public bool[] Days { get; set; } = new bool[7];
         public string Start { get; set; } = "";
         public string Stop { get; set; } = "";
+        public bool Holidays { get; set; }
     }
 }

@@ -204,6 +204,31 @@ public class FlexApiService
         return await FlexPostAsync<FlexVoid>($"actuator/delete/{unid}");
     }
 
+    public async Task<FlexListResponse<FlexHol>> GetHolListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexHol>>($"hol/list?offset={offset}&max={max}");
+    }
+
+    public async Task<FlexInstanceResponse<FlexHol>> SaveHolAsync(FlexHol hol)
+    {
+        return await FlexPostAsync<FlexInstanceResponse<FlexHol>>("hol/save", hol);
+    }
+
+    public async Task<FlexVoid> DeleteHolAsync(int unid)
+    {
+        return await FlexPostAsync<FlexVoid>($"hol/delete/{unid}");
+    }
+
+    public async Task<FlexListResponse<FlexHolCal>> GetHolCalListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexHolCal>>($"holCal/list?offset={offset}&max={max}");
+    }
+
+    public async Task<FlexInstanceResponse<FlexHolCal>> SaveHolCalAsync(FlexHolCal holCal)
+    {
+        return await FlexPostAsync<FlexInstanceResponse<FlexHolCal>>("holCal/save", holCal);
+    }
+
     public async Task<bool?> GetSensorStateAsync(int id)
     {
         var json = await FlexGetAsync<JsonElement>($"sensor/state/{id}");
