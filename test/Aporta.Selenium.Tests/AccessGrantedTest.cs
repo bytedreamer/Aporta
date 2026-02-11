@@ -750,6 +750,187 @@ public class AccessGrantedTest
         TestContext.Progress.WriteLine("Access Denied event verified on monitoring page!");
     }
 
+    [Test, Order(14)]
+    public void AddCardFormat()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/cardformats");
+
+        WaitForBodyText("Add Card Format");
+
+        TakeScreenshot("20_card_formats_page_empty", "Card Formats page before any card formats have been created");
+
+        ClickButtonContaining("Add Card Format");
+        WaitForModal();
+
+        var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+
+        // Enter card format name
+        var nameInput = modal.FindElement(By.CssSelector("input"));
+        nameInput.Clear();
+        nameInput.SendKeys("Standard 26-Bit");
+        nameInput.SendKeys(Keys.Tab);
+
+        // Set Min Bits and Max Bits (numeric inputs)
+        var numericInputs = modal.FindElements(By.CssSelector("input[type='number']"));
+        Assert.That(numericInputs.Count, Is.GreaterThanOrEqualTo(2), "Expected at least 2 numeric inputs for Min/Max bits");
+
+        // Min Bits
+        numericInputs[0].Clear();
+        numericInputs[0].SendKeys("26");
+        numericInputs[0].SendKeys(Keys.Tab);
+
+        // Max Bits
+        numericInputs[1].Clear();
+        numericInputs[1].SendKeys("26");
+        numericInputs[1].SendKeys(Keys.Tab);
+
+        // Add Element 1: Even Parity (type=1)
+        ClickModalBodyButton("Add Element");
+        WaitForElementCards(1);
+
+        var elementCards = GetElementCards();
+        SetElementType(elementCards[0], "Parity");
+        SetElementNumericFields(elementCards[0], start: 0, length: 1);
+        // Even parity: leave Odd unchecked, set src start/length
+        SetParityFields(elementCards[0], srcStart: 1, srcLength: 12);
+
+        // Add Element 2: Facility Code (type=2)
+        ClickModalBodyButton("Add Element");
+        WaitForElementCards(2);
+
+        elementCards = GetElementCards();
+        SetElementType(elementCards[1], "Field");
+        SetElementNumericFields(elementCards[1], start: 1, length: 8);
+        SetFieldType(elementCards[1], "Facility Code");
+
+        // Add Element 3: Card Number (type=2)
+        ClickModalBodyButton("Add Element");
+        WaitForElementCards(3);
+
+        elementCards = GetElementCards();
+        SetElementType(elementCards[2], "Field");
+        SetElementNumericFields(elementCards[2], start: 9, length: 16);
+        // Card Number is default (value 0), no change needed
+
+        // Add Element 4: Odd Parity (type=1)
+        ClickModalBodyButton("Add Element");
+        WaitForElementCards(4);
+
+        elementCards = GetElementCards();
+        SetElementType(elementCards[3], "Parity");
+        SetElementNumericFields(elementCards[3], start: 25, length: 1);
+        SetParityOdd(elementCards[3], true);
+        SetParityFields(elementCards[3], srcStart: 13, srcLength: 12);
+
+        TakeScreenshot("21_card_format_modal_filled", "Add Card Format modal with Standard 26-Bit — 4 elements: Even Parity, Facility Code, Card Number, Odd Parity");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        // Wait for the card format to appear in the table
+        WaitForBodyText("Standard 26-Bit");
+
+        var formatRow = FindTableRowContaining("Standard 26-Bit");
+        Assert.That(formatRow.Text, Does.Contain("26"),
+            "Card format row should show bit count");
+        Assert.That(formatRow.Text, Does.Contain("4"),
+            "Card format row should show 4 elements");
+
+        TakeScreenshot("22_card_format_created", "Standard 26-Bit card format created — 26 bits, 4 elements visible in the table");
+        TestContext.Progress.WriteLine("Card format 'Standard 26-Bit' added successfully");
+    }
+
+    // --- Card Format Test Helpers ---
+
+    private void ClickModalBodyButton(string text)
+    {
+        var modal = _driver!.FindElement(By.CssSelector("div.modal.show"));
+        var body = modal.FindElement(By.CssSelector(".modal-body"));
+        var buttons = body.FindElements(By.TagName("button"));
+        foreach (var button in buttons)
+        {
+            if (button.Displayed && button.Text.Contains(text))
+            {
+                button.Click();
+                return;
+            }
+        }
+        Assert.Fail($"Could not find modal body button containing '{text}'");
+    }
+
+    private void WaitForElementCards(int expectedCount)
+    {
+        var wait = new WebDriverWait(_driver!, TimeSpan.FromSeconds(10));
+        wait.Until(d =>
+        {
+            var modal = d.FindElement(By.CssSelector("div.modal.show"));
+            var body = modal.FindElement(By.CssSelector(".modal-body"));
+            return body.FindElements(By.CssSelector(".card .card-body")).Count >= expectedCount;
+        });
+    }
+
+    private IReadOnlyList<IWebElement> GetElementCards()
+    {
+        var modal = _driver!.FindElement(By.CssSelector("div.modal.show"));
+        var body = modal.FindElement(By.CssSelector(".modal-body"));
+        return body.FindElements(By.CssSelector(".card .card-body"));
+    }
+
+    private void SetElementType(IWebElement card, string typeName)
+    {
+        var select = new SelectElement(card.FindElement(By.CssSelector("select")));
+        select.SelectByText(typeName);
+        // Allow Blazor to re-render after type change
+        Thread.Sleep(500);
+    }
+
+    private void SetElementNumericFields(IWebElement card, int start, int length)
+    {
+        var numInputs = card.FindElements(By.CssSelector("input[type='number']"));
+        Assert.That(numInputs.Count, Is.GreaterThanOrEqualTo(2), "Expected at least 2 numeric inputs in element card");
+        numInputs[0].Clear();
+        numInputs[0].SendKeys(start.ToString());
+        numInputs[0].SendKeys(Keys.Tab);
+        numInputs[1].Clear();
+        numInputs[1].SendKeys(length.ToString());
+        numInputs[1].SendKeys(Keys.Tab);
+    }
+
+    private void SetFieldType(IWebElement card, string fieldName)
+    {
+        // After type change, a second select appears for Field type
+        var selects = card.FindElements(By.CssSelector("select"));
+        Assert.That(selects.Count, Is.GreaterThanOrEqualTo(2), "Expected at least 2 selects for Field element");
+        var fieldSelect = new SelectElement(selects[1]);
+        fieldSelect.SelectByText(fieldName);
+    }
+
+    private void SetParityOdd(IWebElement card, bool odd)
+    {
+        if (!odd) return;
+        var checkboxLabels = card.FindElements(By.CssSelector("label.custom-control-label"));
+        if (checkboxLabels.Count > 0)
+        {
+            checkboxLabels[0].Click();
+        }
+    }
+
+    private void SetParityFields(IWebElement card, int srcStart, int srcLength)
+    {
+        // After type=Parity, additional numeric inputs appear for Src Start and Src Length
+        var numInputs = card.FindElements(By.CssSelector("input[type='number']"));
+        // First 2 are Start Bit and Length, next 2 are Src Start and Src Length
+        Assert.That(numInputs.Count, Is.GreaterThanOrEqualTo(4), "Expected at least 4 numeric inputs for Parity element");
+        numInputs[2].Clear();
+        numInputs[2].SendKeys(srcStart.ToString());
+        numInputs[2].SendKeys(Keys.Tab);
+        numInputs[3].Clear();
+        numInputs[3].SendKeys(srcLength.ToString());
+        numInputs[3].SendKeys(Keys.Tab);
+    }
+
     // --- Helper Methods ---
 
     /// <summary>

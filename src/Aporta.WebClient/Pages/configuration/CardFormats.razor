@@ -1,0 +1,484 @@
+@page "/configuration/cardformats"
+
+@using System.Linq
+@using Aporta.Shared.Calls
+@using Aporta.Shared.Models.Flex
+
+@inject FlexApiService FlexApi
+
+<Heading Size="HeadingSize.Is1">Card Formats</Heading>
+<Divider />
+
+@if (_layouts == null)
+{
+    <div class="spinner"></div>
+}
+else
+{
+    <Row>
+        <Column ColumnSize="ColumnSize.Is6.OnDesktop">
+            <Button Color="Color.Primary" Clicked="ShowAddModal">Add Card Format</Button>
+        </Column>
+    </Row>
+    <Row>
+        <Column>
+            <Card Margin="Margin.Is4.OnY">
+                <CardBody>
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Name</TableHeaderCell>
+                                <TableHeaderCell>Bits</TableHeaderCell>
+                                <TableHeaderCell>Elements</TableHeaderCell>
+                                <TableHeaderCell>Priority</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var dl in _layouts.InstanceList.OrderBy(l => l.Name ?? ""))
+                            {
+                                var dataLayout = dl;
+                                var format = GetFormatForLayout(dataLayout);
+                                <TableRow>
+                                    <TableRowHeader>
+                                        @dataLayout.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @FormatBitsRange(format)
+                                    </TableRowCell>
+                                    <TableRowCell>
+                                        @(format?.Elements?.Count ?? 0)
+                                    </TableRowCell>
+                                    <TableRowCell>
+                                        @dataLayout.Priority
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Button Size="Size.Small" Color="Color.Primary" Clicked="@(() => ShowEditModal(dataLayout))" Margin="Margin.Is1.FromEnd">
+                                            <Icon Name="IconName.Edit" />
+                                        </Button>
+                                        <Button Size="Size.Small" Clicked="@(async () => await RemoveCardFormat(dataLayout))">
+                                            <Icon Name="IconName.Delete" Style="color: red" />
+                                        </Button>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
+    <Modal @ref="_editModal">
+        <ModalContent Size="ModalSize.Large" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    @(_isEditing ? "Edit Card Format" : "Add Card Format")
+                </ModalTitle>
+                <CloseButton Clicked="@_editModal.Hide" />
+            </ModalHeader>
+            <ModalBody>
+                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_editValidations">
+                    <Validation Validator="@ValidationRule.IsNotEmpty">
+                        <Field>
+                            <FieldLabel>Name</FieldLabel>
+                            <FieldBody>
+                                <TextEdit @bind-Text="_editLayout.Name">
+                                    <Feedback>
+                                        <ValidationError>
+                                            Please enter a name for the card format
+                                        </ValidationError>
+                                    </Feedback>
+                                </TextEdit>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+                </Validations>
+
+                <Row>
+                    <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                        <Field>
+                            <FieldLabel>Min Bits</FieldLabel>
+                            <FieldBody>
+                                <NumericEdit TValue="int?" @bind-Value="_editFormat.MinBits" />
+                            </FieldBody>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                        <Field>
+                            <FieldLabel>Max Bits</FieldLabel>
+                            <FieldBody>
+                                <NumericEdit TValue="int?" @bind-Value="_editFormat.MaxBits" />
+                            </FieldBody>
+                        </Field>
+                    </Column>
+                    <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                        <Field>
+                            <FieldLabel>Priority</FieldLabel>
+                            <FieldBody>
+                                <NumericEdit TValue="int?" @bind-Value="_editLayout.Priority" />
+                            </FieldBody>
+                        </Field>
+                    </Column>
+                </Row>
+
+                <Field>
+                    <Check TValue="bool" Checked="@(_editLayout.Enabled ?? true)" CheckedChanged="@(val => _editLayout.Enabled = val)">Enabled</Check>
+                </Field>
+
+                <Divider />
+                <Heading Size="HeadingSize.Is5">Binary Elements</Heading>
+
+                @for (var i = 0; i < _editElements.Count; i++)
+                {
+                    var index = i;
+                    var element = _editElements[index];
+                    <Card Margin="Margin.Is2.OnY">
+                        <CardBody>
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>Type</FieldLabel>
+                                        <FieldBody>
+                                            <Select TValue="int" SelectedValue="@element.Type" SelectedValueChanged="@(val => element.Type = val)">
+                                                <SelectItem Value="0">Static</SelectItem>
+                                                <SelectItem Value="1">Parity</SelectItem>
+                                                <SelectItem Value="2">Field</SelectItem>
+                                            </Select>
+                                        </FieldBody>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>Start Bit</FieldLabel>
+                                        <FieldBody>
+                                            <NumericEdit TValue="int?" @bind-Value="element.Start" />
+                                        </FieldBody>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>Length</FieldLabel>
+                                        <FieldBody>
+                                            <NumericEdit TValue="int?" @bind-Value="element.Len" />
+                                        </FieldBody>
+                                    </Field>
+                                </Column>
+                            </Row>
+
+                            @if (element.Type == 2)
+                            {
+                                <Row>
+                                    <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                                        <Field>
+                                            <FieldLabel>Field</FieldLabel>
+                                            <FieldBody>
+                                                <Select TValue="int?" SelectedValue="@element.Field" SelectedValueChanged="@(val => element.Field = val)">
+                                                    <SelectItem Value="@((int?)0)">Card Number</SelectItem>
+                                                    <SelectItem Value="@((int?)1)">Facility Code</SelectItem>
+                                                </Select>
+                                            </FieldBody>
+                                        </Field>
+                                    </Column>
+                                </Row>
+                            }
+                            else if (element.Type == 1)
+                            {
+                                <Row>
+                                    <Column ColumnSize="ColumnSize.Is3.OnDesktop">
+                                        <Field>
+                                            <Check TValue="bool" Checked="@(element.Odd ?? false)" CheckedChanged="@(val => element.Odd = val)">Odd Parity</Check>
+                                        </Field>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is3.OnDesktop">
+                                        <Field>
+                                            <FieldLabel>Src Start</FieldLabel>
+                                            <FieldBody>
+                                                <NumericEdit TValue="int?" @bind-Value="element.SrcStart" />
+                                            </FieldBody>
+                                        </Field>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.Is3.OnDesktop">
+                                        <Field>
+                                            <FieldLabel>Src Length</FieldLabel>
+                                            <FieldBody>
+                                                <NumericEdit TValue="int?" @bind-Value="element.SrcLen" />
+                                            </FieldBody>
+                                        </Field>
+                                    </Column>
+                                </Row>
+                            }
+                            else if (element.Type == 0)
+                            {
+                                <Row>
+                                    <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                                        <Field>
+                                            <FieldLabel>Value</FieldLabel>
+                                            <FieldBody>
+                                                <TextEdit @bind-Text="element.Value" />
+                                            </FieldBody>
+                                        </Field>
+                                    </Column>
+                                </Row>
+                            }
+
+                            <Row>
+                                <Column Flex="Flex.JustifyContent.End" Display="Display.Flex">
+                                    <Button Color="Color.Danger" Outline="true" Size="Size.Small" Clicked="@(() => _editElements.RemoveAt(index))">
+                                        <Icon Name="IconName.Delete" /> Remove
+                                    </Button>
+                                </Column>
+                            </Row>
+                        </CardBody>
+                    </Card>
+                }
+
+                <Button Color="Color.Secondary" Outline="true" Size="Size.Small" Clicked="AddElement" Margin="Margin.Is2.OnY">
+                    Add Element
+                </Button>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@_editModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await SaveCardFormat())">Save</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
+}
+
+<Snackbar @ref="_snackbar" Color="@_snackbarColor">
+    <SnackbarBody>
+        @_snackbarMessage
+    </SnackbarBody>
+</Snackbar>
+
+<MessageProvider />
+
+@code {
+    [Inject]
+    IMessageService MessageService { get; set; }
+
+    private FlexListResponse<FlexDataLayout> _layouts;
+    private Dictionary<int, FlexDataFormat> _formatsByUnid = new();
+
+    private FlexDataLayout _editLayout = new();
+    private FlexDataFormat _editFormat = new();
+    private List<BinaryElementViewModel> _editElements = new();
+    private bool _isEditing;
+
+    private Modal _editModal;
+    private Validations _editValidations;
+
+#pragma warning disable 649
+    private Snackbar _snackbar;
+#pragma warning restore 649
+    private SnackbarColor _snackbarColor;
+    private string _snackbarMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCardFormats();
+    }
+
+    private async Task LoadCardFormats()
+    {
+        _layouts = await FlexApi.GetBasicDataLayoutListAsync(0, 1000);
+        var formats = await FlexApi.GetBinaryFormatListAsync(0, 1000);
+        _formatsByUnid = new Dictionary<int, FlexDataFormat>();
+        foreach (var f in formats.InstanceList)
+        {
+            if (f.Unid.HasValue)
+                _formatsByUnid[f.Unid.Value] = f;
+        }
+    }
+
+    private FlexDataFormat GetFormatForLayout(FlexDataLayout layout)
+    {
+        if (layout.DataFormat?.Unid != null && _formatsByUnid.TryGetValue(layout.DataFormat.Unid.Value, out var format))
+            return format;
+        return null;
+    }
+
+    private static string FormatBitsRange(FlexDataFormat format)
+    {
+        if (format == null) return "";
+        if (format.MinBits == format.MaxBits) return format.MinBits?.ToString() ?? "";
+        return $"{format.MinBits}–{format.MaxBits}";
+    }
+
+    private async Task ShowAddModal()
+    {
+        _isEditing = false;
+        _editLayout = new FlexDataLayout { Enabled = true };
+        _editFormat = new FlexDataFormat();
+        _editElements = new List<BinaryElementViewModel>();
+        await _editModal.Show();
+    }
+
+    private async Task ShowEditModal(FlexDataLayout layout)
+    {
+        _isEditing = true;
+        _editLayout = new FlexDataLayout
+        {
+            Unid = layout.Unid,
+            Name = layout.Name,
+            Version = layout.Version,
+            Tag = layout.Tag,
+            Uuid = layout.Uuid,
+            LayoutType = layout.LayoutType,
+            Priority = layout.Priority,
+            Enabled = layout.Enabled,
+            DataFormat = layout.DataFormat
+        };
+
+        var format = GetFormatForLayout(layout);
+        if (format != null)
+        {
+            _editFormat = new FlexDataFormat
+            {
+                Unid = format.Unid,
+                Name = format.Name,
+                Version = format.Version,
+                Tag = format.Tag,
+                Uuid = format.Uuid,
+                DataFormatType = format.DataFormatType,
+                MinBits = format.MinBits,
+                MaxBits = format.MaxBits,
+                SupportReverseRead = format.SupportReverseRead
+            };
+            _editElements = (format.Elements ?? new List<FlexBinaryElement>())
+                .OrderBy(e => e.Num)
+                .Select(e => new BinaryElementViewModel
+                {
+                    Unid = e.Unid,
+                    Type = e.Type ?? 0,
+                    Start = e.Start,
+                    Len = e.Len,
+                    Field = e.Field,
+                    Odd = e.Odd,
+                    SrcStart = e.SrcStart,
+                    SrcLen = e.SrcLen,
+                    Value = e.Value
+                }).ToList();
+        }
+        else
+        {
+            _editFormat = new FlexDataFormat();
+            _editElements = new List<BinaryElementViewModel>();
+        }
+
+        await _editModal.Show();
+    }
+
+    private async Task SaveCardFormat()
+    {
+        if (!await _editValidations.ValidateAll())
+        {
+            return;
+        }
+        await _editModal.Hide();
+
+        _editFormat.Name = _editLayout.Name;
+        _editFormat.DataFormatType = 1; // Binary
+
+        _editFormat.Elements = _editElements.Select((e, i) =>
+        {
+            var elem = new FlexBinaryElement
+            {
+                Unid = e.Unid,
+                Num = i + 1,
+                Type = e.Type,
+                Start = e.Start,
+                Len = e.Len
+            };
+
+            switch (e.Type)
+            {
+                case 0: // Static
+                    elem.Value = e.Value;
+                    break;
+                case 1: // Parity
+                    elem.Odd = e.Odd;
+                    elem.SrcStart = e.SrcStart;
+                    elem.SrcLen = e.SrcLen;
+                    break;
+                case 2: // Field
+                    elem.Field = e.Field;
+                    break;
+            }
+
+            return elem;
+        }).ToList();
+
+        try
+        {
+            var formatResult = await FlexApi.SaveDataFormatAsync(_editFormat);
+            var savedFormatUnid = formatResult.Instance?.Unid;
+
+            _editLayout.DataFormat = new FlexObjRef { Unid = savedFormatUnid };
+            _editLayout.LayoutType = 0; // Basic
+
+            await FlexApi.SaveDataLayoutAsync(_editLayout);
+
+            _snackbarMessage = _isEditing ? "Successfully updated card format" : "Successfully added card format";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        catch
+        {
+            _snackbarMessage = _isEditing ? "Unable to update card format" : "Unable to add card format";
+            _snackbarColor = SnackbarColor.Danger;
+        }
+
+        await LoadCardFormats();
+        await _snackbar.Show();
+    }
+
+    private async Task RemoveCardFormat(FlexDataLayout layout)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete card format '{layout.Name}'?", "Delete Card Format", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        try
+        {
+            await FlexApi.DeleteDataLayoutAsync(layout.Unid.Value);
+            var format = GetFormatForLayout(layout);
+            if (format?.Unid != null)
+            {
+                await FlexApi.DeleteDataFormatAsync(format.Unid.Value);
+            }
+            _snackbarMessage = "Successfully deleted card format";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        catch
+        {
+            _snackbarMessage = "Unable to delete card format";
+            _snackbarColor = SnackbarColor.Danger;
+        }
+
+        await LoadCardFormats();
+        await _snackbar.Show();
+    }
+
+    private void AddElement()
+    {
+        _editElements.Add(new BinaryElementViewModel());
+    }
+
+    private class BinaryElementViewModel
+    {
+        public int? Unid { get; set; }
+        public int Type { get; set; }      // 0=Static, 1=Parity, 2=Field
+        public int? Start { get; set; }
+        public int? Len { get; set; }
+        public int? Field { get; set; }    // 0=CRED_NUM, 1=FACILITY_CODE (type=2)
+        public bool? Odd { get; set; }     // type=1
+        public int? SrcStart { get; set; } // type=1
+        public int? SrcLen { get; set; }   // type=1
+        public string Value { get; set; }  // type=0
+    }
+}

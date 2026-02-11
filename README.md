@@ -38,6 +38,7 @@ Aporta supports the Z9/Flex Community Profile as a JSON/REST API, intended for u
     - Log access events
     - Door access privilege management from Credentials page (assign/remove doors, set schedule restrictions)
     - Door Access column on Credentials page showing assigned doors with schedule names
+    - Card format management (create, edit, delete binary card formats with parity, field, and static elements)
 
 ### Z9/Open Community Profile
 - Connection & Protocol
@@ -97,7 +98,7 @@ The web UI communicates with the server through the Z9/Flex Community Profile AP
 - OSDP Driver
     - Notify when input is tripped
 - Access Control
-    - Standalone UI for managing card formats and holidays (schedules and door access privileges are now managed from the web UI)
+    - Standalone UI for managing holidays (schedules, card formats, and door access privileges are now managed from the web UI)
 
 ### Z9/Open Community Profile
 - DbChange: Handle device deletions (devDelete, devDeleteAll) — currently silently ignored, causing stale devices to accumulate

@@ -70,6 +70,36 @@ public class FlexApiService
         return await FlexPostAsync<FlexVoid>($"sched/delete/{unid}");
     }
 
+    public async Task<FlexListResponse<FlexDataFormat>> GetBinaryFormatListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDataFormat>>($"binaryFormat/list?offset={offset}&max={max}");
+    }
+
+    public async Task<FlexInstanceResponse<FlexDataFormat>> SaveDataFormatAsync(FlexDataFormat dataFormat)
+    {
+        return await FlexPostAsync<FlexInstanceResponse<FlexDataFormat>>("dataFormat/save", dataFormat);
+    }
+
+    public async Task<FlexVoid> DeleteDataFormatAsync(int unid)
+    {
+        return await FlexPostAsync<FlexVoid>($"dataFormat/delete/{unid}");
+    }
+
+    public async Task<FlexListResponse<FlexDataLayout>> GetBasicDataLayoutListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexDataLayout>>($"basicDataLayout/list?offset={offset}&max={max}");
+    }
+
+    public async Task<FlexInstanceResponse<FlexDataLayout>> SaveDataLayoutAsync(FlexDataLayout dataLayout)
+    {
+        return await FlexPostAsync<FlexInstanceResponse<FlexDataLayout>>("dataLayout/save", dataLayout);
+    }
+
+    public async Task<FlexVoid> DeleteDataLayoutAsync(int unid)
+    {
+        return await FlexPostAsync<FlexVoid>($"dataLayout/delete/{unid}");
+    }
+
     public async Task<FlexListResponse<FlexDev>> GetSensorListAsync(int offset, int max)
     {
         return await FlexGetAsync<FlexListResponse<FlexDev>>($"sensor/list?offset={offset}&max={max}");
