@@ -289,14 +289,14 @@ public class AccessGrantedTest
 
         _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/credentials");
 
-        WaitForBodyText("Add Person");
+        WaitForBodyText("Add Credential");
 
-        ClickButtonContaining("Add Person");
+        ClickButtonContaining("Add Credential");
         WaitForModal();
 
         var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
         var inputs = modal.FindElements(By.CssSelector("input[type='text'],input:not([type])"));
-        Assert.That(inputs.Count, Is.GreaterThanOrEqualTo(2), "Expected at least 2 text inputs in Add Person modal");
+        Assert.That(inputs.Count, Is.GreaterThanOrEqualTo(2), "Expected at least 2 text inputs in Add Credential modal");
 
         inputs[0].Clear();
         inputs[0].SendKeys("Test");
@@ -396,7 +396,7 @@ public class AccessGrantedTest
         wait.Until(d =>
         {
             var body = d.FindElement(By.TagName("body"));
-            return body.Text.Contains("Successfully enrolled person");
+            return body.Text.Contains("Successfully enrolled credential");
         });
 
         // Reload to verify enrollment persisted (person row should show badge number)
@@ -412,7 +412,11 @@ public class AccessGrantedTest
         Assert.That(enrolledRow.Text, Does.Contain("12345"),
             "Person row should contain badge number 12345 after enrollment");
 
-        TakeScreenshot("07_person_enrolled", "Enroll Test Person with badge 12345 — badge number now appears in their row");
+        // Verify Door Access column shows the door with Always schedule
+        Assert.That(enrolledRow.Text, Does.Contain("Test Door (Always)"),
+            "Person row should show 'Test Door (Always)' in the Door Access column after enrollment");
+
+        TakeScreenshot("07_person_enrolled", "Enroll Test Person with badge 12345 — badge number and door access now appear in their row");
         TestContext.Progress.WriteLine("Person enrolled with badge 12345 successfully");
     }
 
@@ -477,6 +481,273 @@ public class AccessGrantedTest
 
         TakeScreenshot("09_access_granted_verified", "Monitoring page shows Access Granted event with device and credential info — end-to-end flow complete");
         TestContext.Progress.WriteLine("Access Granted event verified on monitoring page!");
+    }
+
+    [Test, Order(9)]
+    public void AddSchedule()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/schedules");
+
+        WaitForBodyText("Add Schedule");
+
+        TakeScreenshot("10_schedules_page_empty", "Schedules page before any schedules have been created");
+
+        ClickButtonContaining("Add Schedule");
+        WaitForModal();
+
+        // Enter schedule name
+        var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+        var nameInput = modal.FindElement(By.CssSelector("input"));
+        nameInput.Clear();
+        nameInput.SendKeys("Business Hours");
+        nameInput.SendKeys(Keys.Tab);
+
+        // Add a time interval
+        var addIntervalButton = modal.FindElements(By.TagName("button"))
+            .First(b => b.Displayed && b.Text.Contains("Add Time Interval"));
+        addIntervalButton.Click();
+
+        // Wait for the interval card to appear
+        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
+        wait.Until(d =>
+        {
+            var m = d.FindElement(By.CssSelector("div.modal.show"));
+            return m.FindElements(By.CssSelector(".card .card-body")).Count > 0;
+        });
+
+        // Find the interval card within the modal
+        var intervalCard = modal.FindElement(By.CssSelector(".card .card-body"));
+
+        // Check Mon through Fri — Blazorise renders Check as hidden input + visible label,
+        // so click the labels (custom-control-label) instead of the inputs
+        var checkboxLabels = intervalCard.FindElements(By.CssSelector("label.custom-control-label"));
+        Assert.That(checkboxLabels.Count, Is.EqualTo(7), "Expected 7 day-of-week checkbox labels");
+        for (var i = 0; i < 5; i++)
+        {
+            checkboxLabels[i].Click();
+        }
+
+        // Enter start and stop times
+        var timeInputs = intervalCard.FindElements(By.CssSelector("input[type='text']"));
+        Assert.That(timeInputs.Count, Is.GreaterThanOrEqualTo(2), "Expected at least 2 time inputs");
+        timeInputs[0].Clear();
+        timeInputs[0].SendKeys("08:00");
+        timeInputs[1].Clear();
+        timeInputs[1].SendKeys("17:00");
+
+        TakeScreenshot("11_schedule_modal_filled", "Add Schedule modal with Business Hours — Mon through Fri, 08:00 to 17:00");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        // Wait for the schedule to appear in the table
+        WaitForBodyText("Business Hours");
+
+        // Verify the summary shows the expected time interval
+        var scheduleRow = FindTableRowContaining("Business Hours");
+        Assert.That(scheduleRow.Text, Does.Contain("Mon"),
+            "Schedule row should show day abbreviations");
+        Assert.That(scheduleRow.Text, Does.Contain("08:00"),
+            "Schedule row should show start time");
+        Assert.That(scheduleRow.Text, Does.Contain("17:00"),
+            "Schedule row should show stop time");
+
+        TakeScreenshot("12_schedule_created", "Business Hours schedule created — Mon-Fri 08:00-17:00 visible in the schedules table");
+        TestContext.Progress.WriteLine("Schedule 'Business Hours' added successfully");
+    }
+
+    [Test, Order(10)]
+    public void CreateNotTodaySchedule()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/schedules");
+
+        WaitForBodyText("Add Schedule");
+
+        ClickButtonContaining("Add Schedule");
+        WaitForModal();
+
+        var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+        var nameInput = modal.FindElement(By.CssSelector("input"));
+        nameInput.Clear();
+        nameInput.SendKeys("Not Today");
+        nameInput.SendKeys(Keys.Tab);
+
+        // Add a time interval
+        var addIntervalButton = modal.FindElements(By.TagName("button"))
+            .First(b => b.Displayed && b.Text.Contains("Add Time Interval"));
+        addIntervalButton.Click();
+
+        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
+        wait.Until(d =>
+        {
+            var m = d.FindElement(By.CssSelector("div.modal.show"));
+            return m.FindElements(By.CssSelector(".card .card-body")).Count > 0;
+        });
+
+        var intervalCard = modal.FindElement(By.CssSelector(".card .card-body"));
+
+        // Check only a day that is NOT today
+        // Checkbox indices: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+        var today = DateTime.Now.DayOfWeek;
+        var todayIndex = today == DayOfWeek.Sunday ? 6 : (int)today - 1;
+        var notTodayIndex = (todayIndex + 1) % 7;
+
+        var checkboxLabels = intervalCard.FindElements(By.CssSelector("label.custom-control-label"));
+        Assert.That(checkboxLabels.Count, Is.EqualTo(7), "Expected 7 day-of-week checkbox labels");
+        checkboxLabels[notTodayIndex].Click();
+
+        // Enter all-day time range
+        var timeInputs = intervalCard.FindElements(By.CssSelector("input[type='text']"));
+        Assert.That(timeInputs.Count, Is.GreaterThanOrEqualTo(2), "Expected at least 2 time inputs");
+        timeInputs[0].Clear();
+        timeInputs[0].SendKeys("00:00");
+        timeInputs[1].Clear();
+        timeInputs[1].SendKeys("23:59");
+
+        TakeScreenshot("13_not_today_schedule_modal", "Add 'Not Today' schedule — active only on a day that is not today");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        WaitForBodyText("Not Today");
+
+        TakeScreenshot("14_not_today_schedule_created", "'Not Today' schedule created — will cause Access Denied when assigned");
+        TestContext.Progress.WriteLine("Schedule 'Not Today' added successfully");
+    }
+
+    [Test, Order(11)]
+    public void EditCredentialAccessToNotToday()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/credentials");
+
+        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(30));
+        wait.Until(d =>
+        {
+            var body = d.FindElement(By.TagName("body"));
+            return body.Text.Contains("Test") && body.Text.Contains("Person");
+        });
+
+        // Find the person row and click Action dropdown
+        var personRow = FindTableRowContaining("Person");
+        var actionToggle = personRow.FindElement(By.CssSelector("button.dropdown-toggle"));
+        actionToggle.Click();
+
+        WaitForVisibleDropdown();
+        ClickDropdownItem("Edit Access");
+
+        WaitForModal();
+
+        // The modal should show the existing "Test Door (Always)" binding
+        var modal = _driver.FindElement(By.CssSelector("div.modal.show"));
+        var selects = modal.FindElements(By.CssSelector("select"));
+        Assert.That(selects.Count, Is.GreaterThanOrEqualTo(2),
+            "Expected at least 2 selects (door + schedule) in Edit Access modal");
+
+        // Change the schedule dropdown (second select) from "Always" to "Not Today"
+        var schedSelect = new SelectElement(selects[1]);
+        SelectOptionContainingText(schedSelect, "Not Today");
+
+        TakeScreenshot("15_edit_access_not_today", "Edit Access modal — changing schedule from Always to Not Today");
+
+        ClickModalButton("Save");
+        WaitForModalClose();
+
+        // Wait for the snackbar confirmation
+        wait.Until(d =>
+        {
+            var body = d.FindElement(By.TagName("body"));
+            return body.Text.Contains("Successfully updated door access");
+        });
+
+        // Reload and verify the Door Access column shows "Not Today" schedule
+        _driver.Navigate().GoToUrl($"{BaseUrl}/configuration/credentials");
+        wait.Until(d =>
+        {
+            var body = d.FindElement(By.TagName("body"));
+            return body.Text.Contains("Test") && body.Text.Contains("Person");
+        });
+
+        // Wait for door/schedule lookups to resolve and render in the Door Access column
+        wait.Until(d =>
+        {
+            var row = FindTableRowContaining("Person");
+            return row.Text.Contains("Test Door");
+        });
+
+        var updatedRow = FindTableRowContaining("Person");
+        Assert.That(updatedRow.Text, Does.Contain("Test Door (Not Today)"),
+            "Person row should show 'Test Door (Not Today)' after editing access");
+
+        TakeScreenshot("16_credential_access_updated", "Credentials page — door access now shows 'Test Door (Not Today)'");
+        TestContext.Progress.WriteLine("Credential access updated to 'Not Today' schedule");
+    }
+
+    [Test, Order(12)]
+    public void SwipeBadgeThirdTime()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/configuration/driver/{VirtualDriverGuid}");
+
+        WaitForBodyText("Test Reader");
+        var readerRow = _driver.FindElement(By.Id("Reader:Test Reader"));
+
+        var actionToggle = readerRow.FindElement(By.CssSelector("button.dropdown-toggle"));
+        actionToggle.Click();
+
+        WaitForVisibleDropdown();
+        ClickDropdownItem("Swipe Badge");
+
+        WaitForModal();
+
+        var badgeInput = _driver.FindElement(By.Id("SwipeBadgeTextEdit"));
+        badgeInput.Clear();
+        badgeInput.SendKeys("12345");
+        badgeInput.SendKeys(Keys.Tab);
+
+        ClickModalButton("Swipe the badge");
+        WaitForModalClose();
+
+        // Wait for server to process
+        Thread.Sleep(2000);
+
+        TakeScreenshot("17_badge_swiped_third", "Swipe badge 12345 again — schedule is not active today, should trigger Access Denied");
+        TestContext.Progress.WriteLine("Badge swiped third time (should trigger Access Denied)");
+    }
+
+    [Test, Order(13)]
+    public void VerifyAccessDeniedOnMonitoringPage()
+    {
+        Assert.That(_driver, Is.Not.Null, "ChromeDriver was not initialized");
+
+        _driver!.Navigate().GoToUrl($"{BaseUrl}/monitoring");
+
+        // Wait for the Access Denied event from the third swipe (schedule restriction).
+        // The monitoring page shows newest events first. The first Access Denied row should
+        // be from swipe 3 — it will include the credential name "Person, Test" because the
+        // credential was recognized. (The earlier Access Denied from swipe 1 would NOT have
+        // a credential name since it was an unknown badge.)
+        var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(30));
+        wait.Until(d =>
+        {
+            var body = d.FindElement(By.TagName("body"));
+            return body.Text.Contains("Access Denied");
+        });
+
+        var accessDeniedRow = FindTableRowContaining("Access Denied");
+        Assert.That(accessDeniedRow.Text, Does.Contain("Test Reader"),
+            "Access Denied event should show device name 'Test Reader'");
+        Assert.That(accessDeniedRow.Text, Does.Contain("Person, Test"),
+            "Access Denied event should show credential name 'Person, Test' (proves it's from the schedule-restricted swipe, not the unknown-badge swipe)");
+
+        TakeScreenshot("18_access_denied_verified", "Monitoring page shows Access Denied — credential's schedule is not active today");
+        TestContext.Progress.WriteLine("Access Denied event verified on monitoring page!");
     }
 
     // --- Helper Methods ---

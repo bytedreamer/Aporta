@@ -1,0 +1,362 @@
+@page "/configuration/schedules"
+
+@using System.Linq
+@using Aporta.Shared.Calls
+@using Aporta.Shared.Models.Flex
+
+@inject FlexApiService FlexApi
+
+<Heading Size="HeadingSize.Is1">Schedules</Heading>
+<Divider />
+
+@if (_schedules == null)
+{
+    <div class="spinner"></div>
+}
+else
+{
+    <Row>
+        <Column ColumnSize="ColumnSize.Is6.OnDesktop">
+            <Button Color="Color.Primary" Clicked="ShowAddModal">Add Schedule</Button>
+        </Column>
+    </Row>
+    <Row>
+        <Column>
+            <Card Margin="Margin.Is4.OnY">
+                <CardBody>
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Name</TableHeaderCell>
+                                <TableHeaderCell>Time Intervals</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var sched in _schedules.InstanceList.OrderBy(s => s.Name ?? ""))
+                            {
+                                <TableRow>
+                                    <TableRowHeader>
+                                        @sched.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @FormatScheduleSummary(sched)
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Button Size="Size.Small" Color="Color.Primary" Clicked="@(() => ShowEditModal(sched))" Margin="Margin.Is1.FromEnd">
+                                            <Icon Name="IconName.Edit" />
+                                        </Button>
+                                        <Button Size="Size.Small" Clicked="@(async () => await RemoveSchedule(sched))">
+                                            <Icon Name="IconName.Delete" Style="color: red" />
+                                        </Button>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
+    <Modal @ref="_editModal">
+        <ModalContent Size="ModalSize.Large" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    @(_isEditing ? "Edit Schedule" : "Add Schedule")
+                </ModalTitle>
+                <CloseButton Clicked="@_editModal.Hide" />
+            </ModalHeader>
+            <ModalBody>
+                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_editValidations">
+                    <Validation Validator="@ValidationRule.IsNotEmpty">
+                        <Field>
+                            <FieldLabel>Name</FieldLabel>
+                            <FieldBody>
+                                <TextEdit @bind-Text="_editSched.Name">
+                                    <Feedback>
+                                        <ValidationError>
+                                            Please enter a name for the schedule
+                                        </ValidationError>
+                                    </Feedback>
+                                </TextEdit>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+                </Validations>
+
+                <Divider />
+                <Heading Size="HeadingSize.Is5">Time Intervals</Heading>
+
+                @for (var i = 0; i < _editElements.Count; i++)
+                {
+                    var index = i;
+                    var element = _editElements[index];
+                    <Card Margin="Margin.Is2.OnY">
+                        <CardBody>
+                            <Row>
+                                <Column>
+                                    <Field>
+                                        <FieldLabel>Days</FieldLabel>
+                                        <FieldBody>
+                                            @for (var d = 0; d < 7; d++)
+                                            {
+                                                var dayIndex = d;
+                                                <Check TValue="bool" Checked="@element.Days[dayIndex]" CheckedChanged="@(val => element.Days[dayIndex] = val)" Inline="true">@DayNames[dayIndex]</Check>
+                                            }
+                                        </FieldBody>
+                                    </Field>
+                                </Column>
+                            </Row>
+                            <Row>
+                                <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>Start Time</FieldLabel>
+                                        <FieldBody>
+                                            <TextEdit @bind-Text="element.Start" Placeholder="HH:MM" />
+                                        </FieldBody>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is4.OnDesktop">
+                                    <Field>
+                                        <FieldLabel>Stop Time</FieldLabel>
+                                        <FieldBody>
+                                            <TextEdit @bind-Text="element.Stop" Placeholder="HH:MM" />
+                                        </FieldBody>
+                                    </Field>
+                                </Column>
+                                <Column ColumnSize="ColumnSize.Is4.OnDesktop" Flex="Flex.AlignItems.End" Display="Display.Flex">
+                                    <Button Color="Color.Danger" Outline="true" Size="Size.Small" Clicked="@(() => _editElements.RemoveAt(index))">
+                                        <Icon Name="IconName.Delete" /> Remove
+                                    </Button>
+                                </Column>
+                            </Row>
+                        </CardBody>
+                    </Card>
+                }
+
+                <Button Color="Color.Secondary" Outline="true" Size="Size.Small" Clicked="AddElement" Margin="Margin.Is2.OnY">
+                    Add Time Interval
+                </Button>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@_editModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await SaveSchedule())">Save</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
+}
+
+<Snackbar @ref="_snackbar" Color="@_snackbarColor">
+    <SnackbarBody>
+        @_snackbarMessage
+    </SnackbarBody>
+</Snackbar>
+
+<MessageProvider />
+
+@code {
+    [Inject]
+    IMessageService MessageService { get; set; }
+
+    private static readonly string[] DayNames = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+    private FlexListResponse<FlexSched> _schedules;
+
+    private FlexSched _editSched = new();
+    private List<ElementViewModel> _editElements = new();
+    private bool _isEditing;
+
+    private Modal _editModal;
+    private Validations _editValidations;
+
+#pragma warning disable 649
+    private Snackbar _snackbar;
+#pragma warning restore 649
+    private SnackbarColor _snackbarColor;
+    private string _snackbarMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSchedules();
+    }
+
+    private async Task LoadSchedules()
+    {
+        _schedules = await FlexApi.GetSchedListAsync(0, 1000);
+    }
+
+    private async Task ShowAddModal()
+    {
+        _isEditing = false;
+        _editSched = new FlexSched();
+        _editElements = new List<ElementViewModel>();
+        await _editModal.Show();
+    }
+
+    private async Task ShowEditModal(FlexSched sched)
+    {
+        _isEditing = true;
+        _editSched = new FlexSched
+        {
+            Unid = sched.Unid,
+            Name = sched.Name,
+            Version = sched.Version,
+            Tag = sched.Tag,
+            Uuid = sched.Uuid,
+            ExternalId = sched.ExternalId
+        };
+        _editElements = (sched.Elements ?? new List<FlexSchedElement>())
+            .Select(e => new ElementViewModel
+            {
+                Unid = e.Unid,
+                Days = Enumerable.Range(0, 7).Select(d => e.SchedDays?.Contains(d) == true).ToArray(),
+                Start = StripSeconds(e.Start),
+                Stop = StripSeconds(e.Stop)
+            }).ToList();
+        await _editModal.Show();
+    }
+
+    private async Task SaveSchedule()
+    {
+        if (!await _editValidations.ValidateAll())
+        {
+            return;
+        }
+        await _editModal.Hide();
+
+        _editSched.Elements = _editElements.Select(e => new FlexSchedElement
+        {
+            Unid = e.Unid,
+            SchedDays = Enumerable.Range(0, 7).Where(d => e.Days[d]).ToList(),
+            Start = AppendSeconds(e.Start),
+            Stop = AppendSeconds(e.Stop),
+            Holidays = false,
+            PlusDays = 0,
+            HolTypes = new List<FlexObjRef>()
+        }).ToList();
+
+        try
+        {
+            await FlexApi.SaveSchedAsync(_editSched);
+            _snackbarMessage = _isEditing ? "Successfully updated schedule" : "Successfully added schedule";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        catch
+        {
+            _snackbarMessage = _isEditing ? "Unable to update schedule" : "Unable to add schedule";
+            _snackbarColor = SnackbarColor.Danger;
+        }
+
+        await LoadSchedules();
+        await _snackbar.Show();
+    }
+
+    private async Task RemoveSchedule(FlexSched sched)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete schedule '{sched.Name}'?", "Delete Schedule", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        try
+        {
+            await FlexApi.DeleteSchedAsync(sched.Unid.Value);
+            _snackbarMessage = "Successfully deleted schedule";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        catch
+        {
+            _snackbarMessage = "Unable to delete schedule";
+            _snackbarColor = SnackbarColor.Danger;
+        }
+
+        await LoadSchedules();
+        await _snackbar.Show();
+    }
+
+    private void AddElement()
+    {
+        _editElements.Add(new ElementViewModel
+        {
+            Days = new bool[7]
+        });
+    }
+
+    private static string FormatScheduleSummary(FlexSched sched)
+    {
+        if (sched.Elements == null || sched.Elements.Count == 0)
+            return "";
+
+        return string.Join("; ", sched.Elements.Select(FormatElement));
+    }
+
+    private static string FormatElement(FlexSchedElement element)
+    {
+        var days = FormatDays(element.SchedDays ?? new List<int>());
+        var start = StripSeconds(element.Start);
+        var stop = StripSeconds(element.Stop);
+        return $"{days} {start}-{stop}";
+    }
+
+    private static string FormatDays(List<int> schedDays)
+    {
+        if (schedDays.Count == 0) return "";
+
+        var sorted = schedDays.OrderBy(d => d).ToList();
+        var ranges = new List<string>();
+        var rangeStart = sorted[0];
+        var rangeEnd = sorted[0];
+
+        for (var i = 1; i < sorted.Count; i++)
+        {
+            if (sorted[i] == rangeEnd + 1)
+            {
+                rangeEnd = sorted[i];
+            }
+            else
+            {
+                ranges.Add(FormatDayRange(rangeStart, rangeEnd));
+                rangeStart = sorted[i];
+                rangeEnd = sorted[i];
+            }
+        }
+        ranges.Add(FormatDayRange(rangeStart, rangeEnd));
+
+        return string.Join(",", ranges);
+    }
+
+    private static string FormatDayRange(int start, int end)
+    {
+        if (start == end) return DayNames[start];
+        return $"{DayNames[start]}-{DayNames[end]}";
+    }
+
+    private static string StripSeconds(string time)
+    {
+        if (string.IsNullOrEmpty(time)) return "";
+        var parts = time.Split(':');
+        if (parts.Length >= 2) return $"{parts[0]}:{parts[1]}";
+        return time;
+    }
+
+    private static string AppendSeconds(string time)
+    {
+        if (string.IsNullOrEmpty(time)) return "00:00:00";
+        var parts = time.Split(':');
+        if (parts.Length == 2) return $"{time}:00";
+        return time;
+    }
+
+    private class ElementViewModel
+    {
+        public int? Unid { get; set; }
+        public bool[] Days { get; set; } = new bool[7];
+        public string Start { get; set; } = "";
+        public string Stop { get; set; } = "";
+    }
+}

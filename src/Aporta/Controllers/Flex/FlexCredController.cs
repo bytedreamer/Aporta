@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
@@ -36,6 +37,7 @@ public class FlexCredController : FlexCrudControllerBase<Cred, FlexCred>
     protected override FlexCred ToFlex(Cred proto) => FlexMapper.ToFlex(proto);
     protected override Cred ToProto(FlexCred flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexCred flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexCred flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(Cred proto) => proto.Uuid;
 
     public override async Task<IActionResult> Save([FromBody] FlexCred body)

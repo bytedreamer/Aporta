@@ -28,6 +28,7 @@ public class FlexDevController : FlexCrudControllerBase<Dev, FlexDev>
     protected override FlexDev ToFlex(Dev proto) => FlexMapper.ToFlex(proto);
     protected override Dev ToProto(FlexDev flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexDev flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexDev flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(Dev proto) => proto.Uuid;
 }
 
@@ -49,6 +50,7 @@ public abstract class FlexDevTypeControllerBase : FlexCrudControllerBase<Dev, Fl
     protected override FlexDev ToFlex(Dev proto) => FlexMapper.ToFlex(proto);
     protected override Dev ToProto(FlexDev flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexDev flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexDev flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(Dev proto) => proto.Uuid;
 
     [HttpGet("list")]

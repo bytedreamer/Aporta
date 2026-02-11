@@ -2,11 +2,13 @@ using System;
 using System.Data;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess;
 using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Models;
 using Aporta.Shared.Models;
+using Aporta.Shared.Models.Flex;
 using Microsoft.Data.Sqlite;
 using NUnit.Framework;
 using Z9.Protobuf;
@@ -290,5 +292,117 @@ public class CredentialRepositoryTests
         Assert.That(person.FirstName, Is.EqualTo("JohnOnly"));
         Assert.That(person.LastName, Is.Null);
         Assert.That(person.Enabled, Is.False);
+    }
+
+    [Test]
+    public async Task CredWithSchedRestriction_SurvivesRoundTrip()
+    {
+        // Arrange
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+
+        var cred = CreateZ9Cred(1, "Smith, John", true, new BigInteger(12345));
+        cred.PrivBindings.Add(new CredPrivBinding
+        {
+            DevAsDoorAccessPrivUnid = 42,
+            SchedRestriction = new SchedRestriction
+            {
+                SchedUnid = 7,
+                Invert = false
+            }
+        });
+        SpCoreProtoUtil.InitRequired(cred);
+
+        // Act
+        await z9CredRepository.Upsert(cred);
+        var retrieved = await z9CredRepository.Get(1);
+
+        // Assert - proto round-trip
+        Assert.That(retrieved.PrivBindings, Has.Count.EqualTo(1));
+        Assert.That(retrieved.PrivBindings[0].DevAsDoorAccessPrivUnid, Is.EqualTo(42));
+        Assert.That(retrieved.PrivBindings[0].SchedRestriction, Is.Not.Null,
+            "SchedRestriction should survive proto JSON round-trip");
+        Assert.That(retrieved.PrivBindings[0].SchedRestriction.SchedUnid, Is.EqualTo(7));
+
+        // Also verify the FlexMapper round-trip
+        var flex = Aporta.Core.Services.FlexMapper.ToFlex(retrieved);
+        Assert.That(flex.PrivBindings, Has.Count.EqualTo(1));
+        Assert.That(flex.PrivBindings[0].SchedRestriction, Is.Not.Null,
+            "SchedRestriction should survive FlexMapper.ToFlex");
+        Assert.That(flex.PrivBindings[0].SchedRestriction.Sched, Is.Not.Null);
+        Assert.That(flex.PrivBindings[0].SchedRestriction.Sched.Unid, Is.EqualTo(7));
+
+        // And the full round-trip back through ToProto
+        var protoAgain = Aporta.Core.Services.FlexMapper.ToProto(flex);
+        Assert.That(protoAgain.PrivBindings, Has.Count.EqualTo(1));
+        Assert.That(protoAgain.PrivBindings[0].SchedRestriction, Is.Not.Null,
+            "SchedRestriction should survive FlexMapper.ToProto");
+        Assert.That(protoAgain.PrivBindings[0].SchedRestriction.SchedUnid, Is.EqualTo(7));
+    }
+
+    [Test]
+    public async Task CredWithSchedRestriction_SurvivesFullHttpStyleRoundTrip()
+    {
+        // This test simulates the full HTTP round-trip:
+        // Client FlexCred → System.Text.Json serialize → System.Text.Json deserialize (server) →
+        // FlexMapper.ToProto → DB (proto JSON) → DB read → FlexMapper.ToFlex →
+        // System.Text.Json serialize (response) → System.Text.Json deserialize (client)
+
+        var z9CredRepository = new Z9CredRepository(_dataAccess);
+
+        // Step 1: Create a FlexCred like the client would (mimics SaveEditAccess)
+        var clientFlexCred = new FlexCred
+        {
+            Unid = 1,
+            Name = "Smith, John",
+            Enabled = true,
+            CredTemplate = new FlexObjRef { Unid = 1 },
+            CardPin = new FlexCardPin { CredNum = "12345" },
+            PrivBindings = new System.Collections.Generic.List<FlexCredPrivBinding>
+            {
+                new FlexCredPrivBinding
+                {
+                    DevAsDoorAccessPriv = new FlexObjRef { Unid = 42, Type = "dev" },
+                    SchedRestriction = new FlexSchedRestriction
+                    {
+                        Sched = new FlexObjRef { Unid = 7 }
+                    }
+                }
+            }
+        };
+
+        // Step 2: Simulate HTTP transport (System.Text.Json round-trip)
+        var clientJson = JsonSerializer.Serialize(clientFlexCred);
+        TestContext.Progress.WriteLine($"Client JSON: {clientJson}");
+        var serverFlexCred = JsonSerializer.Deserialize<FlexCred>(clientJson);
+
+        // Verify SchedRestriction survives System.Text.Json round-trip
+        Assert.That(serverFlexCred.PrivBindings[0].SchedRestriction, Is.Not.Null,
+            "SchedRestriction should survive System.Text.Json round-trip (simulated HTTP)");
+        Assert.That(serverFlexCred.PrivBindings[0].SchedRestriction.Sched.Unid, Is.EqualTo(7));
+
+        // Step 3: Server-side: ToProto + InitRequired + Upsert (same as FlexCredController.Save)
+        var proto = Aporta.Core.Services.FlexMapper.ToProto(serverFlexCred);
+        SpCoreProtoUtil.InitRequired(proto);
+        await z9CredRepository.Upsert(proto);
+
+        // Step 4: Server-side: GetAll + ToFlex (same as FlexCrudControllerBase.List)
+        var allProtos = (await z9CredRepository.GetAll()).ToList();
+        var responseFlex = Aporta.Core.Services.FlexMapper.ToFlex(allProtos[0]);
+
+        // Step 5: Simulate HTTP response (System.Text.Json serialize + deserialize)
+        var responseJson = JsonSerializer.Serialize(responseFlex);
+        TestContext.Progress.WriteLine($"Response JSON: {responseJson}");
+        var clientReceivedFlex = JsonSerializer.Deserialize<FlexCred>(responseJson);
+
+        // Assert - full round-trip
+        Assert.That(clientReceivedFlex.PrivBindings, Has.Count.EqualTo(1));
+        Assert.That(clientReceivedFlex.PrivBindings[0].DevAsDoorAccessPriv, Is.Not.Null);
+        Assert.That(clientReceivedFlex.PrivBindings[0].DevAsDoorAccessPriv.Unid, Is.EqualTo(42));
+        Assert.That(clientReceivedFlex.PrivBindings[0].SchedRestriction, Is.Not.Null,
+            "SchedRestriction should survive the full HTTP-style round-trip");
+        Assert.That(clientReceivedFlex.PrivBindings[0].SchedRestriction.Sched, Is.Not.Null,
+            "SchedRestriction.Sched should survive the full round-trip");
+        Assert.That(clientReceivedFlex.PrivBindings[0].SchedRestriction.Sched.Unid, Is.EqualTo(7),
+            "SchedRestriction.Sched.Unid should be preserved");
     }
 }

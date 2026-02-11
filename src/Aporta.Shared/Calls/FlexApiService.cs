@@ -55,6 +55,21 @@ public class FlexApiService
         return await FlexGetAsync<FlexListResponse<FlexCred>>($"cred/list?offset={offset}&max={max}");
     }
 
+    public async Task<FlexListResponse<FlexSched>> GetSchedListAsync(int offset, int max)
+    {
+        return await FlexGetAsync<FlexListResponse<FlexSched>>($"sched/list?offset={offset}&max={max}");
+    }
+
+    public async Task<FlexInstanceResponse<FlexSched>> SaveSchedAsync(FlexSched sched)
+    {
+        return await FlexPostAsync<FlexInstanceResponse<FlexSched>>("sched/save", sched);
+    }
+
+    public async Task<FlexVoid> DeleteSchedAsync(int unid)
+    {
+        return await FlexPostAsync<FlexVoid>($"sched/delete/{unid}");
+    }
+
     public async Task<FlexListResponse<FlexDev>> GetSensorListAsync(int offset, int max)
     {
         return await FlexGetAsync<FlexListResponse<FlexDev>>($"sensor/list?offset={offset}&max={max}");

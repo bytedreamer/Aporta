@@ -22,5 +22,6 @@ public class FlexDataFormatController : FlexCrudControllerBase<DataFormat, FlexD
     protected override FlexDataFormat ToFlex(DataFormat proto) => FlexMapper.ToFlex(proto);
     protected override DataFormat ToProto(FlexDataFormat flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexDataFormat flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexDataFormat flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(DataFormat proto) => proto.Uuid;
 }

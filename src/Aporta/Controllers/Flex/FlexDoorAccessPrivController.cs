@@ -22,5 +22,6 @@ public class FlexDoorAccessPrivController : FlexCrudControllerBase<Priv, FlexPri
     protected override FlexPriv ToFlex(Priv proto) => FlexMapper.ToFlex(proto);
     protected override Priv ToProto(FlexPriv flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexPriv flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexPriv flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(Priv proto) => proto.Uuid;
 }

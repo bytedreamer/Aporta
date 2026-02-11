@@ -22,5 +22,6 @@ public class FlexCredTemplateController : FlexCrudControllerBase<CredTemplate, F
     protected override FlexCredTemplate ToFlex(CredTemplate proto) => FlexMapper.ToFlex(proto);
     protected override CredTemplate ToProto(FlexCredTemplate flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexCredTemplate flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexCredTemplate flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(CredTemplate proto) => proto.Uuid;
 }

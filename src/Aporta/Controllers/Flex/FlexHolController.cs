@@ -22,5 +22,6 @@ public class FlexHolController : FlexCrudControllerBase<Hol, FlexHol>
     protected override FlexHol ToFlex(Hol proto) => FlexMapper.ToFlex(proto);
     protected override Hol ToProto(FlexHol flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexHol flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexHol flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(Hol proto) => proto.Uuid;
 }

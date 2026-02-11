@@ -82,4 +82,16 @@ public abstract class ProtoJsonRepository<T> where T : IMessage<T>, new()
 
         return await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM {TableName}");
     }
+
+    /// <summary>
+    /// Returns the next available ID (MAX(id) + 1, or 1 if empty).
+    /// </summary>
+    public async Task<int> NextId()
+    {
+        using var connection = DataAccess.CreateDbConnection();
+        connection.Open();
+
+        return await connection.ExecuteScalarAsync<int>(
+            $"SELECT COALESCE(MAX(id), 0) + 1 FROM {TableName}");
+    }
 }

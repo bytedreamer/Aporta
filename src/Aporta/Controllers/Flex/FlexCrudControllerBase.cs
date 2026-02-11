@@ -16,6 +16,7 @@ public abstract class FlexCrudControllerBase<TProto, TFlex> : ControllerBase
     protected abstract TFlex ToFlex(TProto proto);
     protected abstract TProto ToProto(TFlex flex);
     protected abstract int GetUnid(TFlex flex);
+    protected abstract void SetUnid(TFlex flex, int unid);
 
     protected virtual async Task<TProto> FindByIdString(string id)
     {
@@ -58,6 +59,9 @@ public abstract class FlexCrudControllerBase<TProto, TFlex> : ControllerBase
     [HttpPost("save")]
     public virtual async Task<IActionResult> Save([FromBody] TFlex body)
     {
+        if (GetUnid(body) == 0)
+            SetUnid(body, await Repository.NextId());
+
         var proto = ToProto(body);
         await Repository.Upsert(proto);
         return Ok(new FlexInstanceResponse<TFlex> { Instance = ToFlex(proto) });

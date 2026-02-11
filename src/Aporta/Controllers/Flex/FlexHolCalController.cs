@@ -22,5 +22,6 @@ public class FlexHolCalController : FlexCrudControllerBase<HolCal, FlexHolCal>
     protected override FlexHolCal ToFlex(HolCal proto) => FlexMapper.ToFlex(proto);
     protected override HolCal ToProto(FlexHolCal flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexHolCal flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexHolCal flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(HolCal proto) => proto.Uuid;
 }

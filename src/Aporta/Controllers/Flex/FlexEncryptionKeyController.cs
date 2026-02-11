@@ -22,5 +22,6 @@ public class FlexEncryptionKeyController : FlexCrudControllerBase<EncryptionKey,
     protected override FlexEncryptionKey ToFlex(EncryptionKey proto) => FlexMapper.ToFlex(proto);
     protected override EncryptionKey ToProto(FlexEncryptionKey flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexEncryptionKey flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexEncryptionKey flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(EncryptionKey proto) => proto.Uuid;
 }

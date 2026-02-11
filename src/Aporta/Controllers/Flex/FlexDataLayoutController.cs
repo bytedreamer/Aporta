@@ -22,5 +22,6 @@ public class FlexDataLayoutController : FlexCrudControllerBase<DataLayout, FlexD
     protected override FlexDataLayout ToFlex(DataLayout proto) => FlexMapper.ToFlex(proto);
     protected override DataLayout ToProto(FlexDataLayout flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexDataLayout flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexDataLayout flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(DataLayout proto) => proto.Uuid;
 }

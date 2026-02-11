@@ -49,16 +49,4 @@ public class Z9CredRepository : ProtoJsonRepository<Cred>
         return SpCoreProtoUtil.ToBigInteger(cred.CardPin.CredNum).ToString();
     }
 
-    /// <summary>
-    /// Returns the next available ID (MAX(id) + 1, or 1 if empty).
-    /// Used by FlexCredController for person creation.
-    /// </summary>
-    public async Task<int> NextId()
-    {
-        using var connection = DataAccess.CreateDbConnection();
-        connection.Open();
-
-        return await connection.ExecuteScalarAsync<int>(
-            "SELECT COALESCE(MAX(id), 0) + 1 FROM z9_cred");
-    }
 }

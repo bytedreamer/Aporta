@@ -36,6 +36,8 @@ Aporta supports the Z9/Flex Community Profile as a JSON/REST API, intended for u
     - Enroll new credential
     - Read entire card data for card number
     - Log access events
+    - Door access privilege management from Credentials page (assign/remove doors, set schedule restrictions)
+    - Door Access column on Credentials page showing assigned doors with schedule names
 
 ### Z9/Open Community Profile
 - Connection & Protocol
@@ -91,11 +93,11 @@ The web UI communicates with the server through the Z9/Flex Community Profile AP
 
 ### Aporta
 - Self hosted web management
-    - A master password to gain access
+    - Configurable user accounts (currently uses default credentials)
 - OSDP Driver
     - Notify when input is tripped
 - Access Control
-    - Standalone UI for managing Z9/Open Community Profile data model objects including card formats, access levels, schedules, and holidays (Z9/Open handles backend privilege management)
+    - Standalone UI for managing card formats and holidays (schedules and door access privileges are now managed from the web UI)
 
 ### Z9/Open Community Profile
 - DbChange: Handle device deletions (devDelete, devDeleteAll) — currently silently ignored, causing stale devices to accumulate
@@ -139,7 +141,7 @@ The log files will be placed in the standard Linux logging directory
 
 ### Quick Start
 
-After installing Aporta, browse to the local web url ```https://localhost:8443``` to get started. A [Quick Start Guide](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide) can be found in the Wiki section.
+After installing Aporta, browse to the local web url ```https://localhost:8443``` to get started. You will be presented with a login screen. The default credentials are username ```admin``` and password ```pass```. A [Quick Start Guide](https://github.com/bytedreamer/Aporta/wiki/Quick-start-guide) can be found in the Wiki section.
 
 ### Configuration ###
 

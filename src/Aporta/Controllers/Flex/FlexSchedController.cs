@@ -22,5 +22,6 @@ public class FlexSchedController : FlexCrudControllerBase<Sched, FlexSched>
     protected override FlexSched ToFlex(Sched proto) => FlexMapper.ToFlex(proto);
     protected override Sched ToProto(FlexSched flex) => FlexMapper.ToProto(flex);
     protected override int GetUnid(FlexSched flex) => flex.Unid ?? 0;
+    protected override void SetUnid(FlexSched flex, int unid) => flex.Unid = unid;
     protected override string GetUuidFromProto(Sched proto) => proto.Uuid;
 }
