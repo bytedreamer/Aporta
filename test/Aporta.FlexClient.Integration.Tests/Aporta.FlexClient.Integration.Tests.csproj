@@ -10,6 +10,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\z9flex-community\z9flex-client-csharp\src\Z9Flex\Z9Flex.csproj" />
+    <PackageReference Include="Z9.Flex.Community" Version="1.0.1" />
   </ItemGroup>
 </Project>
