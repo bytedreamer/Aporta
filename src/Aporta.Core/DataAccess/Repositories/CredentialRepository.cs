@@ -1,165 +1,184 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Aporta.Shared.Models;
 using Dapper;
 
 namespace Aporta.Core.DataAccess.Repositories;
 
-public class CredentialRepository : BaseRepository<Credential>
+/// <summary>
+/// Read-only query helper that projects z9_cred rows into Credential/Person DTOs.
+/// No longer owns a table — all data lives in z9_cred.
+/// </summary>
+public class CredentialRepository
 {
+    private readonly IDataAccess _dataAccess;
+
     public CredentialRepository(IDataAccess dataAccess)
     {
-        DataAccess = dataAccess;
+        _dataAccess = dataAccess;
     }
-        
-    protected override IDataAccess DataAccess { get; }
-        
-    protected override string SqlSelect => @"select credential.id, 
-                                                    credential.number, 
-                                                    credential.last_event lastEvent,
-                                                    credential_assignment.person_id assignedPersonId,
-                                                    credential_assignment.enabled
-                                                    from credential
-                                                    left join credential_assignment on credential.id = credential_assignment.credential_id";
-        
-    protected override string SqlInsert => @"insert into credential
-                                                (number, last_event) values 
-                                                (@number, @lastEvent)";
 
-    protected override string SqlUpdate => throw new NotImplementedException();
-
-    private string SqlAssignmentInsert => @"insert into credential_assignment
-                                                (person_id, credential_id, enabled) values 
-                                                (@personId, @credentialId, @enabled)";
-    
-    private string SqlAssignmentDelete => @"delete from credential_assignment
-                                                where person_id = @personId and credential_id = @credentialId";
-
-    private string SqlUpdateLastEvent => @"update credential
-                                               set last_event = @lastEventId
-                                               where id = @credentialId";
-
-    private string SqlAssignedCredentials => SqlSelect + @" where credential.id IN (SELECT credential_id FROM credential_assignment)";
-    private string SqlUnassignedCredentials => SqlSelect + @" where credential.id NOT IN (SELECT credential_id FROM credential_assignment)";
-
-    protected override string SqlDelete => @"delete from credential where id = @id";
-
-    protected override string SqlRowCount => @"select count(*) from credential";
-
-    protected override object InsertParameters(Credential credential)
+    public async Task<Credential> Get(int id)
     {
-        return new
+        using var connection = _dataAccess.CreateDbConnection();
+        connection.Open();
+
+        var result = await connection.QuerySingleOrDefaultAsync<(int Id, string CredNum, string CredEnabled)>(
+            @"SELECT id, cred_num,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred WHERE id = @id",
+            new { id });
+
+        if (result.Id == 0 && result.CredNum == null && result.CredEnabled == null) return null;
+
+        return new Credential
         {
-            number = credential.Number,
-            lastEvent = credential.LastEvent
+            Id = result.Id,
+            Number = result.CredNum,
+            Enabled = ParseBool(result.CredEnabled)
         };
     }
 
-    protected override object UpdateParameters(Credential record)
+    public async Task<IEnumerable<Credential>> GetAll()
     {
-        throw new NotImplementedException();
-    }
+        using var connection = _dataAccess.CreateDbConnection();
+        connection.Open();
 
-    protected override void InsertId(Credential credential, int id)
-    {
-        credential.Id = id;
+        var results = await connection.QueryAsync<(int Id, string CredNum, string CredEnabled)>(
+            @"SELECT id, cred_num,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred");
+
+        return results.Select(r => new Credential
+        {
+            Id = r.Id,
+            Number = r.CredNum,
+            Enabled = ParseBool(r.CredEnabled)
+        });
     }
 
     public async Task<AssignedCredential> AssignedCredential(string cardNumber)
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        var credential = await connection.QuerySingleOrDefaultAsync<AssignedCredential>(
-            $@"{SqlSelect} where number = @number",
-            new {number = cardNumber});
+        var result = await connection.QuerySingleOrDefaultAsync<(int Id, string CredNum, string CredName, string CredEnabled)>(
+            @"SELECT id, cred_num,
+                json_extract(data, '$.name') as CredName,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred
+              WHERE cred_num = @number",
+            new { number = cardNumber });
 
-        if (credential == null)
+        if (result.Id == 0 && result.CredNum == null)
         {
             return null;
         }
 
-        var personAssignment = await connection.QuerySingleOrDefaultAsync(
-            "select person_id as personId, enabled from credential_assignment where credential_id = @credentialId",
-            new {credentialId = credential.Id});
-
-        if (personAssignment != null)
+        var credential = new AssignedCredential
         {
-            var personRepository = new PersonRepository(DataAccess);
-            credential.Person = await personRepository.Get((int)personAssignment.personId);
-            credential.Enabled = personAssignment.enabled > 0 && credential.Person.Enabled;
+            Id = result.Id,
+            Number = result.CredNum
+        };
+
+        if (!string.IsNullOrWhiteSpace(result.CredName))
+        {
+            var enabled = ParseBool(result.CredEnabled) ?? true;
+            credential.Person = ParsePersonFromName(result.CredName, credential.Id, enabled);
+            credential.Enabled = enabled;
         }
         else
         {
             credential.Enabled = false;
         }
-           
+
         return credential;
-    }
-
-    public async Task<IEnumerable<Credential>> CredentialsAssignedToPerson(int personId)
-    {
-        using var connection = DataAccess.CreateDbConnection();
-        connection.Open();
-
-        return await connection.QueryAsync<Credential>(
-            $@"{SqlSelect} where credential_assignment.person_id = @personId",
-            new { personId });
     }
 
     public async Task<IEnumerable<Credential>> Assigned()
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryAsync<Credential>(SqlAssignedCredentials);
+        var results = await connection.QueryAsync<(int Id, string CredNum, string CredEnabled)>(
+            @"SELECT id, cred_num,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred
+              WHERE json_extract(data, '$.name') IS NOT NULL
+                AND cred_num IS NOT NULL
+                AND cred_num != ''");
+
+        return results.Select(r => new Credential
+        {
+            Id = r.Id,
+            Number = r.CredNum,
+            Enabled = ParseBool(r.CredEnabled)
+        });
     }
-        
+
     public async Task<IEnumerable<Credential>> Unassigned()
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        return await connection.QueryAsync<Credential>(SqlUnassignedCredentials);
-    }
-        
-    public async Task AssignPerson(int credentialId, int personId, bool enabled = true)
-    {
-        using var connection = DataAccess.CreateDbConnection();
-        connection.Open();
-            
-        await connection.ExecuteAsync(SqlAssignmentInsert,
-            new
-            {
-                credentialId,
-                personId, 
-                enabled
-            });
-    }
-    
-    public async Task RevokePerson(int credentialId, int personId)
-    {
-        using var connection = DataAccess.CreateDbConnection();
-        connection.Open();
-            
-        await connection.ExecuteAsync(SqlAssignmentDelete,
-            new
-            {
-                credentialId,
-                personId, 
-            });
+        var results = await connection.QueryAsync<(int Id, string CredNum)>(
+            @"SELECT id, cred_num FROM z9_cred
+              WHERE json_extract(data, '$.name') IS NULL
+                AND cred_num IS NOT NULL");
+
+        return results.Select(r => new Credential
+        {
+            Id = r.Id,
+            Number = r.CredNum
+        });
     }
 
-    public async Task UpdateLastEvent(int credentialId, int lastEventId)
+    public async Task<IEnumerable<Person>> Named()
     {
-        using var connection = DataAccess.CreateDbConnection();
+        using var connection = _dataAccess.CreateDbConnection();
         connection.Open();
 
-        await connection.ExecuteAsync(SqlUpdateLastEvent,
-            new
-            {
-                credentialId, lastEventId
-            });
+        var results = await connection.QueryAsync<(int Id, string CredName, string CredEnabled)>(
+            @"SELECT id,
+                json_extract(data, '$.name') as CredName,
+                json_extract(data, '$.enabled') as CredEnabled
+              FROM z9_cred
+              WHERE json_extract(data, '$.name') IS NOT NULL");
+
+        return results.Select(r =>
+        {
+            var enabled = ParseBool(r.CredEnabled) ?? true;
+            return ParsePersonFromName(r.CredName, r.Id, enabled);
+        });
+    }
+
+    public static Person ParsePersonFromName(string credName, int id, bool enabled)
+    {
+        var person = new Person { Id = id, Enabled = enabled };
+        if (credName == null)
+            return person;
+
+        var commaIndex = credName.IndexOf(", ", StringComparison.Ordinal);
+        if (commaIndex >= 0)
+        {
+            person.LastName = credName.Substring(0, commaIndex);
+            person.FirstName = credName.Substring(commaIndex + 2);
+        }
+        else
+        {
+            person.FirstName = credName;
+        }
+        return person;
+    }
+
+    private static bool? ParseBool(string value)
+    {
+        if (value == null) return null;
+        // SQLite json_extract returns "true"/"false" or "1"/"0"
+        if (bool.TryParse(value, out var b)) return b;
+        if (int.TryParse(value, out var i)) return i > 0;
+        return null;
     }
 }

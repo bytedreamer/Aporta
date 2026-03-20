@@ -4,11 +4,12 @@
 
 @using Aporta.Shared.Calls
 @using Aporta.Shared.Models
+@using Aporta.Shared.Models.Flex
 @using Aporta.Drivers.Virtual.Shared.Actions
 @using Aporta.Drivers.Virtual.WebClient.Dialogs
 
 @inject IDriverConfigurationCalls ConfigurationCalls;
-@inject IDoorCalls DoorCalls;
+@inject FlexApiService FlexApi;
 
 @if (_configuration == null)
 {
@@ -205,7 +206,7 @@ else
     
     private BadgeSwipeDialog _badgeSwipeDialog;
 
-    private Endpoint[] _availableEndPoints;
+    private FlexListResponse<FlexDev> _availableEndPoints;
 
     private Aporta.Drivers.Virtual.Shared.Configuration _configuration;
 
@@ -227,7 +228,7 @@ else
 
     private async Task InitializeAvailableEndpoints()
     {
-        _availableEndPoints = await DoorCalls.GetAvailableEndpoints();
+        _availableEndPoints = await FlexApi.GetAvailableEndpointsAsync();
 
         StateHasChanged();
     }
@@ -403,16 +404,16 @@ else
     
     private bool IsReaderAvailableForDelete(Device reader)
     {
-        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VR{reader.Number}") > 0;
+        return _availableEndPoints.InstanceList.Count(dev => dev.ExternalId == $"VR{reader.Number}") > 0;
     }
 
     private bool IsInputAvailableForDelete(Device input)
     {
-        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VI{input.Number}") > 0;
+        return _availableEndPoints.InstanceList.Count(dev => dev.ExternalId == $"VI{input.Number}") > 0;
     }
 
     private bool IsOutputAvailableForDelete(Device output)
     {
-        return _availableEndPoints.Count(endpoint => endpoint.DriverEndpointId == $"VO{output.Number}") > 0;
+        return _availableEndPoints.InstanceList.Count(dev => dev.ExternalId == $"VO{output.Number}") > 0;
     }
 }

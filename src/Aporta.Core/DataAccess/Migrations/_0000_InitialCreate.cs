@@ -6,24 +6,112 @@ namespace Aporta.Core.DataAccess.Migrations
 {
     public class _0000_InitialCreate : IMigration
     {
-        public int Version => 0;
-        
-        public string Name => "Initial create";
+        // Version 100 to distinguish from old column-based schema (versions 0-10)
+        public int Version => 100;
+
+        public string Name => "Initial create with JSON document storage";
 
         public async Task PerformUpdate(IDbConnection connection, IDbTransaction transaction)
         {
             await connection.ExecuteAsync(
-                @"create table schema_info
-                        (
-                            id        integer not null
-                                constraint schema_info_pk
-                                    primary key,
-                            name      text not null,
-                            timestamp datetime not null
-                        );
+                @"
+                -- Schema info table (unchanged)
+                CREATE TABLE schema_info (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    timestamp DATETIME NOT NULL
+                );
+                CREATE UNIQUE INDEX schema_info_id_uindex ON schema_info (id);
 
-                        create unique index schema_info_id_uindex
-                            on schema_info (id);", 
+                -- Extension table (GUID primary key)
+                CREATE TABLE extension (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+                CREATE UNIQUE INDEX extension_id_uindex ON extension (id);
+
+                -- Global setting table (string primary key)
+                CREATE TABLE global_setting (
+                    name TEXT NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Credential Template table
+                CREATE TABLE cred_template (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Data Layout table
+                CREATE TABLE data_layout (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Data Format table
+                CREATE TABLE data_format (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Privilege table
+                CREATE TABLE priv (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Schedule table
+                CREATE TABLE sched (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Holiday table
+                CREATE TABLE hol (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Holiday Calendar table
+                CREATE TABLE hol_cal (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Holiday Type table
+                CREATE TABLE hol_type (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Z9 Device table (stores full Dev proto messages)
+                CREATE TABLE z9_dev (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    external_dev_mod_id TEXT
+                );
+
+                -- Encryption Key table
+                CREATE TABLE encryption_key (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+
+                -- Z9 Credential table (stores full proto including privBindings)
+                CREATE TABLE z9_cred (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    cred_num TEXT
+                );
+                CREATE UNIQUE INDEX z9_cred_cred_num_uindex ON z9_cred(cred_num) WHERE cred_num IS NOT NULL;
+
+                -- Z9 Event table
+                CREATE TABLE z9_evt (
+                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    data TEXT NOT NULL
+                );
+
+",
                 transaction: transaction);
         }
     }

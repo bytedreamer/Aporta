@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -34,7 +36,10 @@ public class OSDPDriver : IHardwareDriver
     private readonly List<IEndpoint> _endpoints = new();
     private readonly ConcurrentDictionary<int, PKOCDevice> _pkocDevices = new();
     private readonly ConcurrentDictionary<string, IOsdpConnection> _connections = new();
-        
+    private readonly ConcurrentDictionary<(Guid connectionId, byte address), (string pin, CancellationTokenSource cts)> _pendingPins = new();
+    private readonly ConcurrentDictionary<(Guid connectionId, byte address), (bool tamper, bool power)> _lastLocalStatus = new();
+    private const int PinBufferTimeoutMs = 5000;
+
     private ControlPanel _panel;
     private PKOCControlPanel _pkocPanel;
     private IDataEncryption _dataEncryption;
@@ -56,10 +61,12 @@ public class OSDPDriver : IHardwareDriver
             
         _panel.ConnectionStatusChanged += PanelOnConnectionStatusChanged;
         _panel.RawCardDataReplyReceived += PanelOnRawCardDataReplyReceived;
+        _panel.KeypadReplyReceived += PanelOnKeypadReplyReceived;
         _panel.InputStatusReportReplyReceived += PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived += PanelOnOutputStatusReportReplyReceived;
         _panel.NakReplyReceived += PanelOnNakReplyReceived;
-        
+        _panel.LocalStatusReportReplyReceived += PanelOnLocalStatusReportReplyReceived;
+
         _pkocPanel.CardPresented += PkocPanelOnCardPresented;
 
         ExtractConfiguration(configuration);
@@ -107,9 +114,11 @@ public class OSDPDriver : IHardwareDriver
     {
         Task.Run(async () =>
         {
-            var matchingBus = _configuration.Buses.Single(bus =>
-                bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
-            var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
+            try
+            {
+                var matchingBus = _configuration.Buses.Single(bus =>
+                    bus.PortName == _portMapping.First(keyValue => keyValue.Value == eventArgs.ConnectionId).Key);
+                var matchingDevice = matchingBus.Devices.First(device => device.Address == eventArgs.Address);
 
             matchingDevice.KeyMismatch = false;
 
@@ -120,11 +129,14 @@ public class OSDPDriver : IHardwareDriver
                     matchingDevice.IsConnected = false;
                     matchingDevice.IdentityNotMatched = false;
 
+                    // Notify that all endpoints on this device are now offline
+                    NotifyEndpointOnlineStatus(matchingBus.PortName, matchingDevice.Address, false);
+
                     OnUpdatedEndpoints();
                     return;
                 case true:
                 {
-                    _logger.LogInformation("Device \'{MatchingDeviceName}\' is online", matchingDevice.Name);
+                    _logger.LogInformation("Device \'{MatchingDeviceName}\' is online, SecureMode={SecureMode}", matchingDevice.Name, matchingDevice.SecureMode);
 
                     if (matchingDevice.SecureMode == SecureMode.Install)
                     {
@@ -138,21 +150,34 @@ public class OSDPDriver : IHardwareDriver
                         return;
                     }
 
+                    _logger.LogInformation("Calling ProcessDeviceIdentification...");
                     if (!await ProcessDeviceIdentification(eventArgs, matchingDevice).ConfigureAwait(false))
                     {
+                        _logger.LogWarning("ProcessDeviceIdentification returned false");
                         matchingDevice.IsConnected = false;
                         OnUpdatedEndpoints();
                         return;
                     }
+                    _logger.LogInformation("ProcessDeviceIdentification succeeded");
 
+                    _logger.LogInformation("Calling ProcessDeviceCapabilities...");
                     if (!await ProcessDeviceCapabilities(eventArgs, matchingDevice).ConfigureAwait(false))
                     {
+                        _logger.LogWarning("ProcessDeviceCapabilities returned false");
                         matchingDevice.IsConnected = false;
                         OnUpdatedEndpoints();
                         return;
                     }
+                    _logger.LogInformation("ProcessDeviceCapabilities succeeded");
+
+                    // Query initial local status (tamper / power cycle)
+                    await QueryInitialLocalStatus(eventArgs.ConnectionId, eventArgs.Address, matchingBus.PortName);
 
                     matchingDevice.IsConnected = true;
+
+                    // Notify that all endpoints on this device are now online
+                    NotifyEndpointOnlineStatus(matchingBus.PortName, matchingDevice.Address, true);
+
                     OnUpdatedEndpoints();
 
                     if (matchingDevice.PKOCEnabled)
@@ -173,15 +198,24 @@ public class OSDPDriver : IHardwareDriver
                     return;
                 }
             }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in PanelOnConnectionStatusChanged: ConnectionId={ConnectionId} Address={Address}",
+                    eventArgs.ConnectionId, eventArgs.Address);
+            }
         });
     }
 
     private async Task<bool> ProcessDeviceCapabilities(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
     {
+        _logger.LogInformation("ProcessDeviceCapabilities starting for '{MatchingDeviceName}'", matchingDevice.Name);
         DeviceCapabilities capabilities;
         try
         {
+            _logger.LogDebug("Requesting device capabilities from OSDP panel...");
             capabilities = await _panel.DeviceCapabilities(eventArgs.ConnectionId, eventArgs.Address).ConfigureAwait(false);
+            _logger.LogDebug("Device capabilities received: {Count} capabilities", capabilities?.Capabilities?.Count() ?? 0);
         }
         catch (Exception exception)
         {
@@ -248,10 +282,14 @@ public class OSDPDriver : IHardwareDriver
 
     private async Task<bool> ProcessDeviceIdentification(ControlPanel.ConnectionStatusEventArgs eventArgs, Device matchingDevice)
     {
+        _logger.LogInformation("ProcessDeviceIdentification starting for '{MatchingDeviceName}'", matchingDevice.Name);
         DeviceIdentification identification;
         try
         {
+            _logger.LogDebug("Requesting device identification from OSDP panel...");
             identification = await _panel.IdReport(eventArgs.ConnectionId, eventArgs.Address).ConfigureAwait(false);
+            _logger.LogDebug("Device identification received: VendorCode={VendorCode}",
+                identification?.VendorCode != null ? BitConverter.ToString(identification.VendorCode.ToArray()) : "null");
         }
         catch (Exception exception)
         {
@@ -294,15 +332,35 @@ public class OSDPDriver : IHardwareDriver
         {
             var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
                 .SingleOrDefault(accessPoint =>
-                    eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
-                    accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+                {
+                    var (portName, address) = ParseEndpointId(accessPoint.Id);
+                    return _portMapping.TryGetValue(portName, out var connId) &&
+                           eventArgs.ConnectionId == connId &&
+                           address == eventArgs.Address.ToString();
+                });
             if (accessPoint != null)
             {
+                // Try to consume a buffered PIN for this reader
+                string pin = null;
+                var key = (eventArgs.ConnectionId, eventArgs.Address);
+                if (_pendingPins.TryRemove(key, out var pending))
+                {
+                    pending.cts.Cancel();
+                    pending.cts.Dispose();
+                    pin = pending.pin;
+                    _logger.LogInformation("Card read received on {AccessPointName} with buffered PIN", accessPoint.Name);
+                }
+                else
+                {
+                    _logger.LogInformation("Card read received on {AccessPointName}", accessPoint.Name);
+                }
+
+                var handler = new WiegandCredentialHandler(eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount,
+                    accessPoint.Name, _logger);
                 AccessCredentialReceived?.Invoke(this,
-                    new AccessCredentialReceivedEventArgs(
-                        accessPoint,
-                        new WiegandCredentialHandler(eventArgs.RawCardData.Data, eventArgs.RawCardData.BitCount,
-                            accessPoint.Name, _logger)));
+                    pin != null
+                        ? new AccessCredentialReceivedEventArgs(accessPoint, handler, pin)
+                        : new AccessCredentialReceivedEventArgs(accessPoint, handler));
             }
             else
             {
@@ -312,6 +370,109 @@ public class OSDPDriver : IHardwareDriver
         });
     }
 
+    private void PanelOnKeypadReplyReceived(object sender, ControlPanel.KeypadReplyEventArgs eventArgs)
+    {
+        Task.Run(() =>
+        {
+            // Decode PIN from KeypadData.Data byte[] → ASCII string (filter to digits only)
+            var pinBuilder = new StringBuilder();
+            foreach (var b in eventArgs.KeypadData.Data)
+            {
+                if (b >= 0x30 && b <= 0x39) // ASCII digits '0'-'9'
+                    pinBuilder.Append((char)b);
+            }
+            var pin = pinBuilder.ToString();
+            if (string.IsNullOrEmpty(pin))
+            {
+                _logger.LogDebug("Keypad reply received but no digits found");
+                return;
+            }
+
+            _logger.LogInformation("Keypad entry received: {DigitCount} digits on address {Address}",
+                pin.Length, eventArgs.Address);
+
+            var key = (eventArgs.ConnectionId, eventArgs.Address);
+
+            // Cancel any previous pending PIN for this reader
+            if (_pendingPins.TryRemove(key, out var oldPending))
+            {
+                oldPending.cts.Cancel();
+                oldPending.cts.Dispose();
+            }
+
+            // Buffer the PIN with a timeout
+            var cts = new CancellationTokenSource();
+            _pendingPins[key] = (pin, cts);
+
+            // Start timeout: if no card read arrives, treat as PIN-only entry
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(PinBufferTimeoutMs, cts.Token);
+
+                    // Timeout expired — no card read arrived, treat as PIN-only
+                    if (!_pendingPins.TryRemove(key, out _))
+                        return; // Already consumed by card read
+
+                    var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
+                        .SingleOrDefault(ap =>
+                        {
+                            var (portName, address) = ParseEndpointId(ap.Id);
+                            return _portMapping.TryGetValue(portName, out var connId) &&
+                                   eventArgs.ConnectionId == connId &&
+                                   address == eventArgs.Address.ToString();
+                        });
+
+                    if (accessPoint != null)
+                    {
+                        _logger.LogInformation("PIN-only entry on {AccessPointName} (no card within timeout)", accessPoint.Name);
+                        AccessCredentialReceived?.Invoke(this,
+                            new AccessCredentialReceivedEventArgs(accessPoint, new PinOnlyCredentialHandler(), pin));
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Unable to find access point at address {Address} for PIN-only entry",
+                            eventArgs.Address);
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    // PIN was consumed by a card read — normal flow
+                }
+                finally
+                {
+                    cts.Dispose();
+                }
+            });
+        });
+    }
+
+    private class PinOnlyCredentialHandler : ICredentialReceivedHandler
+    {
+        public bool IsValid() => true;
+        public string MatchingCardData => null;
+    }
+
+    /// <summary>
+    /// Parses an endpoint ID to extract port name and address.
+    /// ID format: "{portName}:{address}:{type}{number}" where portName can contain colons (e.g., "localhost:9843").
+    /// </summary>
+    private static (string portName, string address) ParseEndpointId(string endpointId)
+    {
+        // Find the last two colons to extract address and type suffix
+        // ID examples: "COM3:0:R0" or "localhost:9843:0:R0"
+        var lastColon = endpointId.LastIndexOf(':');
+        if (lastColon <= 0) return (endpointId, "0");
+
+        var secondLastColon = endpointId.LastIndexOf(':', lastColon - 1);
+        if (secondLastColon <= 0) return (endpointId.Substring(0, lastColon), endpointId.Substring(lastColon + 1));
+
+        var portName = endpointId.Substring(0, secondLastColon);
+        var address = endpointId.Substring(secondLastColon + 1, lastColon - secondLastColon - 1);
+        return (portName, address);
+    }
+
     private void PkocPanelOnCardPresented(object sender, CardPresentedEventArgs eventArgs)
     {
         Task.Run(async () =>
@@ -319,8 +480,12 @@ public class OSDPDriver : IHardwareDriver
             _logger.LogInformation("A PKOC card has been presented to the reader");
             var accessPoint = _endpoints.Where(endpoint => endpoint is IAccess).Cast<IAccess>()
                 .SingleOrDefault(accessPoint =>
-                    eventArgs.ConnectionId == _portMapping[accessPoint.Id.Split(":")[0]] &&
-                    accessPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+                {
+                    var (portName, address) = ParseEndpointId(accessPoint.Id);
+                    return _portMapping.TryGetValue(portName, out var connId) &&
+                           eventArgs.ConnectionId == connId &&
+                           address == eventArgs.Address.ToString();
+                });
             if (accessPoint != null)
             {
                 var hashLookup = new PKOCDevice(eventArgs.ConnectionId, eventArgs.Address).GetHashCode();
@@ -344,11 +509,15 @@ public class OSDPDriver : IHardwareDriver
         ControlPanel.InputStatusReportReplyEventArgs eventArgs)
     {
         Task.Run(() =>
-        {        
+        {
             var monitorPoints = _endpoints.Where(endpoint => endpoint is IInput).Cast<IInput>()
                 .Where(monitorPoint =>
-                    eventArgs.ConnectionId == _portMapping[monitorPoint.Id.Split(":")[0]] &&
-                    monitorPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+                {
+                    var (portName, address) = ParseEndpointId(monitorPoint.Id);
+                    return _portMapping.TryGetValue(portName, out var connId) &&
+                           eventArgs.ConnectionId == connId &&
+                           address == eventArgs.Address.ToString();
+                });
 
             foreach (var monitorPoint in monitorPoints)
             {
@@ -366,8 +535,12 @@ public class OSDPDriver : IHardwareDriver
         {
             var controlPoints = _endpoints.Where(endpoint => endpoint is IOutput).Cast<IOutput>()
                 .Where(controlPoint =>
-                    eventArgs.ConnectionId == _portMapping[controlPoint.Id.Split(":")[0]] &&
-                    controlPoint.Id.Split(":")[1] == eventArgs.Address.ToString());
+                {
+                    var (portName, address) = ParseEndpointId(controlPoint.Id);
+                    return _portMapping.TryGetValue(portName, out var connId) &&
+                           eventArgs.ConnectionId == connId &&
+                           address == eventArgs.Address.ToString();
+                });
 
             foreach (var controlPoint in controlPoints)
             {
@@ -418,10 +591,20 @@ public class OSDPDriver : IHardwareDriver
     {
         foreach (var bus in _configuration.Buses)
         {
-            var connection = new SerialPortOsdpConnection(bus.PortName, bus.BaudRate); 
-            
+            IOsdpConnection connection;
+
+            if (bus.ConnectionType == ConnectionType.Tcp)
+            {
+                _logger.LogInformation("Starting TCP OSDP connection to {Host}:{Port}", bus.TcpHost, bus.TcpPort);
+                connection = new TcpClientOsdpConnection(bus.TcpHost, bus.TcpPort, bus.BaudRate);
+            }
+            else
+            {
+                connection = new SerialPortOsdpConnection(bus.PortName, bus.BaudRate);
+            }
+
             _connections.TryAdd(bus.PortName, connection);
-           
+
             _portMapping.TryAdd(bus.PortName, _panel.StartConnection(connection, TimeSpan.FromMilliseconds(50), false));
         }
     }
@@ -463,10 +646,12 @@ public class OSDPDriver : IHardwareDriver
             
         _panel.ConnectionStatusChanged -= PanelOnConnectionStatusChanged;
         _panel.RawCardDataReplyReceived -= PanelOnRawCardDataReplyReceived;
+        _panel.KeypadReplyReceived -= PanelOnKeypadReplyReceived;
         _panel.InputStatusReportReplyReceived -= PanelOnInputStatusReportReplyReceived;
         _panel.OutputStatusReportReplyReceived -= PanelOnOutputStatusReportReplyReceived;
         _panel.NakReplyReceived -= PanelOnNakReplyReceived;
-        
+        _panel.LocalStatusReportReplyReceived -= PanelOnLocalStatusReportReplyReceived;
+
         _pkocPanel.CardPresented -= PkocPanelOnCardPresented;
     }
 
@@ -514,6 +699,7 @@ public class OSDPDriver : IHardwareDriver
     public event EventHandler<AccessCredentialReceivedEventArgs> AccessCredentialReceived;
     public event EventHandler<StateChangedEventArgs> StateChanged;
     public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
+    public event EventHandler<LocalStatusChangedEventArgs> LocalStatusChanged;
 
     private string AddBus(string parameters)
     {
@@ -524,9 +710,22 @@ public class OSDPDriver : IHardwareDriver
 
         if (!_portMapping.ContainsKey(busAction.Bus.PortName))
         {
+            IOsdpConnection connection;
+
+            if (busAction.Bus.ConnectionType == ConnectionType.Tcp)
+            {
+                _logger.LogInformation("Adding TCP OSDP bus connection to {Host}:{Port}",
+                    busAction.Bus.TcpHost, busAction.Bus.TcpPort);
+                connection = new TcpClientOsdpConnection(busAction.Bus.TcpHost, busAction.Bus.TcpPort, busAction.Bus.BaudRate);
+            }
+            else
+            {
+                connection = new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate);
+            }
+
+            _connections.TryAdd(busAction.Bus.PortName, connection);
             _portMapping.TryAdd(busAction.Bus.PortName,
-                _panel.StartConnection(new SerialPortOsdpConnection(busAction.Bus.PortName, busAction.Bus.BaudRate),
-                    TimeSpan.FromMilliseconds(50), false));
+                _panel.StartConnection(connection, TimeSpan.FromMilliseconds(50), false));
         }
 
         return string.Empty;
@@ -562,11 +761,6 @@ public class OSDPDriver : IHardwareDriver
         if (deviceAction == null) return string.Empty;
 
         var bus = _configuration.Buses.First(bus => bus.PortName == deviceAction.Device.PortName);
-
-        if (!_connections[bus.PortName]?.IsOpen ?? true)
-        {
-            throw new Exception($"{bus.PortName} is not open");
-        }
 
         bus.Devices.Add(deviceAction.Device);
 
@@ -745,5 +939,113 @@ public class OSDPDriver : IHardwareDriver
     protected virtual void OnOnlineStatusChanged(OnlineStatusChangedEventArgs e)
     {
         OnlineStatusChanged?.Invoke(this, e);
+    }
+
+    private void NotifyEndpointOnlineStatus(string portName, byte address, bool isOnline)
+    {
+        // Find all endpoints that match the given bus port name and device address
+        // Endpoint ID format: "{portName}:{address}:..." (e.g., "localhost:9843:0:R0")
+        var endpointPrefix = $"{portName}:{address}:";
+        _logger.LogInformation("NotifyEndpointOnlineStatus: portName={PortName}, address={Address}, prefix={Prefix}, total endpoints={Count}",
+            portName, address, endpointPrefix, _endpoints.Count);
+
+        var matchingEndpoints = _endpoints.Where(e => e.Id.StartsWith(endpointPrefix)).ToList();
+        _logger.LogInformation("Found {MatchCount} matching endpoints for prefix '{Prefix}'",
+            matchingEndpoints.Count, endpointPrefix);
+
+        foreach (var endpoint in matchingEndpoints)
+        {
+            _logger.LogInformation("Endpoint {EndpointId} is now {Status}", endpoint.Id, isOnline ? "online" : "offline");
+            OnOnlineStatusChanged(new OnlineStatusChangedEventArgs(endpoint, isOnline));
+        }
+    }
+
+    private void PanelOnLocalStatusReportReplyReceived(object sender,
+        ControlPanel.LocalStatusReportReplyEventArgs eventArgs)
+    {
+        Task.Run(() =>
+        {
+            try
+            {
+                var key = (eventArgs.ConnectionId, eventArgs.Address);
+                var currentTamper = eventArgs.LocalStatus.Tamper;
+                var currentPower = eventArgs.LocalStatus.PowerFailure;
+
+                var previous = _lastLocalStatus.TryGetValue(key, out var prev) ? prev : (tamper: false, power: false);
+
+                var tamperChanged = previous.tamper != currentTamper;
+                var powerCycleDetected = !previous.power && currentPower;
+
+                _lastLocalStatus[key] = (currentTamper, currentPower);
+
+                if (!tamperChanged && !powerCycleDetected) return;
+
+                var readerEndpoint = FindReaderEndpoint(eventArgs.ConnectionId, eventArgs.Address);
+                if (readerEndpoint == null)
+                {
+                    _logger.LogDebug("No reader endpoint found for LocalStatus at address {Address}", eventArgs.Address);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "LocalStatus change on {EndpointName}: tamperChanged={TamperChanged} (tamper={Tamper}), powerCycleDetected={PowerCycleDetected}",
+                    readerEndpoint.Name, tamperChanged, currentTamper, powerCycleDetected);
+
+                LocalStatusChanged?.Invoke(this, new LocalStatusChangedEventArgs(
+                    readerEndpoint,
+                    tamperChanged ? currentTamper : null,
+                    powerCycleDetected));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in PanelOnLocalStatusReportReplyReceived");
+            }
+        });
+    }
+
+    private async Task QueryInitialLocalStatus(Guid connectionId, byte address, string portName)
+    {
+        try
+        {
+            var localStatus = await _panel.LocalStatus(connectionId, address).ConfigureAwait(false);
+            if (localStatus == null) return;
+
+            var key = (connectionId, address);
+            _lastLocalStatus[key] = (localStatus.Tamper, localStatus.PowerFailure);
+
+            var tamperActive = localStatus.Tamper;
+            // Power flag is expected to be true on first connect (reader just started)
+            var powerCycleDetected = localStatus.PowerFailure;
+
+            if (!tamperActive && !powerCycleDetected) return;
+
+            var readerEndpoint = FindReaderEndpoint(connectionId, address);
+            if (readerEndpoint == null) return;
+
+            _logger.LogInformation(
+                "Initial LocalStatus for {EndpointName}: tamper={Tamper}, powerCycle={PowerCycle}",
+                readerEndpoint.Name, tamperActive, powerCycleDetected);
+
+            LocalStatusChanged?.Invoke(this, new LocalStatusChangedEventArgs(
+                readerEndpoint,
+                tamperActive ? true : null,
+                powerCycleDetected));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to query initial local status for address {Address}", address);
+        }
+    }
+
+    private IEndpoint FindReaderEndpoint(Guid connectionId, byte address)
+    {
+        return _endpoints.FirstOrDefault(e =>
+        {
+            var (portName, addr) = ParseEndpointId(e.Id);
+            return _portMapping.TryGetValue(portName, out var connId) &&
+                   connId == connectionId &&
+                   addr == address.ToString() &&
+                   e.Id.EndsWith($":R0");
+        });
     }
 }

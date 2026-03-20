@@ -340,6 +340,9 @@ public class VirtualDriver : IHardwareDriver
         OnlineStatusChanged?.Invoke(this, eventArgs);
     }
 
+    /// <inheritdoc />
+    public event EventHandler<LocalStatusChangedEventArgs>? LocalStatusChanged;
+
     private class VirtualCredentialReceivedHandler(string cardData) : ICredentialReceivedHandler
     {
         public bool IsValid()

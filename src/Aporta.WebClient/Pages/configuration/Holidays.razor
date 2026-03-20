@@ -1,0 +1,287 @@
+@page "/configuration/holidays"
+
+@using System.Globalization
+@using System.Linq
+@using Aporta.Shared.Calls
+@using Aporta.Shared.Models.Flex
+
+@inject FlexApiService FlexApi
+
+<Heading Size="HeadingSize.Is1">Holidays</Heading>
+<Divider />
+
+@if (_holidays == null)
+{
+    <div class="spinner"></div>
+}
+else
+{
+    <Row>
+        <Column ColumnSize="ColumnSize.Is6.OnDesktop">
+            <Button Color="Color.Primary" Clicked="ShowAddModal">Add Holiday</Button>
+        </Column>
+    </Row>
+    <Row>
+        <Column>
+            <Card Margin="Margin.Is4.OnY">
+                <CardBody>
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Name</TableHeaderCell>
+                                <TableHeaderCell>Date</TableHeaderCell>
+                                <TableHeaderCell>Duration</TableHeaderCell>
+                                <TableHeaderCell>Repeat</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var hol in _holidays.InstanceList.OrderBy(h => h.Date ?? ""))
+                            {
+                                <TableRow>
+                                    <TableRowHeader>
+                                        @hol.Name
+                                    </TableRowHeader>
+                                    <TableRowCell>
+                                        @FormatDate(hol.Date)
+                                    </TableRowCell>
+                                    <TableRowCell>
+                                        @FormatDuration(hol.NumDays)
+                                    </TableRowCell>
+                                    <TableRowCell>
+                                        @(hol.Repeat == true ? "Annually" : "One-time")
+                                    </TableRowCell>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Button Size="Size.Small" Color="Color.Primary" Clicked="@(() => ShowEditModal(hol))" Margin="Margin.Is1.FromEnd">
+                                            <Icon Name="IconName.Edit" />
+                                        </Button>
+                                        <Button Size="Size.Small" Clicked="@(async () => await RemoveHoliday(hol))">
+                                            <Icon Name="IconName.Delete" Style="color: red" />
+                                        </Button>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
+    <Modal @ref="_editModal">
+        <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    @(_isEditing ? "Edit Holiday" : "Add Holiday")
+                </ModalTitle>
+                <CloseButton Clicked="@_editModal.Hide" />
+            </ModalHeader>
+            <ModalBody>
+                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_editValidations">
+                    <Validation Validator="@ValidationRule.IsNotEmpty">
+                        <Field>
+                            <FieldLabel>Name</FieldLabel>
+                            <FieldBody>
+                                <TextEdit @bind-Text="_editHol.Name">
+                                    <Feedback>
+                                        <ValidationError>
+                                            Please enter a name for the holiday
+                                        </ValidationError>
+                                    </Feedback>
+                                </TextEdit>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+                </Validations>
+
+                <Field>
+                    <FieldLabel>Date</FieldLabel>
+                    <FieldBody>
+                        <DateEdit TValue="DateTime?" @bind-Date="_editDate" />
+                    </FieldBody>
+                </Field>
+
+                <Field>
+                    <FieldLabel>Duration (Days)</FieldLabel>
+                    <FieldBody>
+                        <NumericEdit TValue="int?" @bind-Value="_editNumDays" Min="1" />
+                    </FieldBody>
+                </Field>
+
+                <Field>
+                    <Check TValue="bool" Checked="@(_editHol.Repeat == true)" CheckedChanged="@(val => _editHol.Repeat = val)">Repeats Annually</Check>
+                </Field>
+
+                <Field>
+                    <Check TValue="bool" Checked="@(_editHol.PreserveSchedDay == true)" CheckedChanged="@(val => _editHol.PreserveSchedDay = val)">Preserve Normal Schedule</Check>
+                </Field>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@_editModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await SaveHoliday())">Save</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
+}
+
+<Snackbar @ref="_snackbar" Color="@_snackbarColor">
+    <SnackbarBody>
+        @_snackbarMessage
+    </SnackbarBody>
+</Snackbar>
+
+<MessageProvider />
+
+@code {
+    [Inject]
+    IMessageService MessageService { get; set; }
+
+    private FlexListResponse<FlexHol> _holidays;
+    private int? _holCalUnid;
+
+    private FlexHol _editHol = new();
+    private DateTime? _editDate;
+    private int? _editNumDays = 1;
+    private bool _isEditing;
+
+    private Modal _editModal;
+    private Validations _editValidations;
+
+#pragma warning disable 649
+    private Snackbar _snackbar;
+#pragma warning restore 649
+    private SnackbarColor _snackbarColor;
+    private string _snackbarMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await EnsureHolCal();
+        await LoadHolidays();
+    }
+
+    private async Task EnsureHolCal()
+    {
+        var holCals = await FlexApi.GetHolCalListAsync(0, 1000);
+        if (holCals.InstanceList.Count > 0)
+        {
+            _holCalUnid = holCals.InstanceList[0].Unid;
+        }
+        else
+        {
+            var result = await FlexApi.SaveHolCalAsync(new FlexHolCal { Name = "Default" });
+            _holCalUnid = result.Instance?.Unid;
+        }
+    }
+
+    private async Task LoadHolidays()
+    {
+        _holidays = await FlexApi.GetHolListAsync(0, 1000);
+    }
+
+    private async Task ShowAddModal()
+    {
+        _isEditing = false;
+        _editHol = new FlexHol();
+        _editDate = null;
+        _editNumDays = 1;
+        await _editModal.Show();
+    }
+
+    private async Task ShowEditModal(FlexHol hol)
+    {
+        _isEditing = true;
+        _editHol = new FlexHol
+        {
+            Unid = hol.Unid,
+            Name = hol.Name,
+            Version = hol.Version,
+            Tag = hol.Tag,
+            Uuid = hol.Uuid,
+            Repeat = hol.Repeat,
+            PreserveSchedDay = hol.PreserveSchedDay,
+            AllHolTypes = hol.AllHolTypes,
+            HolCal = hol.HolCal
+        };
+        _editDate = ParseDate(hol.Date);
+        _editNumDays = hol.NumDays ?? 1;
+        await _editModal.Show();
+    }
+
+    private async Task SaveHoliday()
+    {
+        if (!await _editValidations.ValidateAll())
+        {
+            return;
+        }
+        await _editModal.Hide();
+
+        _editHol.AllHolTypes = true;
+        _editHol.HolCal = new FlexObjRef { Unid = _holCalUnid };
+        _editHol.Date = _editDate?.ToString("yyyy-MM-dd");
+        _editHol.NumDays = _editNumDays ?? 1;
+
+        try
+        {
+            await FlexApi.SaveHolAsync(_editHol);
+            _snackbarMessage = _isEditing ? "Successfully updated holiday" : "Successfully added holiday";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        catch
+        {
+            _snackbarMessage = _isEditing ? "Unable to update holiday" : "Unable to add holiday";
+            _snackbarColor = SnackbarColor.Danger;
+        }
+
+        await LoadHolidays();
+        await _snackbar.Show();
+    }
+
+    private async Task RemoveHoliday(FlexHol hol)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete holiday '{hol.Name}'?", "Delete Holiday", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        try
+        {
+            await FlexApi.DeleteHolAsync(hol.Unid.Value);
+            _snackbarMessage = "Successfully deleted holiday";
+            _snackbarColor = SnackbarColor.Success;
+        }
+        catch
+        {
+            _snackbarMessage = "Unable to delete holiday";
+            _snackbarColor = SnackbarColor.Danger;
+        }
+
+        await LoadHolidays();
+        await _snackbar.Show();
+    }
+
+    private static string FormatDate(string isoDate)
+    {
+        if (string.IsNullOrEmpty(isoDate)) return "";
+        if (DateTime.TryParse(isoDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+            return dt.ToString("MMM d, yyyy");
+        return isoDate;
+    }
+
+    private static string FormatDuration(int? numDays)
+    {
+        var days = numDays ?? 1;
+        return days == 1 ? "1 day" : $"{days} days";
+    }
+
+    private static DateTime? ParseDate(string isoDate)
+    {
+        if (string.IsNullOrEmpty(isoDate)) return null;
+        if (DateTime.TryParse(isoDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+            return dt;
+        return null;
+    }
+}

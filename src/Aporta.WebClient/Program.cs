@@ -32,11 +32,11 @@ public class Program
         builder.Services.AddScoped<IExtensionCalls, ExtensionCalls>(_ => new ExtensionCalls(new HttpClient
             { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
 
-        builder.Services.AddScoped<IDoorCalls, DoorCalls>(_ => new DoorCalls(new HttpClient
-        { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
-
         builder.Services.AddScoped<IHubProxyFactory, HubProxyFactory>();
-        
+
+        builder.Services.AddScoped(_ => new FlexApiService(new HttpClient
+            { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) }));
+
         builder.Services.AddScoped(_ => new HttpClient
             { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 

@@ -350,3 +350,6 @@ MigrationBackup/
 .ionide/
 
 .idea/
+
+# Selenium screenshots
+screenshots/

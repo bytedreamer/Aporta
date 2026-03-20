@@ -56,4 +56,6 @@ public interface IHardwareDriver : IExtension
     public event EventHandler<StateChangedEventArgs> StateChanged;
 
     public event EventHandler<OnlineStatusChangedEventArgs> OnlineStatusChanged;
+
+    public event EventHandler<LocalStatusChangedEventArgs> LocalStatusChanged;
 }

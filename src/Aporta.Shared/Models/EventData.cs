@@ -14,6 +14,15 @@ public class EventData
     public string? CardNumber { get; init; }
 }
 
+public enum EventType
+{
+    [Description("Access Granted")]
+    AccessGranted,
+
+    [Description("Access Denied")]
+    AccessDenied
+}
+
 public enum EventReason
 {
     [Description("None")]
@@ -25,5 +34,25 @@ public enum EventReason
     [Description("Access Not Assigned")]
     AccessNotAssigned,
     [Description("Credential Not Enrolled")]
-    CredentialNotEnrolled
+    CredentialNotEnrolled,
+    [Description("Credential Disabled")]
+    CredentialDisabled,
+    [Description("Credential Not Yet Effective")]
+    CredentialNotYetEffective,
+    [Description("Credential Expired")]
+    CredentialExpired,
+    [Description("No Privilege")]
+    NoPrivilege,
+    [Description("Outside Schedule")]
+    OutsideSchedule,
+    [Description("Door Locked")]
+    DoorLocked,
+    [Description("No Credential Template")]
+    NoCredentialTemplate,
+    [Description("Unknown Unique PIN")]
+    UnknownUniquePin,
+    [Description("No Confirming PIN")]
+    NoConfirmingPin,
+    [Description("Incorrect Confirming PIN")]
+    IncorrectConfirmingPin
 }

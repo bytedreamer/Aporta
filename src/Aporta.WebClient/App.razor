@@ -1,10 +1,43 @@
-<Router AppAssembly="@typeof(Program).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
-    </Found>
-    <NotFound>
-        <LayoutView Layout="@typeof(MainLayout)">
-            <p>Sorry, there's nothing at this address.</p>
-        </LayoutView>
-    </NotFound>
-</Router>
+@using Aporta.Shared.Calls
+@inject FlexApiService FlexApi
+@inject IJSRuntime JS
+
+@if (FlexApi.IsAuthenticated)
+{
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+}
+else if (_initialized)
+{
+    <Login OnLoginSuccess="@StateHasChanged" />
+}
+
+@code {
+    private bool _initialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var username = await JS.InvokeAsync<string>("sessionStorage.getItem", "aporta_username");
+            var password = await JS.InvokeAsync<string>("sessionStorage.getItem", "aporta_password");
+            if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+            {
+                await FlexApi.LoginAsync(username, password);
+            }
+        }
+        catch
+        {
+            // Server not ready or credentials invalid — show login form
+        }
+        _initialized = true;
+    }
+}

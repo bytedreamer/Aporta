@@ -19,7 +19,7 @@ using Aporta.Core.Hubs;
 using Aporta.Core.Services;
 using Aporta.Extensions;
 using Aporta.Shared.Messaging;
-using Aporta.Shared.Models;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Tests.Services;
 
@@ -47,17 +47,17 @@ public class InputServiceTests
         await _extensionService.Startup();
         await _extensionService.EnableExtension(_extensionId, true);
 
-        // Wait for endpoints to be inserted
-        var endpointRepository = new EndpointRepository(_dataAccess);
+        // Wait for pool z9_devs to be synced from driver (1 controller + 5 endpoints)
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
         using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        while ((await endpointRepository.GetAll()).Count() != 5 && !cancellationTokenSource.Token.IsCancellationRequested)
+        while ((await z9DevRepository.GetAll()).Count() < 6 && !cancellationTokenSource.Token.IsCancellationRequested)
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSource.Token);
         }
-            
-        if(cancellationTokenSource.Token.IsCancellationRequested) 
+
+        if(cancellationTokenSource.Token.IsCancellationRequested)
         {
-            Assert.Fail("Timeout waiting for endpoints to be inserted");
+            Assert.Fail("Timeout waiting for pool z9_devs to be synced");
         }
     }
 
@@ -65,7 +65,7 @@ public class InputServiceTests
     public void TearDown()
     {
         _extensionService.Shutdown();
-            
+
         _persistConnection?.Close();
         _persistConnection?.Dispose();
     }
@@ -74,28 +74,34 @@ public class InputServiceTests
     public async Task GetState()
     {
         // Arrange
-        var inputService = new InputService(_dataAccess,
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
+        // InputService is still instantiated to subscribe to StateChanged events
+        _ = new InputService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
-            _extensionService);
-        var inputs = new[]
-        {
-            new Input {Name = "TestInput1", EndpointId = 4},
-            new Input {Name = "TestInput2", EndpointId = 5}
-        };
+            _extensionService, new DevStateService());
 
-        var inputRepository = new InputRepository(_dataAccess);
-        foreach (var input in inputs)
+        var available = (await z9DevRepository.GetAvailableByDevType(DevType.Sensor)).ToArray();
+        Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available sensor endpoints");
+
+        // Assign sensors (set name + enabled)
+        foreach (var dev in available)
         {
-            await inputRepository.Insert(input);
+            dev.Name = $"TestInput_{dev.Unid}";
+            dev.Enabled = true;
+            await z9DevRepository.Upsert(dev);
         }
 
-        // Act
-        await SendInputState("I2", true);
+        // Act — send state via named pipe using the driver endpoint ID of the second input
+        var secondDev = available[1];
+        var extensionId = await z9DevRepository.GetExtensionId(secondDev);
+        await SendInputState(secondDev.ExternalId, true);
 
         // Assert
-        Assert.That(async () => await inputService.GetState(inputs[0].Id),
+        Assert.That(async () =>
+            await _extensionService.GetMonitorPoint(extensionId.Value, available[0].ExternalId).GetState(),
             Is.False.After(1000, 100));
-        Assert.That(async () => await inputService.GetState(inputs[1].Id),
+        Assert.That(async () =>
+            await _extensionService.GetMonitorPoint(extensionId.Value, secondDev.ExternalId).GetState(),
             Is.True.After(1000, 100));
     }
 
@@ -104,28 +110,32 @@ public class InputServiceTests
     {
         // Arrange
         var hubContext = new UnitTestingSupportForIHubContext<DataChangeNotificationHub>();
-        var inputService = new InputService(_dataAccess, hubContext.IHubContextMock.Object, _extensionService);
-        var inputs = new[]
-        {
-            new Input {Name = "TestInput1", EndpointId = 4},
-            new Input {Name = "TestInput2", EndpointId = 5}
-        };
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
+        _ = new InputService(_dataAccess, hubContext.IHubContextMock.Object, _extensionService, new DevStateService());
 
-        var inputRepository = new InputRepository(_dataAccess);
-        foreach (var input in inputs)
+        var available = (await z9DevRepository.GetAvailableByDevType(DevType.Sensor)).ToArray();
+        Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available sensor endpoints");
+
+        // Assign sensors (set name + enabled)
+        foreach (var dev in available)
         {
-            await inputRepository.Insert(input);
+            dev.Name = $"TestInput_{dev.Unid}";
+            dev.Enabled = true;
+            await z9DevRepository.Upsert(dev);
         }
 
-        // Act
-        await SendInputState("I2", true);
+        // Act — send state via named pipe using the driver endpoint ID of the second input
+        var secondDev = available[1];
+        var extensionId = await z9DevRepository.GetExtensionId(secondDev);
+        await SendInputState(secondDev.ExternalId, true);
 
         // Assert
         // Wait for state to be updated on service before verifying
-        Assert.That(async () => await inputService.GetState(inputs[1].Id),
+        Assert.That(async () =>
+            await _extensionService.GetMonitorPoint(extensionId.Value, secondDev.ExternalId).GetState(),
             Is.True.After(1000, 100));
         hubContext.ClientsAllMock.Verify(clientProxy =>
-            clientProxy.SendCoreAsync(Methods.InputStateChanged, new object[] {2, true},
+            clientProxy.SendCoreAsync(Methods.InputStateChanged, new object[] {secondDev.Unid, true},
                 It.IsAny<CancellationToken>()));
     }
 
@@ -133,7 +143,7 @@ public class InputServiceTests
     {
         await using var pipeClient =
             new NamedPipeClientStream(".", "Aporta.TestDriverMonitorPoint", PipeDirection.Out, PipeOptions.Asynchronous);
-            
+
         await pipeClient.ConnectAsync();
         await using var writer = new StreamWriter(pipeClient);
         writer.AutoFlush = true;

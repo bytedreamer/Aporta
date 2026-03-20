@@ -1,0 +1,197 @@
+@page "/configuration/sensors"
+
+@using Microsoft.AspNetCore.SignalR.Client
+
+@using Aporta.Shared.Models.Flex
+@using Aporta.Shared.Calls
+@using Aporta.Shared.Messaging
+@using Aporta.WebClient.Messaging
+
+@inject FlexApiService FlexApi
+@inject NavigationManager NavigationManager
+
+<Heading Size="HeadingSize.Is1">Sensors</Heading>
+<Divider />
+
+@if (_sensors == null)
+{
+    <div class="spinner"></div>
+}
+else
+{
+    <Row>
+        <Column ColumnSize="ColumnSize.Is6.OnDesktop">
+            @if (_availableSensors != null && _availableSensors.InstanceList.Any())
+            {
+                <Button Color="Color.Primary" Clicked="_addInputModal.Show">Add Sensor</Button>
+            }
+            else
+            {
+                <Alert Color="Color.Warning" Visible="true">
+                    <AlertMessage>Add Sensor</AlertMessage>
+                    <AlertDescription>No available inputs are configured in the drivers</AlertDescription>
+                </Alert>
+            }
+        </Column>
+    </Row>
+    <Row>
+        <Column>
+            <Card Margin="Margin.Is4.OnY">
+                <CardBody>
+                    <Table Striped="true" Narrow="true" ThemeContrast="ThemeContrast.Light">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHeaderCell>Name</TableHeaderCell>
+                                <TableHeaderCell></TableHeaderCell>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            @foreach (var sensor in _sensors.InstanceList.OrderBy(s => s.Name))
+                            {
+                                <TableRow>
+                                    <TableRowHeader>
+                                        @sensor.Name
+                                    </TableRowHeader>
+                                    <TableRowCell TextAlignment="TextAlignment.End">
+                                        <Button Clicked="@(async () => await RemoveSensor(sensor))">
+                                            <Icon Name="IconName.Delete" Style="color: red"/>
+                                        </Button>
+                                    </TableRowCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </CardBody>
+            </Card>
+        </Column>
+    </Row>
+
+    <Modal @ref="_addInputModal">
+        <ModalContent Size="ModalSize.Default" Centered="true">
+            <ModalHeader>
+                <ModalTitle>
+                    Add Sensor
+                </ModalTitle>
+                <CloseButton Clicked="@_addInputModal.Hide"/>
+            </ModalHeader>
+            <ModalBody>
+                <Validations Mode="ValidationMode.Auto" ValidateOnLoad="false" @ref="_addInputValidations">
+                    <Validation Validator="@ValidationRule.IsNotEmpty" >
+                        <Field>
+                            <FieldLabel>Name</FieldLabel>
+                            <FieldBody>
+                                <TextEdit @bind-Text="_addName">
+                                    <Feedback>
+                                        <ValidationError>
+                                            Please enter a name for the sensor
+                                        </ValidationError>
+                                    </Feedback>
+                                </TextEdit>
+                            </FieldBody>
+                        </Field>
+                    </Validation>
+
+                    <Field>
+                        <FieldLabel>Device Endpoint</FieldLabel>
+                        <FieldBody>
+                            <Select TValue="int" @bind-SelectedValue="_addEndpointUnid">
+                                @foreach (var available in _availableSensors.InstanceList)
+                                {
+                                    <SelectItem Value="@available.Unid.Value">@available.Name</SelectItem>
+                                }
+                            </Select>
+                        </FieldBody>
+                    </Field>
+                </Validations>
+            </ModalBody>
+            <ModalFooter>
+                <Button Color="Color.Secondary" Clicked="@_addInputModal.Hide">Cancel</Button>
+                <Button Color="Color.Primary" Clicked="@(async () => await AddSensor())">Add</Button>
+            </ModalFooter>
+        </ModalContent>
+    </Modal>
+}
+
+<Snackbar @ref="_snackbar" Color="@_snackbarColor">
+    <SnackbarBody>
+        @_snackbarMessage
+    </SnackbarBody>
+</Snackbar>
+
+<MessageProvider />
+
+@code {
+    [Inject]
+    IMessageService MessageService { get; set; }
+
+    private FlexListResponse<FlexDev> _sensors;
+    private FlexListResponse<FlexDev> _availableSensors;
+    private string _addName;
+    private int _addEndpointUnid;
+
+    private HubConnection _hubConnection;
+
+    private Modal _addInputModal;
+    private Validations _addInputValidations;
+    private Snackbar _snackbar;
+    private SnackbarColor _snackbarColor;
+    private string _snackbarMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sensors = await FlexApi.GetSensorListAsync(0, 1000);
+
+        await InitializeAvailableSensors();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri(Locations.DataChangeNotification))
+            .WithAutomaticReconnect(new SignalRRetryPolicy())
+            .Build();
+        _hubConnection.On<int>(Methods.InputInserted, async _ =>
+        {
+            _sensors = await FlexApi.GetSensorListAsync(0, 1000);
+            await InitializeAvailableSensors();
+            StateHasChanged();
+        });
+        _hubConnection.On<int>(Methods.InputDeleted, async _ =>
+        {
+            _sensors = await FlexApi.GetSensorListAsync(0, 1000);
+            await InitializeAvailableSensors();
+            StateHasChanged();
+        });
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task InitializeAvailableSensors()
+    {
+        _availableSensors = await FlexApi.GetAvailableSensorsAsync();
+        _addName = "";
+        _addEndpointUnid = _availableSensors.InstanceList.FirstOrDefault()?.Unid ?? 0;
+    }
+
+    private async Task AddSensor()
+    {
+        if (! await _addInputValidations.ValidateAll())
+        {
+            return;
+        }
+        await _addInputModal.Hide();
+
+        var dev = new FlexDev { Unid = _addEndpointUnid, Name = _addName };
+        await FlexApi.SaveSensorAsync(dev);
+    }
+
+    private async Task RemoveSensor(FlexDev sensor)
+    {
+        if (!await MessageService.Confirm($"Are you sure you want to delete sensor '{sensor.Name}'?", "Delete Sensor", options =>
+        {
+            options.ShowMessageIcon = false;
+            options.ConfirmButtonColor = Color.Danger;
+        }))
+        {
+            return;
+        }
+
+        await FlexApi.DeleteSensorAsync(sensor.Unid.Value);
+    }
+}

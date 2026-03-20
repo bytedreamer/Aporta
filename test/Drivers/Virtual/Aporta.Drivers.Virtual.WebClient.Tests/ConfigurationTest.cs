@@ -1,6 +1,9 @@
+using System.Collections.Generic;
+using System.Net.Http;
 using Aporta.Drivers.Virtual.Shared;
 using Aporta.Drivers.Virtual.Shared.Actions;
 using Aporta.Shared.Calls;
+using Aporta.Shared.Models.Flex;
 using Blazorise;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,16 +20,18 @@ public class ConfigurationTest : AportaTestContext
     private const string EmptyConfiguration = "{\"Readers\":[],\"Outputs\":[],\"Inputs\":[]}";
 
     private readonly Mock<IDriverConfigurationCalls> _mockConfigurationCalls = new();
-    private readonly Mock<IDoorCalls> _mockDoorCalls = new();
+    private readonly Mock<FlexApiService> _mockFlexApi;
 
     private readonly Guid _extensionId = Guid.NewGuid();
 
     private IRenderedComponent<Configuration>? _cut;
-    
+
     public ConfigurationTest()
     {
         BlazoriseConfig.JSInterop.AddTextEdit(JSInterop);
         BlazoriseConfig.JSInterop.AddButton(JSInterop);
+
+        _mockFlexApi = new Mock<FlexApiService>(new HttpClient()) { CallBase = false };
 
         Services.AddScoped<IDriverConfigurationCalls>(_ => _mockConfigurationCalls.Object);
     }
@@ -42,16 +47,20 @@ public class ConfigurationTest : AportaTestContext
         return config;
     }
 
-    private void SetUpDoorMock()
+    private void SetUpFlexApiMock()
     {
-        Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
+        _mockFlexApi.Setup(api => api.GetAvailableEndpointsAsync())
+            .ReturnsAsync(new FlexListResponse<FlexDev> { InstanceList = new List<FlexDev>() });
+
+        Services.AddScoped<FlexApiService>(_ => _mockFlexApi.Object);
     }
 
-    private void SetUpDoorMock(Endpoint[] endpoints)
-    {        
-        _mockDoorCalls.Setup(calls => calls.GetAvailableEndpoints()).ReturnsAsync(endpoints);
+    private void SetUpFlexApiMock(FlexDev[] endpoints)
+    {
+        _mockFlexApi.Setup(api => api.GetAvailableEndpointsAsync())
+            .ReturnsAsync(new FlexListResponse<FlexDev> { InstanceList = new List<FlexDev>(endpoints) });
 
-        Services.AddScoped<IDoorCalls>(_ => _mockDoorCalls.Object);
+        Services.AddScoped<FlexApiService>(_ => _mockFlexApi.Object);
     }
 
     [Test]
@@ -59,7 +68,7 @@ public class ConfigurationTest : AportaTestContext
     {
         // Arrange
 
-        SetUpDoorMock();
+        SetUpFlexApiMock();
 
         byte readerNumber = 1;
         var cardData = "2468";
@@ -96,7 +105,7 @@ public class ConfigurationTest : AportaTestContext
     public void ConfigurationComponentRendersCorrectly()
     {
         // Act - Render with an empty configuration
-        SetUpDoorMock();
+        SetUpFlexApiMock();
 
         _cut = RenderComponent<Configuration>(parameters => parameters
             .Add(p => p.RawConfiguration, EmptyConfiguration)
@@ -113,7 +122,7 @@ public class ConfigurationTest : AportaTestContext
     public async Task AddReader()
     {
         // Arrange
-        SetUpDoorMock();
+        SetUpFlexApiMock();
         
         var emptyConfig = new Shared.Configuration();
 
@@ -152,21 +161,19 @@ public class ConfigurationTest : AportaTestContext
             new() { Name = "Virtual Reader 3", Number = 3 }
         };
 
-        Endpoint[] availableEndPoints =
+        FlexDev[] availableEndPoints =
         {
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Reader,
-                DriverEndpointId = $"VR{readersOnRazorPage[1].Number}", Id = readersOnRazorPage[1].Number
+                ExternalId = $"VR{readersOnRazorPage[1].Number}", Unid = readersOnRazorPage[1].Number
             },
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Reader,
-                DriverEndpointId = $"VR{readersOnRazorPage[2].Number}", Id = readersOnRazorPage[2].Number
+                ExternalId = $"VR{readersOnRazorPage[2].Number}", Unid = readersOnRazorPage[2].Number
             }
         };
 
-        SetUpDoorMock(availableEndPoints);
+        SetUpFlexApiMock(availableEndPoints);
 
         var config = new Shared.Configuration();
 
@@ -181,14 +188,14 @@ public class ConfigurationTest : AportaTestContext
             !button.Instance.Disabled && button.Nodes[0].TextContent.Trim() == "Edit");
 
         await _cut.InvokeAsync(async () => await editButton.Instance.Clicked.InvokeAsync());
-        
+
         var textEdit = _cut.Find("#NameTextEdit");
         textEdit.Input("Edit Reader Name");
 
         var modalEditButton =
             _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Edit");
         await _cut.InvokeAsync(async () => await modalEditButton.Instance.Clicked.InvokeAsync());
-        
+
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateReader.ToString(),
             JsonConvert.SerializeObject(new Device { Name = "Edit Reader Name", Number = 1 })));
@@ -205,21 +212,19 @@ public class ConfigurationTest : AportaTestContext
             new() { Name = "Virtual Reader 3", Number = 3 }
         };
 
-        Endpoint[] availableEndPoints =
+        FlexDev[] availableEndPoints =
         {
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Reader,
-                DriverEndpointId = $"VR{readersOnRazorPage[1].Number}", Id = readersOnRazorPage[1].Number
+                ExternalId = $"VR{readersOnRazorPage[1].Number}", Unid = readersOnRazorPage[1].Number
             },
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Reader,
-                DriverEndpointId = $"VR{readersOnRazorPage[2].Number}", Id = readersOnRazorPage[2].Number
+                ExternalId = $"VR{readersOnRazorPage[2].Number}", Unid = readersOnRazorPage[2].Number
             }
         };
 
-        SetUpDoorMock(availableEndPoints);
+        SetUpFlexApiMock(availableEndPoints);
 
         var config = new Shared.Configuration();
 
@@ -252,7 +257,7 @@ public class ConfigurationTest : AportaTestContext
     public async Task AddInput()
     {
         // Arrange
-        SetUpDoorMock();
+        SetUpFlexApiMock();
 
         var emptyConfig = new Shared.Configuration();
 
@@ -291,21 +296,19 @@ public class ConfigurationTest : AportaTestContext
             new() { Name = "Virtual Input 3", Number = 3 }
         };
 
-        Endpoint[] availableEndPoints =
+        FlexDev[] availableEndPoints =
         {
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Input,
-                DriverEndpointId = $"VI{inputsOnRazorPage[1].Number}", Id = inputsOnRazorPage[1].Number
+                ExternalId = $"VI{inputsOnRazorPage[1].Number}", Unid = inputsOnRazorPage[1].Number
             },
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Input,
-                DriverEndpointId = $"VI{inputsOnRazorPage[2].Number}", Id = inputsOnRazorPage[2].Number
+                ExternalId = $"VI{inputsOnRazorPage[2].Number}", Unid = inputsOnRazorPage[2].Number
             }
         };
 
-        SetUpDoorMock(availableEndPoints);
+        SetUpFlexApiMock(availableEndPoints);
 
         var config = new Shared.Configuration();
 
@@ -320,14 +323,14 @@ public class ConfigurationTest : AportaTestContext
             !button.Instance.Disabled && button.Nodes[0].TextContent.Trim() == "Edit");
 
         await _cut.InvokeAsync(async () => await editButton.Instance.Clicked.InvokeAsync());
-        
+
         var textEdit = _cut.Find("#NameTextEdit");
         textEdit.Input("Edit Input Name");
 
         var modalEditButton =
             _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Edit");
         await _cut.InvokeAsync(async () => await modalEditButton.Instance.Clicked.InvokeAsync());
-        
+
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateInput.ToString(),
             JsonConvert.SerializeObject(new Device { Name = "Edit Input Name", Number = 1 })));
@@ -345,22 +348,19 @@ public class ConfigurationTest : AportaTestContext
         };
 
         //set up endpoints not assigned to a door
-        Endpoint[] availableEndPoints =
+        FlexDev[] availableEndPoints =
         {
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Input,
-                DriverEndpointId = $"VI{inputsOnRazorPage[1].Number}", Id = inputsOnRazorPage[1].Number
+                ExternalId = $"VI{inputsOnRazorPage[1].Number}", Unid = inputsOnRazorPage[1].Number
             },
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Input,
-                DriverEndpointId = $"VI{inputsOnRazorPage[2].Number}", Id = inputsOnRazorPage[2].Number
+                ExternalId = $"VI{inputsOnRazorPage[2].Number}", Unid = inputsOnRazorPage[2].Number
             }
-
         };
 
-        SetUpDoorMock(availableEndPoints);
+        SetUpFlexApiMock(availableEndPoints);
 
         var config = new Shared.Configuration();
 
@@ -393,7 +393,7 @@ public class ConfigurationTest : AportaTestContext
     public async Task AddOutput()
     {
         // Arrange
-        SetUpDoorMock();
+        SetUpFlexApiMock();
 
         var emptyConfig = new Shared.Configuration();
 
@@ -433,21 +433,19 @@ public class ConfigurationTest : AportaTestContext
             new() { Name = "Virtual Output 3", Number = 3 }
         };
 
-        Endpoint[] availableEndPoints =
+        FlexDev[] availableEndPoints =
         {
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Output,
-                DriverEndpointId = $"VO{outputsOnRazorPage[1].Number}", Id = outputsOnRazorPage[1].Number
+                ExternalId = $"VO{outputsOnRazorPage[1].Number}", Unid = outputsOnRazorPage[1].Number
             },
             new()
             {
-                ExtensionId = _extensionId, Type = EndpointType.Output,
-                DriverEndpointId = $"VO{outputsOnRazorPage[2].Number}", Id = outputsOnRazorPage[2].Number
+                ExternalId = $"VO{outputsOnRazorPage[2].Number}", Unid = outputsOnRazorPage[2].Number
             }
         };
 
-        SetUpDoorMock(availableEndPoints);
+        SetUpFlexApiMock(availableEndPoints);
 
         var config = new Shared.Configuration();
 
@@ -462,14 +460,14 @@ public class ConfigurationTest : AportaTestContext
             !button.Instance.Disabled && button.Nodes[0].TextContent.Trim() == "Edit");
 
         await _cut.InvokeAsync(async () => await editButton.Instance.Clicked.InvokeAsync());
-        
+
         var textEdit = _cut.Find("#NameTextEdit");
         textEdit.Input("Edit Output Name");
 
         var modalEditButton =
             _cut.FindComponents<Button>().First(button => button.Nodes[0].TextContent.Trim() == "Edit");
         await _cut.InvokeAsync(async () => await modalEditButton.Instance.Clicked.InvokeAsync());
-        
+
         // Assert
         _mockConfigurationCalls.Verify(calls => calls.PerformAction(_extensionId, ActionType.AddUpdateOutput.ToString(),
             JsonConvert.SerializeObject(new Device { Name = "Edit Output Name", Number = 1 })));
@@ -487,13 +485,13 @@ public class ConfigurationTest : AportaTestContext
         };
 
         //set up endpoints not assigned to a door
-        Endpoint[] availableEndPoints = {
-            new() { ExtensionId = _extensionId, Type = EndpointType.Output, DriverEndpointId = $"VO{outputsOnRazorPage[1].Number}", Id = outputsOnRazorPage[1].Number },
-            new() { ExtensionId = _extensionId, Type = EndpointType.Output, DriverEndpointId = $"VO{outputsOnRazorPage[2].Number}", Id = outputsOnRazorPage[2].Number }
-
+        FlexDev[] availableEndPoints =
+        {
+            new() { ExternalId = $"VO{outputsOnRazorPage[1].Number}", Unid = outputsOnRazorPage[1].Number },
+            new() { ExternalId = $"VO{outputsOnRazorPage[2].Number}", Unid = outputsOnRazorPage[2].Number }
         };
 
-        SetUpDoorMock(availableEndPoints);
+        SetUpFlexApiMock(availableEndPoints);
 
         var config = new Shared.Configuration();
 

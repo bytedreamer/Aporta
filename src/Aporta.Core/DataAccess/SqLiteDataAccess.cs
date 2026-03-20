@@ -1,7 +1,8 @@
 using System;
 using System.Data;
 using System.IO;
-using System.Reflection; 
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Aporta.Core.DataAccess.Migrations;
 using Dapper;
@@ -15,19 +16,9 @@ public class SqLiteDataAccess : IDataAccess
     private const string FileName = "Data/Aporta.sqlite";
     private readonly bool _inMemory;
 
-    private readonly IMigration[] _migrations = 
+    private readonly IMigration[] _migrations =
     {
-        new _0000_InitialCreate(),
-        new _0001_AddExtensionTable(),
-        new _0002_AddEndpointTable(),
-        new _0003_AddOutputTable(),
-        new _0004_AddInputTable(),
-        new _0005_AddDoorTable(),
-        new _0006_AddGlobalSettingTable(),
-        new _0007_AddCredentialTable(), 
-        new _0008_AddPersonTable(),
-        new _0009_AddEventTable(),
-        new _0010_AddLastEventToCredentialTable()
+        new _0000_InitialCreate()
     };
 
     /// <summary>
@@ -92,7 +83,16 @@ public class SqLiteDataAccess : IDataAccess
         }
         else
         {
-            currentVersion = await CurrentVersion(); 
+            currentVersion = await CurrentVersion();
+        }
+
+        // Detect old column-based schema (versions 0-10) and require migration tool
+        if (currentVersion >= 0 && currentVersion <= 10)
+        {
+            throw new InvalidOperationException(
+                $"Database is using old schema (version {currentVersion}). " +
+                "Please run the Aporta.Migration tool to upgrade to JSON document storage before starting the application. " +
+                "Usage: dotnet Aporta.Migration.dll <path-to-database>");
         }
 
         using var connection = CreateDbConnection();
@@ -100,16 +100,16 @@ public class SqLiteDataAccess : IDataAccess
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
-        for (int migrationIndex = currentVersion + 1; migrationIndex < _migrations.Length; migrationIndex++)
+        foreach (var migration in _migrations.Where(m => m.Version > currentVersion).OrderBy(m => m.Version))
         {
-            await _migrations[migrationIndex].PerformUpdate(connection, transaction);
+            await migration.PerformUpdate(connection, transaction);
 
             await connection.ExecuteAsync(
                 @"insert into schema_info (id, name, timestamp)
                         values (@id, @name, @timestamp)",
                 new
                 {
-                    id = _migrations[migrationIndex].Version, name = _migrations[migrationIndex].Name,
+                    id = migration.Version, name = migration.Name,
                     timestamp = DateTime.UtcNow
                 }, transaction);
         }

@@ -8,12 +8,12 @@ using Aporta.Core.DataAccess.Repositories;
 using Aporta.Core.Hubs;
 using Aporta.Core.Services;
 using Aporta.Extensions;
-using Aporta.Shared.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
 using SignalR_UnitTestingSupportCommon.IHubContextSupport;
+using Z9.Spcore.Proto;
 
 namespace Aporta.Core.Tests.Services;
 
@@ -41,17 +41,17 @@ public class OutputServiceTests
         await _extensionService.Startup();
         await _extensionService.EnableExtension(_extensionId, true);
 
-        // Wait for endpoints to be inserted
-        var endpointRepository = new EndpointRepository(_dataAccess);
+        // Wait for pool z9_devs to be synced from driver (1 controller + 5 endpoints)
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
         using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        while ((await endpointRepository.GetAll()).Count() != 5 && !cancellationTokenSource.Token.IsCancellationRequested)
+        while ((await z9DevRepository.GetAll()).Count() < 6 && !cancellationTokenSource.Token.IsCancellationRequested)
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationTokenSource.Token);
         }
-            
-        if(cancellationTokenSource.Token.IsCancellationRequested) 
+
+        if(cancellationTokenSource.Token.IsCancellationRequested)
         {
-            Assert.Fail("Timeout waiting for endpoints to be inserted");
+            Assert.Fail("Timeout waiting for pool z9_devs to be synced");
         }
     }
 
@@ -59,7 +59,7 @@ public class OutputServiceTests
     public void TearDown()
     {
         _extensionService.Shutdown();
-            
+
         _persistConnection?.Close();
         _persistConnection?.Dispose();
     }
@@ -68,27 +68,32 @@ public class OutputServiceTests
     public async Task SetState()
     {
         // Arrange
-        var outputService = new OutputService(_dataAccess,
+        var z9DevRepository = new Z9DevRepository(_dataAccess);
+        // OutputService is still instantiated to subscribe to StateChanged events
+        _ = new OutputService(_dataAccess,
             new UnitTestingSupportForIHubContext<DataChangeNotificationHub>().IHubContextMock.Object,
-            _extensionService);
-        
-        var outputs = new[]
+            _extensionService, new DevStateService());
+
+        var available = (await z9DevRepository.GetAvailableByDevType(DevType.Actuator)).ToArray();
+        Assert.That(available.Length, Is.EqualTo(2), "Expected 2 available actuator endpoints");
+
+        // Assign actuators (set name + enabled)
+        foreach (var dev in available)
         {
-            new Output {Name = "TestOutput1", EndpointId = 2},
-            new Output {Name = "TestOutput2", EndpointId = 3}
-        };
-        var outputRepository = new OutputRepository(_dataAccess);
-        foreach (var output in outputs)
-        {
-            await outputRepository.Insert(output);
+            dev.Name = $"TestOutput_{dev.Unid}";
+            dev.Enabled = true;
+            await z9DevRepository.Upsert(dev);
         }
 
+        // Get extension ID for state calls
+        var extensionId = await z9DevRepository.GetExtensionId(available[0]);
+
         // Act
-        await outputService.SetState(outputs[0].Id, true);
-        await outputService.SetState(outputs[1].Id, false);
+        await _extensionService.GetControlPoint(extensionId.Value, available[0].ExternalId).SetState(true);
+        await _extensionService.GetControlPoint(extensionId.Value, available[1].ExternalId).SetState(false);
 
         // Assert
-        Assert.That(await outputService.GetState(outputs[0].Id), Is.True);
-        Assert.That(await outputService.GetState(outputs[1].Id), Is.False);
+        Assert.That(await _extensionService.GetControlPoint(extensionId.Value, available[0].ExternalId).GetState(), Is.True);
+        Assert.That(await _extensionService.GetControlPoint(extensionId.Value, available[1].ExternalId).GetState(), Is.False);
     }
 }
