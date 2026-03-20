@@ -24,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.17" />
+      <PackageReference Include="Z9.Protobuf.Community" Version="1.0.18" />
     </ItemGroup>
 
     <ItemGroup>
